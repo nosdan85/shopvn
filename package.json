@@ -7,6 +7,7 @@
     "dev": "vite",
     "server": "node server/index.cjs",
     "dev:api": "node server/index.cjs",
+    "bot": "node server/sepay-worker.cjs",
     "seed": "node server/seed.cjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

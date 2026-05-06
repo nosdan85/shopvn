@@ -1280,7 +1280,7 @@ function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) 
     event.preventDefault()
     try {
       await api('/admin/settings', { method: 'PATCH', body: JSON.stringify(form) })
-      setNotice('Đã lưu cấu hình SePay bot. Nếu đổi bật/tắt bot, hãy redeploy/restart backend để bot tự chạy theo cấu hình mới.')
+      setNotice('Đã lưu cấu hình SePay bot. Bot chạy bằng worker/tool riêng, web chỉ hiển thị trạng thái và report.')
     } catch (error) {
       setNotice(messageFromError(error))
     }
@@ -1307,17 +1307,17 @@ function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) 
         <div className="stats-grid">
           <Stat label="Bot đang bật" value={status.enabled ? 'Có' : 'Không'} />
           <Stat label="Đã cấu hình API" value={status.configured ? 'Có' : 'Chưa'} />
-          <Stat label="Đang chạy" value={status.running ? 'Có' : 'Không'} />
+          <Stat label="Chế độ" value={String(status.mode || 'external_worker')} />
           <Stat label="Chu kỳ quét" value={`${status.interval_ms || 15000} ms`} />
-          <Stat label="Lần chạy gần nhất" value={status.last_run_at ? dateTime(String(status.last_run_at)) : '-'} />
-          <Stat label="Lỗi gần nhất" value={status.last_error ? String(status.last_error) : 'Không'} />
+          <Stat label="Worker quét gần nhất" value={status.worker_last_run_at ? dateTime(String(status.worker_last_run_at)) : '-'} />
+          <Stat label="Lỗi worker gần nhất" value={status.worker_last_error ? String(status.worker_last_error) : 'Không'} />
         </div>
       )}
       <div className="panel">
         <h2>Cách lấy API SePay</h2>
         <p>Đăng nhập SePay, vào Cấu hình Công ty → API Access, bấm + Thêm API, đặt trạng thái Hoạt động rồi copy API Token.</p>
         <p>API URL danh sách giao dịch thường dùng: https://my.sepay.vn/userapi/transactions/list?limit=20</p>
-        <p>Bot sẽ gọi API bằng header Authorization: Bearer API_TOKEN. Nếu bạn dùng webhook thì không cần bật bot polling.</p>
+        <p>Bot chạy bằng process riêng: npm run bot. Web chỉ nhận webhook, cộng tiền và hiển thị report bot quét được gì.</p>
       </div>
       <form onSubmit={save}>
         <label>Bật bot
@@ -1330,13 +1330,13 @@ function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) 
         <label>SePay API Key<input type="password" placeholder="API key/token SePay" value={form.sepay_bot_api_key || ''} onChange={(event) => setForm({ ...form, sepay_bot_api_key: event.target.value })} /></label>
         <label>Chu kỳ quét milliseconds<input type="number" min={5000} step={1000} value={form.sepay_bot_interval_ms || '15000'} onChange={(event) => setForm({ ...form, sepay_bot_interval_ms: event.target.value })} /></label>
         <button className="primary large">Lưu cấu hình bot</button>
-        <button type="button" onClick={runNow} disabled={loading}>{loading ? 'Đang chạy...' : 'Chạy bot ngay'}</button>
+        <button type="button" onClick={runNow} disabled={loading}>{loading ? 'Đang chạy...' : 'Test quét thủ công trên web'}</button>
         <button type="button" onClick={loadStatus}>Tải lại trạng thái</button>
       </form>
-      {Boolean(status?.last_result) && typeof status?.last_result === 'object' && (
+      {Boolean(status?.worker_last_result) && typeof status?.worker_last_result === 'object' && (
         <div className="panel">
-          <h2>Kết quả lần chạy gần nhất</h2>
-          <TablePage title="Last result" headers={['Trường', 'Giá trị']} rows={Object.entries(status.last_result as Record<string, unknown>).map(([key, value]) => [key, typeof value === 'object' ? JSON.stringify(value) : String(value)])} />
+          <h2>Report worker gần nhất</h2>
+          <TablePage title="Worker result" headers={['Trường', 'Giá trị']} rows={Object.entries(status.worker_last_result as Record<string, unknown>).map(([key, value]) => [key, typeof value === 'object' ? JSON.stringify(value) : String(value)])} />
         </div>
       )}
       {result && (

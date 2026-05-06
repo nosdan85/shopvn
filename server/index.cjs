@@ -382,15 +382,26 @@ async function runSepayBotOnce() {
 function sepayBotStatus() {
   const apiUrl = setting('sepay_bot_api_url');
   const apiKey = setting('sepay_bot_api_key');
+  let workerLastResult = null;
+  try {
+    workerLastResult = JSON.parse(setting('sepay_bot_last_result', 'null'));
+  } catch (_error) {
+    workerLastResult = null;
+  }
   return {
     enabled: setting('sepay_bot_enabled', 'false') === 'true',
     configured: Boolean(apiUrl && apiKey),
     running: sepayBotRunning,
     api_url: apiUrl,
     interval_ms: Number(setting('sepay_bot_interval_ms', '15000')) || 15000,
-    last_run_at: sepayBotLastRunAt,
-    last_error: sepayBotLastError,
-    last_result: sepayBotLastResult,
+    mode: 'external_worker',
+    worker_last_run_at: setting('sepay_bot_last_run_at', ''),
+    worker_last_error: setting('sepay_bot_last_error', ''),
+    worker_last_result: workerLastResult,
+    manual_running: sepayBotRunning,
+    manual_last_run_at: sepayBotLastRunAt,
+    manual_last_error: sepayBotLastError,
+    manual_last_result: sepayBotLastResult,
   };
 }
 
@@ -637,6 +648,20 @@ app.post('/api/webhooks/deposits', (req, res) => {
   } catch (error) {
     res.json({ success: false, ignored: true, message: error.message });
   }
+});
+
+app.post('/api/webhooks/sepay-bot/report', (req, res) => {
+  const allowedSecrets = [setting('sepay_webhook_secret')].map((value) => String(value || '').trim()).filter(Boolean);
+  const providedSecrets = extractWebhookSecret(req);
+  if (!allowedSecrets.length || !providedSecrets.some((secret) => allowedSecrets.includes(secret))) {
+    res.status(401).json({ success: false, message: 'Webhook secret không hợp lệ.' });
+    return;
+  }
+  const report = req.body || {};
+  setSetting('sepay_bot_last_run_at', String(report.ran_at || new Date().toISOString()));
+  setSetting('sepay_bot_last_error', report.ok === false ? String(report.error || 'Bot lỗi không rõ nguyên nhân.') : '');
+  setSetting('sepay_bot_last_result', JSON.stringify(report).slice(0, 5000));
+  res.json({ success: true });
 });
 
 app.post('/api/admin/sepay-bot/run', requireAdmin, async (_req, res) => {
@@ -1225,7 +1250,7 @@ async function startServer() {
     ensureEnvAdmin();
     app.listen(port, () => {
       console.log(`Sailor Piece API running at http://localhost:${port}`);
-      startSepayBot();
+      console.log('SePay bot chạy bằng worker/tool riêng, web chỉ nhận webhook và hiển thị report.');
     });
   } catch (error) {
     console.error('Không thể khởi động persistent store:', error);

@@ -20,8 +20,6 @@ services:
         sync: false
       - key: BANK_ACCOUNT_NUMBER
         sync: false
-      - key: SEPAY_BOT_ENABLED
-        value: false
       - key: SEPAY_BOT_API_URL
         sync: false
       - key: SEPAY_BOT_API_KEY
@@ -31,4 +29,24 @@ services:
       - key: TURSO_DATABASE_URL
         sync: false
       - key: TURSO_AUTH_TOKEN
+        sync: false
+
+  - type: worker
+    name: sailor-piece-sepay-bot
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run bot
+    envVars:
+      - key: SEPAY_BOT_ENABLED
+        value: true
+      - key: SEPAY_BOT_API_URL
+        sync: false
+      - key: SEPAY_BOT_API_KEY
+        sync: false
+      - key: SEPAY_BOT_INTERVAL_MS
+        value: 15000
+      - key: API_BASE_URL
+        sync: false
+      - key: SEPAY_WEBHOOK_SECRET
         sync: false
