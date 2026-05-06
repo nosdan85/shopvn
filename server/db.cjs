@@ -181,6 +181,19 @@ const schemaSql = `
       FOREIGN KEY (sender_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS order_chat_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      sender_id INTEGER NOT NULL,
+      message TEXT NOT NULL,
+      is_read INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (sender_id) REFERENCES users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT NOT NULL UNIQUE,
@@ -209,6 +222,7 @@ const schemaSql = `
     CREATE INDEX IF NOT EXISTS idx_balance_logs_user_id ON balance_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
     CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON chat_messages(user_id);
+    CREATE INDEX IF NOT EXISTS idx_order_chat_messages_order_id ON order_chat_messages(order_id);
   `;
 function migrate() {
   db.exec(schemaSql);
@@ -225,6 +239,7 @@ const persistentTables = [
   'reviews',
   'notifications',
   'chat_messages',
+  'order_chat_messages',
   'settings',
   'admin_logs',
 ];

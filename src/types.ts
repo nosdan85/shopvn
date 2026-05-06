@@ -62,6 +62,17 @@ export type Order = {
   item_names?: string
 }
 
+export type OrderItem = {
+  id: number
+  order_id: number
+  item_id: number
+  item_name: string
+  quantity: number
+  price: number
+  total_price: number
+  created_at: string
+}
+
 export type Deposit = {
   id: number
   transaction_code: string
@@ -130,6 +141,19 @@ export type ChatMessage = {
 }
 
 export type AdminChat = {
+  user_id: number
+  username: string
+  email: string
+  last_message?: string
+  last_message_at?: string
+  unread_count: number
+}
+
+export type AdminOrderChat = {
+  order_id: number
+  order_code: string
+  total_amount: number
+  roblox_username: string
   user_id: number
   username: string
   email: string

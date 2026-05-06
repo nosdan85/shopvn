@@ -339,6 +339,23 @@ function processIncomingDepositTransfer(raw, source = 'Webhook') {
   })();
 }
 
+function createOrderChatSummary({ order, items }) {
+  const lines = [
+    `Đơn mới ${order.order_code}`,
+    `Tài khoản web: ${order.username || ''}`,
+    `Roblox Username: ${order.roblox_username}`,
+    `Tổng tiền: ${order.total_amount} VND`,
+    'Danh sách item:',
+    ...items.map((item) => `- ${item.item_name} x${item.quantity} = ${item.total_price} VND`),
+  ];
+  return lines.join('\n');
+}
+
+function createInitialOrderChat({ orderId, userId, message }) {
+  db.prepare('INSERT INTO order_chat_messages (order_id, user_id, sender_id, message) VALUES (?, ?, ?, ?)')
+    .run(orderId, userId, userId, message.slice(0, 2000));
+}
+
 let sepayBotRunning = false;
 let sepayBotLastResult = null;
 let sepayBotLastRunAt = null;
@@ -650,6 +667,23 @@ app.post('/api/webhooks/deposits', (req, res) => {
   }
 });
 
+app.get('/api/webhooks/deposits/pending-codes', (req, res) => {
+  const allowedSecrets = [setting('sepay_webhook_secret')].map((value) => String(value || '').trim()).filter(Boolean);
+  const providedSecrets = extractWebhookSecret(req);
+  if (!allowedSecrets.length || !providedSecrets.some((secret) => allowedSecrets.includes(secret))) {
+    res.status(401).json({ success: false, message: 'Webhook secret không hợp lệ.' });
+    return;
+  }
+  const deposits = db.prepare(`
+    SELECT id, transaction_code, transfer_content, amount
+    FROM deposits
+    WHERE status = 'pending' AND method = 'bank_transfer'
+    ORDER BY created_at DESC
+    LIMIT 300
+  `).all();
+  res.json({ deposits });
+});
+
 app.post('/api/webhooks/sepay-bot/report', (req, res) => {
   const allowedSecrets = [setting('sepay_webhook_secret')].map((value) => String(value || '').trim()).filter(Boolean);
   const providedSecrets = extractWebhookSecret(req);
@@ -706,36 +740,51 @@ app.post('/api/orders/buy', requireAuth, (req, res) => {
     return;
   }
   const { itemId, quantity, robloxUsername, customerNote } = req.body;
-  const qty = Number(quantity);
-  if (!robloxUsername || !Number.isInteger(qty) || qty < 1) {
-    res.status(400).json({ message: 'Vui lòng nhập Roblox Username và số lượng hợp lệ.' });
+  const requestedItems = Array.isArray(req.body.items) && req.body.items.length
+    ? req.body.items
+    : [{ itemId, quantity }];
+  if (!robloxUsername || !requestedItems.length) {
+    res.status(400).json({ message: 'Vui lòng nhập Roblox Username và item cần mua.' });
     return;
   }
 
   try {
     const result = db.transaction(() => {
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-      const item = db.prepare("SELECT * FROM items WHERE id = ? AND status = 'active'").get(itemId);
-      if (!item) throw new Error('Item không tồn tại.');
-      if (item.stock < qty) throw new Error('Item đã hết hàng hoặc không đủ số lượng.');
-      const price = item.sale_price || item.price;
-      const total = price * qty;
+      const normalizedItems = requestedItems.map((entry) => ({
+        itemId: Number(entry.itemId),
+        quantity: Number(entry.quantity),
+      })).filter((entry) => Number.isInteger(entry.itemId) && Number.isInteger(entry.quantity) && entry.quantity > 0);
+      if (!normalizedItems.length) throw new Error('Giỏ hàng không hợp lệ.');
+      const merged = new Map();
+      for (const entry of normalizedItems) merged.set(entry.itemId, (merged.get(entry.itemId) || 0) + entry.quantity);
+      const orderItems = [];
+      for (const [targetItemId, qty] of merged.entries()) {
+        const item = db.prepare("SELECT * FROM items WHERE id = ? AND status = 'active'").get(targetItemId);
+        if (!item) throw new Error('Item không tồn tại.');
+        if (item.stock < qty) throw new Error(`${item.name} đã hết hàng hoặc không đủ số lượng.`);
+        const price = item.sale_price || item.price;
+        orderItems.push({ item, qty, price, total: price * qty });
+      }
+      const total = orderItems.reduce((sum, entry) => sum + entry.total, 0);
       if (user.balance < total) throw new Error('Số dư không đủ. Vui lòng nạp thêm tiền.');
       const before = user.balance;
       const after = before - total;
       db.prepare('UPDATE users SET balance = ?, total_spent = total_spent + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
         .run(after, total, user.id);
-      db.prepare('UPDATE items SET stock = stock - ?, sold_count = sold_count + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-        .run(qty, qty, item.id);
       const orderCode = `SP${nanoid()}`;
       const orderResult = db.prepare(`
         INSERT INTO orders (order_code, user_id, total_amount, status, roblox_username, roblox_profile, roblox_display_name, customer_note)
         VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)
       `).run(orderCode, user.id, total, robloxUsername, '', '', customerNote || '');
-      db.prepare(`
-        INSERT INTO order_items (order_id, item_id, item_name, quantity, price, total_price)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(orderResult.lastInsertRowid, item.id, item.name, qty, price, total);
+      for (const entry of orderItems) {
+        db.prepare('UPDATE items SET stock = stock - ?, sold_count = sold_count + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .run(entry.qty, entry.qty, entry.item.id);
+        db.prepare(`
+          INSERT INTO order_items (order_id, item_id, item_name, quantity, price, total_price)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(orderResult.lastInsertRowid, entry.item.id, entry.item.name, entry.qty, entry.price, entry.total);
+      }
       db.prepare('INSERT INTO order_status_logs (order_id, old_status, new_status, note, created_by) VALUES (?, NULL, ?, ?, ?)')
         .run(orderResult.lastInsertRowid, 'pending', 'Đơn hàng mới được tạo.', user.id);
       createBalanceLog({
@@ -746,9 +795,12 @@ app.post('/api/orders/buy', requireAuth, (req, res) => {
         after,
         referenceId: orderResult.lastInsertRowid,
         referenceType: 'order',
-        note: `Mua ${qty} x ${item.name}`,
+        note: `Mua ${orderItems.length} loại item`,
       });
       notifyUser(user.id, 'Mua item thành công', `Đơn ${orderCode} đang chờ xử lý.`, 'order');
+      const order = db.prepare('SELECT orders.*, users.username FROM orders JOIN users ON users.id = orders.user_id WHERE orders.id = ?').get(orderResult.lastInsertRowid);
+      const savedItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderResult.lastInsertRowid);
+      createInitialOrderChat({ orderId: order.id, userId: user.id, message: createOrderChatSummary({ order, items: savedItems }) });
       return db.prepare('SELECT * FROM orders WHERE id = ?').get(orderResult.lastInsertRowid);
     })();
     res.json({ order: result });
@@ -1143,6 +1195,69 @@ app.post('/api/admin/chats/:userId', requireAdmin, (req, res) => {
   db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)').run(user.id, req.user.id, message.slice(0, 1000));
   notifyUser(user.id, 'Admin đã phản hồi chat', message.slice(0, 180), 'chat');
   logAdmin(req.user.id, 'reply_chat', 'user', user.id, req);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/order-chats', requireAdmin, (_req, res) => {
+  const chats = db.prepare(`
+    SELECT orders.id as order_id, orders.order_code, orders.total_amount, orders.roblox_username,
+      users.id as user_id, users.username, users.email,
+      MAX(order_chat_messages.created_at) as last_message_at,
+      SUM(CASE WHEN order_chat_messages.sender_id = users.id AND order_chat_messages.is_read = 0 THEN 1 ELSE 0 END) as unread_count,
+      (
+        SELECT message FROM order_chat_messages latest
+        WHERE latest.order_id = orders.id
+        ORDER BY latest.created_at DESC
+        LIMIT 1
+      ) as last_message
+    FROM order_chat_messages
+    JOIN orders ON orders.id = order_chat_messages.order_id
+    JOIN users ON users.id = orders.user_id
+    GROUP BY orders.id
+    ORDER BY last_message_at DESC
+  `).all();
+  res.json({ chats });
+});
+
+app.get('/api/admin/order-chats/:orderId', requireAdmin, (req, res) => {
+  const order = db.prepare(`
+    SELECT orders.*, users.username, users.email
+    FROM orders
+    JOIN users ON users.id = orders.user_id
+    WHERE orders.id = ?
+  `).get(req.params.orderId);
+  if (!order) {
+    res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+    return;
+  }
+  const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+  const messages = db.prepare(`
+    SELECT order_chat_messages.*, users.username as sender_username, users.role as sender_role
+    FROM order_chat_messages
+    JOIN users ON users.id = order_chat_messages.sender_id
+    WHERE order_chat_messages.order_id = ?
+    ORDER BY order_chat_messages.created_at ASC
+    LIMIT 300
+  `).all(order.id);
+  db.prepare('UPDATE order_chat_messages SET is_read = 1 WHERE order_id = ? AND sender_id = ?').run(order.id, order.user_id);
+  res.json({ order, items, messages });
+});
+
+app.post('/api/admin/order-chats/:orderId', requireAdmin, (req, res) => {
+  const message = String(req.body.message || '').trim();
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.orderId);
+  if (!order) {
+    res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+    return;
+  }
+  if (!message) {
+    res.status(400).json({ message: 'Vui lòng nhập nội dung chat.' });
+    return;
+  }
+  db.prepare('INSERT INTO order_chat_messages (order_id, user_id, sender_id, message) VALUES (?, ?, ?, ?)')
+    .run(order.id, order.user_id, req.user.id, message.slice(0, 2000));
+  notifyUser(order.user_id, 'Admin phản hồi đơn hàng', message.slice(0, 180), 'order');
+  logAdmin(req.user.id, 'reply_order_chat', 'order', order.id, req);
   res.json({ ok: true });
 });
 

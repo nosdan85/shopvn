@@ -1,4 +1,4 @@
-const DEFAULT_INTERVAL_MS = 1500;
+const DEFAULT_INTERVAL_MS = 10000;
 
 function parseBoolean(value) {
   return String(value || '').toLowerCase() === 'true';
@@ -29,6 +29,30 @@ function reportUrl() {
   return `${apiBase}/api/webhooks/sepay-bot/report?secret=${encodeURIComponent(secret)}`;
 }
 
+function pendingCodesUrl() {
+  const apiBase = String(process.env.API_BASE_URL || process.env.PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
+  const secret = process.env.SEPAY_WEBHOOK_SECRET;
+  if (!apiBase || !secret) return '';
+  return `${apiBase}/api/webhooks/deposits/pending-codes?secret=${encodeURIComponent(secret)}`;
+}
+
+function normalizePaymentText(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function transactionContent(raw = {}) {
+  return String(raw.content || raw.description || raw.transferContent || raw.transfer_content || raw.transaction_content || raw.transactionContent || raw.note || raw.memo || '');
+}
+
+async function pendingDepositCodes() {
+  const url = pendingCodesUrl();
+  if (!url) return [];
+  const response = await fetch(url, { headers: { accept: 'application/json' } });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || `Không lấy được mã nạp pending ${response.status}`);
+  return Array.isArray(data.deposits) ? data.deposits : [];
+}
+
 async function sendReport(report) {
   const url = reportUrl();
   if (!url) return;
@@ -49,6 +73,8 @@ async function pollSepayOnce() {
   const targetWebhook = webhookUrl();
   if (!apiUrl || !apiKey) throw new Error('Thiếu SEPAY_BOT_API_URL hoặc SEPAY_BOT_API_KEY.');
   if (!targetWebhook) throw new Error('Thiếu SEPAY_WEBHOOK_URL hoặc API_BASE_URL + SEPAY_WEBHOOK_SECRET.');
+  const pendingDeposits = await pendingDepositCodes();
+  const pendingCodes = pendingDeposits.map((deposit) => normalizePaymentText(deposit.transfer_content || deposit.transaction_code)).filter(Boolean);
 
   const response = await fetch(apiUrl, {
     headers: {
@@ -61,8 +87,12 @@ async function pollSepayOnce() {
   if (!response.ok) throw new Error(data?.message || `SePay API lỗi ${response.status}`);
 
   const transactions = transactionListFromResponse(data);
+  const matchedTransactions = transactions.filter((transaction) => {
+    const content = normalizePaymentText(transactionContent(transaction));
+    return pendingCodes.some((code) => content.includes(code));
+  });
   const deliveries = [];
-  for (const transaction of transactions) {
+  for (const transaction of matchedTransactions) {
     try {
       const webhookResponse = await fetch(targetWebhook, {
         method: 'POST',
@@ -81,6 +111,8 @@ async function pollSepayOnce() {
     worker: true,
     ran_at: new Date().toISOString(),
     total: transactions.length,
+    pending_codes: pendingCodes.length,
+    matched: matchedTransactions.length,
     delivered: deliveries.filter((item) => item.ok).length,
     failed: deliveries.filter((item) => !item.ok).length,
     credited: deliveries.filter((item) => item.result?.success === true).length,
