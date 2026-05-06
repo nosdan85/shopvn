@@ -79,6 +79,15 @@ function bankQrUrl(settings: Settings, deposit: Deposit) {
     .replace('{accountName}', encodeURIComponent(accountName))
 }
 
+async function copyText(value: string, setNotice: (message: string) => void) {
+  try {
+    await navigator.clipboard.writeText(value)
+    setNotice('Đã sao chép.')
+  } catch (_error) {
+    setNotice('Không thể sao chép tự động, vui lòng bôi đen và copy thủ công.')
+  }
+}
+
 function ShopApp() {
   const [page, setPage] = useState<Page>('home')
   const [routeId, setRouteId] = useState<string>('')
@@ -553,6 +562,10 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
     const payload = method === 'bank_transfer'
       ? { amount, method }
       : { amount: card.declaredValue, method: card.provider, serial: card.serial, code: card.code }
+    if (Number(payload.amount) < 10000) {
+      setNotice('Số tiền nạp tối thiểu là 10.000đ.')
+      return
+    }
     try {
       const data = await api<{ deposit: Deposit }>('/deposits', { method: 'POST', body: JSON.stringify(payload) })
       setDeposit(data.deposit)
@@ -596,7 +609,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
           <button type="button" className={method !== 'bank_transfer' ? 'primary' : ''} onClick={() => setMethod(card.provider)}>Thẻ cào</button>
         </div>
         {method === 'bank_transfer' ? (
-          <label>Số tiền muốn nạp<input type="number" min={10000} step={10000} placeholder="Ví dụ: 10000" value={numberInputValue(amount)} onChange={(event) => setAmount(Number(event.target.value || 0))} /></label>
+          <label>Số tiền muốn nạp<input required type="number" min={10000} step={10000} placeholder="Tối thiểu 10000" value={numberInputValue(amount)} onChange={(event) => setAmount(Number(event.target.value || 0))} /></label>
         ) : (
           <>
             <div className="choice-group">
@@ -625,7 +638,17 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
             <p>Mã: <strong>{deposit.transaction_code}</strong></p>
             <p>Phương thức: <strong>{depositMethod[deposit.method] || deposit.method}</strong></p>
             <p>Số tiền: <strong>{money(deposit.amount)}</strong></p>
-            <p>Nội dung/mã xử lý: <strong>{deposit.transfer_content}</strong></p>
+            <div className="copy-box">
+              <span>Nội dung chuyển khoản bắt buộc</span>
+              <strong>{deposit.transfer_content}</strong>
+              <button type="button" onClick={() => copyText(deposit.transfer_content, setNotice)}>Sao chép mã</button>
+            </div>
+            <div className="copy-box">
+              <span>Số tài khoản</span>
+              <strong>{settings.bank_account_number}</strong>
+              <button type="button" onClick={() => copyText(settings.bank_account_number || '', setNotice)}>Sao chép STK</button>
+            </div>
+            <p className="warning-box">Lưu ý: QR đã tự điền sẵn số tiền và nội dung. Nếu chuyển khoản thủ công, bắt buộc nhập đúng nội dung <strong>{deposit.transfer_content}</strong> để SePay/bot tự cộng tiền.</p>
             <p>Trạng thái: {depositStatus[deposit.status]}</p>
             {deposit.status === 'success' && (
               <div className="success-box">
@@ -634,7 +657,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
                 <button className="primary large" onClick={() => go('home')}>Quay về trang chủ</button>
               </div>
             )}
-            {qrUrl && <img className="qr-preview" src={qrUrl} alt="QR nạp tiền" />}
+            {qrUrl && <img className="qr-preview" src={qrUrl} alt={`QR nạp ${money(deposit.amount)} nội dung ${deposit.transfer_content}`} />}
           </div>
         )}
       </div>
@@ -1037,22 +1060,95 @@ function AdminUsers({ setNotice }: { setNotice: (message: string) => void }) {
 }
 
 function AdminDeposits({ setNotice }: { setNotice: (message: string) => void }) {
+  const [users, setUsers] = useState<User[]>([])
+  const [selected, setSelected] = useState<User | null>(null)
   const [deposits, setDeposits] = useState<Deposit[]>([])
-  const load = () => api<{ deposits: Deposit[] }>('/admin/deposits').then((data) => setDeposits(data.deposits))
+  const loadUsers = () => api<{ users: User[] }>('/admin/users').then((data) => {
+    setUsers(data.users)
+    if (selected) {
+      const current = data.users.find((user) => user.id === selected.id)
+      if (current) setSelected(current)
+    }
+  })
+  const loadDeposits = (userId?: number) => api<{ deposits: Deposit[] }>(userId ? `/admin/deposits?user_id=${userId}` : '/admin/deposits').then((data) => setDeposits(data.deposits))
   useEffect(() => {
-    load()
+    loadUsers()
+    loadDeposits()
   }, [])
+  async function selectUser(user: User) {
+    setSelected(user)
+    await loadDeposits(user.id)
+  }
+  async function toggle(user: User) {
+    try {
+      await api(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify({ status: user.status === 'active' ? 'locked' : 'active' }) })
+      setNotice(user.status === 'active' ? 'Đã khóa tài khoản.' : 'Đã mở khóa tài khoản.')
+      loadUsers()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  async function adjust(user: User) {
+    const amount = Number(window.prompt('Nhập số tiền cộng/trừ:', '100000'))
+    const note = window.prompt('Lý do cộng/trừ tiền:', 'Điều chỉnh thủ công') || ''
+    if (!amount || !note) return
+    try {
+      await api(`/admin/users/${user.id}/adjust-balance`, { method: 'POST', body: JSON.stringify({ amount, note }) })
+      setNotice('Đã điều chỉnh số dư.')
+      loadUsers()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
   async function update(id: number, status: string) {
     const note = window.prompt('Ghi chú giao dịch:', depositStatus[status]) || ''
     try {
       await api(`/admin/deposits/${id}`, { method: 'PATCH', body: JSON.stringify({ status, admin_note: note }) })
       setNotice('Đã cập nhật giao dịch nạp.')
-      load()
+      loadUsers()
+      loadDeposits(selected?.id)
     } catch (error) {
       setNotice(messageFromError(error))
     }
   }
-  return <TablePage title="Quản lý giao dịch nạp" headers={['Mã', 'User', 'Số tiền', 'Nội dung CK', 'Trạng thái', 'Thao tác']} rows={deposits.map((deposit) => [deposit.transaction_code, deposit.username || '', money(deposit.amount), deposit.transfer_content, depositStatus[deposit.status], <span className="actions"><button onClick={() => update(deposit.id, 'success')}>Xác nhận</button><button onClick={() => update(deposit.id, 'failed')}>Từ chối</button><button onClick={() => update(deposit.id, 'cancelled')}>Hủy</button></span>])} />
+  return (
+    <div className="admin-user-deposits">
+      <div className="panel user-list-panel">
+        <h2>Tài khoản user</h2>
+        <div className="user-list">
+          {users.map((user) => (
+            <button key={user.id} className={selected?.id === user.id ? 'user-row active' : 'user-row'} onClick={() => selectUser(user)}>
+              <strong>{user.username}</strong>
+              <span>{user.email}</span>
+              <small>{money(user.balance)} · {user.status}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        {selected ? (
+          <div className="panel selected-user-card">
+            <h2>{selected.username}</h2>
+            <p>Email: <strong>{selected.email}</strong></p>
+            <p>Số dư: <strong>{money(selected.balance)}</strong></p>
+            <p>Đã nạp: <strong>{money(selected.total_deposited)}</strong> · Đã tiêu: <strong>{money(selected.total_spent)}</strong></p>
+            <p>Trạng thái: <strong>{selected.status}</strong></p>
+            <div className="actions">
+              <button onClick={() => toggle(selected)}>{selected.status === 'active' ? 'Khóa acc' : 'Mở khóa acc'}</button>
+              <button onClick={() => adjust(selected)}>Cộng/trừ tiền</button>
+              <button onClick={() => { setSelected(null); loadDeposits() }}>Xem tất cả giao dịch</button>
+            </div>
+          </div>
+        ) : (
+          <div className="panel selected-user-card">
+            <h2>Tất cả giao dịch nạp</h2>
+            <p>Chọn một user bên trái để xem riêng lịch sử nạp và thao tác khóa/cộng trừ tiền.</p>
+          </div>
+        )}
+        <TablePage title={selected ? `Lịch sử nạp của ${selected.username}` : 'Tất cả giao dịch nạp'} headers={['Mã', 'User', 'Số tiền', 'Nội dung CK', 'Trạng thái', 'Thao tác']} rows={deposits.map((deposit) => [deposit.transaction_code, deposit.username || '', money(deposit.amount), deposit.transfer_content, depositStatus[deposit.status], <span className="actions"><button onClick={() => update(deposit.id, 'success')}>Xác nhận</button><button onClick={() => update(deposit.id, 'failed')}>Từ chối</button><button onClick={() => update(deposit.id, 'cancelled')}>Hủy</button></span>])} />
+      </div>
+    </div>
+  )
 }
 
 function AdminBalanceLogs() {

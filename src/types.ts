@@ -67,6 +67,7 @@ export type Deposit = {
   transaction_code: string
   user_id: number
   username?: string
+  email?: string
   method: string
   amount: number
   transfer_content: string

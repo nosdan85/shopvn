@@ -1123,9 +1123,25 @@ app.post('/api/admin/chats/:userId', requireAdmin, (req, res) => {
 
 app.get('/api/admin/deposits', requireAdmin, (req, res) => {
   const status = String(req.query.status || '');
-  const deposits = status
-    ? db.prepare('SELECT deposits.*, users.username, users.email FROM deposits JOIN users ON users.id = deposits.user_id WHERE deposits.status = ? ORDER BY deposits.created_at DESC').all(status)
-    : db.prepare('SELECT deposits.*, users.username, users.email FROM deposits JOIN users ON users.id = deposits.user_id ORDER BY deposits.created_at DESC').all();
+  const userId = Number(req.query.user_id || 0);
+  const where = [];
+  const params = [];
+  if (status) {
+    where.push('deposits.status = ?');
+    params.push(status);
+  }
+  if (Number.isInteger(userId) && userId > 0) {
+    where.push('deposits.user_id = ?');
+    params.push(userId);
+  }
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const deposits = db.prepare(`
+    SELECT deposits.*, users.username, users.email
+    FROM deposits
+    JOIN users ON users.id = deposits.user_id
+    ${clause}
+    ORDER BY deposits.created_at DESC
+  `).all(...params);
   res.json({ deposits });
 });
 

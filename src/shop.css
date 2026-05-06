@@ -1057,6 +1057,47 @@ h1 {
   .table-card {
     overflow: visible;
   }
+
+  .admin-menu {
+    display: flex;
+    gap: 0.45rem;
+    overflow-x: auto;
+    padding: 0.55rem;
+  }
+
+  .admin-menu button {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .admin-user-deposits {
+    grid-template-columns: 1fr;
+  }
+
+  .user-list-panel {
+    position: static;
+  }
+
+  .user-list {
+    max-height: 360px;
+  }
+
+  .copy-box {
+    grid-template-columns: 1fr;
+  }
+
+  .copy-box button,
+  .actions button,
+  .selected-user-card button {
+    width: 100%;
+  }
+
+  .qr-preview {
+    width: min(100%, 320px);
+    margin-right: auto;
+    margin-left: auto;
+  }
 }
 
 label {
@@ -1234,6 +1275,81 @@ main > section,
   animation: fadeUp 0.32s ease both;
 }
 
+.copy-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem 0.7rem;
+  align-items: center;
+  margin: 0.8rem 0;
+  padding: 0.85rem;
+  border: 1px solid rgba(57, 217, 255, 0.28);
+  border-radius: 16px;
+  background: rgba(57, 217, 255, 0.08);
+}
+
+.copy-box span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.copy-box strong {
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.warning-box {
+  padding: 0.9rem;
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 16px;
+  color: #ffe7a3;
+  background: rgba(255, 209, 102, 0.1);
+}
+
+.admin-user-deposits {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.35fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.user-list-panel {
+  position: sticky;
+  top: 112px;
+}
+
+.user-list {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 680px;
+  overflow: auto;
+}
+
+.user-row {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-align: left;
+}
+
+.user-row span,
+.user-row small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.user-row.active {
+  border-color: rgba(57, 217, 255, 0.65);
+  background: rgba(57, 217, 255, 0.14);
+}
+
+.selected-user-card {
+  margin-bottom: 1rem;
+}
+
 .item-card {
   transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
 }
@@ -1242,6 +1358,30 @@ main > section,
   transform: translateY(-4px);
   border-color: rgba(57, 217, 255, 0.34);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 760px) {
+  .admin-user-deposits {
+    grid-template-columns: 1fr;
+  }
+
+  .user-list-panel {
+    position: static;
+  }
+
+  .user-list {
+    max-height: 360px;
+  }
+
+  .copy-box {
+    grid-template-columns: 1fr;
+  }
+
+  .copy-box button,
+  .actions button,
+  .selected-user-card button {
+    width: 100%;
+  }
 }
 
 .item-card img {
