@@ -1239,7 +1239,7 @@ function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) 
         <button type="button" onClick={runNow} disabled={loading}>{loading ? 'Đang chạy...' : 'Chạy bot ngay'}</button>
         <button type="button" onClick={loadStatus}>Tải lại trạng thái</button>
       </form>
-      {status?.last_result && (
+      {Boolean(status?.last_result) && typeof status?.last_result === 'object' && (
         <div className="panel">
           <h2>Kết quả lần chạy gần nhất</h2>
           <TablePage title="Last result" headers={['Trường', 'Giá trị']} rows={Object.entries(status.last_result as Record<string, unknown>).map(([key, value]) => [key, typeof value === 'object' ? JSON.stringify(value) : String(value)])} />
