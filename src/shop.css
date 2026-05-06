@@ -113,6 +113,11 @@ th {
 .app-shell {
   max-width: 1440px;
   margin: 0 auto;
+  overflow-x: hidden;
+}
+
+* {
+  min-width: 0;
 }
 
 .site-header {
@@ -527,6 +532,34 @@ small {
   font-size: 1.35rem;
 }
 
+.bot-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.bot-status-card {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.bot-status-card span {
+  color: var(--muted);
+}
+
+.bot-status-card small {
+  overflow-wrap: anywhere;
+}
+
+.ok-text {
+  color: #7df7c1;
+}
+
+.warn-text {
+  color: var(--accent);
+}
+
 .table-section {
   margin-top: 1rem;
 }
@@ -643,32 +676,107 @@ small {
 }
 
 @media (max-width: 700px) {
+  body {
+    overflow-x: hidden;
+  }
+
   main {
-    padding: 0 0.6rem 1rem;
+    padding: 0 0.55rem 1rem;
   }
 
   .site-header {
-    margin: 0.6rem;
-    border-radius: 22px;
+    position: sticky;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+    margin: 0.45rem;
+    padding: 0.55rem;
+    border-radius: 20px;
+  }
+
+  .brand {
+    width: 100%;
+    padding: 0.35rem;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+  }
+
+  .brand strong {
+    display: block;
+    overflow: hidden;
+    max-width: 210px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .site-header nav,
+  .header-actions {
+    display: flex;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
   }
 
   .site-header nav button,
   .header-actions button {
-    flex: 1;
+    flex: 0 0 auto;
+    padding: 0.65rem 0.85rem;
+    white-space: nowrap;
+    border-radius: 16px;
   }
 
   .hero-section {
     min-height: auto;
-    padding: 1.4rem;
-    border-radius: 26px;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 22px;
   }
 
   h1 {
-    font-size: 2.5rem;
+    font-size: 2rem;
+    line-height: 1.08;
+    letter-spacing: -0.04em;
+  }
+
+  .hero-copy p {
+    font-size: 1rem;
+  }
+
+  .hero-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hero-buttons button {
+    width: 100%;
+    padding: 0.85rem 0.75rem;
+  }
+
+  .hero-card {
+    min-height: auto;
+    padding: 1.2rem;
+  }
+
+  .eyebrow {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: 0.72rem;
   }
 
   .item-grid,
   .stats-grid,
+  .bot-status-grid,
   .trust-grid,
   .filters,
   .admin-form {
@@ -1350,6 +1458,29 @@ main > section,
   margin-bottom: 1rem;
 }
 
+.cart-row {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cart-row img {
+  width: 82px;
+  height: 82px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.cart-row input {
+  max-width: 130px;
+}
+
 .item-card {
   transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
 }
@@ -1381,6 +1512,15 @@ main > section,
   .actions button,
   .selected-user-card button {
     width: 100%;
+  }
+
+  .cart-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-row img {
+    width: 100%;
+    height: 180px;
   }
 }
 

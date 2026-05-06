@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { api, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
-import type { AdminChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, Review, Settings, User } from './types'
+import type { AdminChat, AdminOrderChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, OrderItem, Review, Settings, User } from './types'
 
 type Page =
   | 'home'
@@ -13,6 +13,7 @@ type Page =
   | 'reset'
   | 'deposit'
   | 'deposits'
+  | 'cart'
   | 'orders'
   | 'order'
   | 'profile'
@@ -42,6 +43,8 @@ const emptyItem = {
 }
 
 const placeholderImage = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="540" viewBox="0 0 720 540"%3E%3Crect width="720" height="540" fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%236b7280" font-family="Arial" font-size="28"%3ESailor Piece Item%3C/text%3E%3C/svg%3E'
+
+type CartItem = { item: Item; quantity: number }
 
 function messageFromError(error: unknown) {
   return error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại.'
@@ -94,6 +97,7 @@ function ShopApp() {
   const [user, setUser] = useState<User | null>(null)
   const [settings, setSettings] = useState<Settings>({})
   const [notice, setNotice] = useState('')
+  const [cart, setCart] = useState<CartItem[]>([])
 
   useEffect(() => {
     api<{ user: User }>('/auth/me').then((data) => setUser(data.user)).catch(() => setUser(null))
@@ -121,7 +125,16 @@ function ShopApp() {
     }
   }
 
-  const context = { user, setUser, go, settings, setNotice }
+  function addToCart(item: Item, quantity = 1) {
+    setCart((current) => {
+      const existing = current.find((entry) => entry.item.id === item.id)
+      if (existing) return current.map((entry) => entry.item.id === item.id ? { ...entry, quantity: Math.min(item.stock, entry.quantity + quantity) } : entry)
+      return [...current, { item, quantity: Math.min(item.stock, quantity) }]
+    })
+    setNotice('Đã thêm vào giỏ hàng.')
+  }
+
+  const context = { user, setUser, go, settings, setNotice, addToCart }
 
   return (
     <div className="app-shell">
@@ -136,9 +149,10 @@ function ShopApp() {
         <nav>
           <button onClick={() => go('home')}>Trang chủ</button>
           <button onClick={() => go('items')}>Item</button>
+          <button onClick={() => go('cart')}>Giỏ hàng ({cart.reduce((sum, entry) => sum + entry.quantity, 0)})</button>
           <button onClick={() => go('deposit')}>Nạp tiền</button>
           {user && <button onClick={() => go('orders')}>Đơn hàng</button>}
-          {user && <button onClick={() => go('chat')}>Chat admin</button>}
+          {user && <button onClick={() => go('chat')}>Support chat</button>}
           {user?.role !== 'user' && user && <button onClick={() => go('admin')}>Admin</button>}
         </nav>
         <div className="header-actions">
@@ -168,6 +182,7 @@ function ShopApp() {
         {page === 'reset' && <ResetPassword setNotice={setNotice} />}
         {page === 'deposit' && <DepositPage {...context} />}
         {page === 'deposits' && <DepositsPage />}
+        {page === 'cart' && <CartPage user={user} cart={cart} setCart={setCart} go={go} setUser={setUser} setNotice={setNotice} />}
         {page === 'orders' && <OrdersPage go={go} />}
         {page === 'order' && <OrderDetail id={routeId} />}
         {page === 'profile' && <Profile {...context} />}
@@ -366,12 +381,14 @@ function ItemDetail({
   go,
   setUser,
   setNotice,
+  addToCart,
 }: {
   slug: string
   user: User | null
   go: (page: Page, id?: string) => void
   setUser: (user: User | null) => void
   setNotice: (message: string) => void
+  addToCart: (item: Item, quantity?: number) => void
 }) {
   const [item, setItem] = useState<Item | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
@@ -439,6 +456,7 @@ function ItemDetail({
           <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
           <label>Số lượng mua<input required min={1} max={item.stock} type="number" placeholder="Nhập số lượng" value={numberInputValue(form.quantity)} onChange={(event) => setForm({ ...form, quantity: Number(event.target.value || 0) })} /></label>
           <textarea placeholder="Ghi chú cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
+          <button type="button" onClick={() => addToCart(item, Number(form.quantity || 1))}>Thêm vào giỏ hàng</button>
           <button className="primary large" disabled={item.stock < 1}>Mua ngay bằng số dư</button>
         </form>
         <div className="review-list">
@@ -446,6 +464,70 @@ function ItemDetail({
           {reviews.map((review) => <article className="review-card" key={review.id}><strong>{'★'.repeat(review.rating)}</strong><p>{review.content}</p><small>{review.username}</small></article>)}
         </div>
       </div>
+    </section>
+  )
+}
+
+function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User | null; cart: CartItem[]; setCart: (cart: CartItem[]) => void; go: (page: Page, id?: string) => void; setUser: (user: User | null) => void; setNotice: (message: string) => void }) {
+  const [form, setForm] = useState({ robloxUsername: '', customerNote: '' })
+  const total = cart.reduce((sum, entry) => sum + entry.item.current_price * entry.quantity, 0)
+  function updateQuantity(itemId: number, quantity: number) {
+    setCart(cart.map((entry) => entry.item.id === itemId ? { ...entry, quantity: Math.max(1, Math.min(entry.item.stock, quantity)) } : entry))
+  }
+  async function checkout(event: FormEvent) {
+    event.preventDefault()
+    if (!user) {
+      setNotice('Vui lòng đăng nhập trước khi mua.')
+      go('login')
+      return
+    }
+    if (!cart.length) {
+      setNotice('Giỏ hàng đang trống.')
+      return
+    }
+    try {
+      const data = await api<{ order: Order }>('/orders/buy', {
+        method: 'POST',
+        body: JSON.stringify({
+          robloxUsername: form.robloxUsername,
+          customerNote: form.customerNote,
+          items: cart.map((entry) => ({ itemId: entry.item.id, quantity: entry.quantity })),
+        }),
+      })
+      const me = await api<{ user: User }>('/auth/me')
+      setUser(me.user)
+      setCart([])
+      setNotice(`Đã tạo đơn ${data.order.order_code}.`)
+      go('order', String(data.order.id))
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return (
+    <section className="page-section two-col">
+      <div className="panel">
+        <h1>Giỏ hàng</h1>
+        {!cart.length && <p className="muted">Giỏ hàng đang trống.</p>}
+        {cart.map((entry) => (
+          <div className="cart-row" key={entry.item.id}>
+            <img src={entry.item.image || placeholderImage} alt={entry.item.name} onError={(event) => { event.currentTarget.src = placeholderImage }} />
+            <div>
+              <strong>{entry.item.name}</strong>
+              <p>{money(entry.item.current_price)} · Còn {entry.item.stock}</p>
+              <input min={1} max={entry.item.stock} type="number" value={entry.quantity} onChange={(event) => updateQuantity(entry.item.id, Number(event.target.value || 1))} />
+            </div>
+            <button onClick={() => setCart(cart.filter((item) => item.item.id !== entry.item.id))}>Xóa</button>
+          </div>
+        ))}
+        <h2>Tổng: {money(total)}</h2>
+      </div>
+      <form className="panel" onSubmit={checkout}>
+        <h2>Thanh toán giỏ hàng</h2>
+        <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
+        <textarea placeholder="Ghi chú cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
+        <button className="primary large" disabled={!cart.length}>Mua tất cả bằng số dư</button>
+        <button type="button" onClick={() => go('items')}>Tiếp tục chọn item</button>
+      </form>
     </section>
   )
 }
@@ -871,7 +953,8 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
           ['deposits', 'Giao dịch nạp'],
           ['sepay-bot', 'SePay Bot'],
           ['balance', 'Log số dư'],
-          ['chats', 'Chat user'],
+          ['chats', 'Support chat'],
+          ['order-chats', 'Order chat'],
           ['reviews', 'Đánh giá'],
           ['settings', 'Cấu hình'],
         ].map(([key, label]) => <button className={tab === key ? 'active' : ''} key={key} onClick={() => setTab(key)}>{label}</button>)}
@@ -885,6 +968,7 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
         {tab === 'sepay-bot' && <AdminSepayBot setNotice={setNotice} />}
         {tab === 'balance' && <AdminBalanceLogs />}
         {tab === 'chats' && <AdminChats setNotice={setNotice} />}
+        {tab === 'order-chats' && <AdminOrderChats setNotice={setNotice} />}
         {tab === 'reviews' && <AdminReviews setNotice={setNotice} />}
         {tab === 'settings' && <AdminSettings initial={settings} setNotice={setNotice} />}
       </div>
@@ -1188,7 +1272,7 @@ function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
   return (
     <div className="admin-chat-grid">
       <div className="panel">
-        <h1>Chat user</h1>
+        <h1>Support chat</h1>
         {chats.length === 0 && <p className="muted">Chưa có cuộc chat nào.</p>}
         <div className="chat-list">
           {chats.map((chat) => <button key={chat.user_id} className={selected?.user_id === chat.user_id ? 'active' : ''} onClick={() => loadThread(chat)}><strong>{chat.username}</strong><span>{chat.last_message || 'Chưa có nội dung'}</span>{chat.unread_count > 0 && <small>{chat.unread_count} mới</small>}</button>)}
@@ -1201,6 +1285,58 @@ function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
         </div>
         <form className="chat-form" onSubmit={submit}>
           <input required disabled={!selected} placeholder="Nhập phản hồi cho user" value={message} onChange={(event) => setMessage(event.target.value)} />
+          <button className="primary" disabled={!selected}>Gửi</button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function AdminOrderChats({ setNotice }: { setNotice: (message: string) => void }) {
+  const [chats, setChats] = useState<AdminOrderChat[]>([])
+  const [selected, setSelected] = useState<AdminOrderChat | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [items, setItems] = useState<OrderItem[]>([])
+  const [message, setMessage] = useState('')
+  const loadChats = () => api<{ chats: AdminOrderChat[] }>('/admin/order-chats').then((data) => setChats(data.chats))
+  async function loadThread(chat: AdminOrderChat) {
+    setSelected(chat)
+    const data = await api<{ messages: ChatMessage[]; items: OrderItem[] }>(`/admin/order-chats/${chat.order_id}`)
+    setMessages(data.messages)
+    setItems(data.items)
+    loadChats()
+  }
+  useEffect(() => {
+    loadChats()
+  }, [])
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (!selected) return
+    try {
+      await api(`/admin/order-chats/${selected.order_id}`, { method: 'POST', body: JSON.stringify({ message }) })
+      setMessage('')
+      loadThread(selected)
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return (
+    <div className="admin-chat-grid">
+      <div className="panel">
+        <h1>Order chat</h1>
+        {chats.length === 0 && <p className="muted">Chưa có chat đơn hàng nào.</p>}
+        <div className="chat-list">
+          {chats.map((chat) => <button key={chat.order_id} className={selected?.order_id === chat.order_id ? 'active' : ''} onClick={() => loadThread(chat)}><strong>{chat.order_code}</strong><span>{chat.username} · {money(chat.total_amount)}</span>{chat.unread_count > 0 && <small>{chat.unread_count} mới</small>}</button>)}
+        </div>
+      </div>
+      <div className="panel chat-panel">
+        <h2>{selected ? `Đơn ${selected.order_code}` : 'Chọn đơn để trả lời'}</h2>
+        {selected && <div className="info-box"><p>User: <strong>{selected.username}</strong></p><p>Roblox: <strong>{selected.roblox_username}</strong></p><p>Item: {items.map((item) => `${item.item_name} x${item.quantity}`).join(', ')}</p></div>}
+        <div className="chat-box">
+          {messages.map((item) => <div key={item.id} className={`chat-message ${item.sender_role === 'user' ? 'staff' : 'mine'}`}><strong>{item.sender_username || 'Admin'}</strong><p>{item.message}</p><small>{dateTime(item.created_at)}</small></div>)}
+        </div>
+        <form className="chat-form" onSubmit={submit}>
+          <input required disabled={!selected} placeholder="Nhập phản hồi cho đơn hàng" value={message} onChange={(event) => setMessage(event.target.value)} />
           <button className="primary" disabled={!selected}>Gửi</button>
         </form>
       </div>
@@ -1261,6 +1397,8 @@ function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) 
   const [status, setStatus] = useState<Record<string, unknown> | null>(null)
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
+  const workerReport = status?.worker_last_result && typeof status.worker_last_result === 'object' ? status.worker_last_result as Record<string, unknown> : null
+  const workerOk = Boolean(workerReport?.ok)
 
   const loadStatus = () => api<{ status: Record<string, unknown> }>('/admin/sepay-bot/status').then((data) => setStatus(data.status))
 
@@ -1301,25 +1439,42 @@ function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) 
   }
 
   return (
-    <section className="admin-form settings-form">
+    <section className="settings-form">
       <h1>SePay Bot</h1>
+      <div className="warning-box">
+        <strong>Bot đang chạy riêng ngoài web.</strong>
+        <span>Nếu bạn chạy bot trên máy tính, chỉ cần máy còn mở, có mạng và cấu hình `API_BASE_URL` trỏ về backend Render là bot vẫn hoạt động.</span>
+      </div>
       {status && (
-        <div className="stats-grid">
-          <Stat label="Bot đang bật" value={status.enabled ? 'Có' : 'Không'} />
-          <Stat label="Đã cấu hình API" value={status.configured ? 'Có' : 'Chưa'} />
-          <Stat label="Chế độ" value={String(status.mode || 'external_worker')} />
-          <Stat label="Chu kỳ quét" value={`${status.interval_ms || 15000} ms`} />
-          <Stat label="Worker quét gần nhất" value={status.worker_last_run_at ? dateTime(String(status.worker_last_run_at)) : '-'} />
-          <Stat label="Lỗi worker gần nhất" value={status.worker_last_error ? String(status.worker_last_error) : 'Không'} />
+        <div className="bot-status-grid">
+          <div className="panel bot-status-card">
+            <span>Trạng thái worker</span>
+            <strong className={workerOk ? 'ok-text' : 'warn-text'}>{workerOk ? 'Đang hoạt động' : 'Chưa có report'}</strong>
+            <small>Lần quét: {status.worker_last_run_at ? dateTime(String(status.worker_last_run_at)) : 'Chưa có'}</small>
+          </div>
+          <div className="panel bot-status-card">
+            <span>Cấu hình web</span>
+            <strong>{status.configured ? 'Đã có API SePay' : 'Thiếu API SePay'}</strong>
+            <small>Chu kỳ: {String(status.interval_ms || 15000)} ms</small>
+          </div>
+          <div className="panel bot-status-card">
+            <span>Lỗi gần nhất</span>
+            <strong className={status.worker_last_error ? 'warn-text' : 'ok-text'}>{status.worker_last_error ? 'Có lỗi' : 'Không lỗi'}</strong>
+            <small>{status.worker_last_error ? String(status.worker_last_error) : 'Worker chưa báo lỗi.'}</small>
+          </div>
         </div>
       )}
       <div className="panel">
-        <h2>Cách lấy API SePay</h2>
-        <p>Đăng nhập SePay, vào Cấu hình Công ty → API Access, bấm + Thêm API, đặt trạng thái Hoạt động rồi copy API Token.</p>
-        <p>API URL danh sách giao dịch thường dùng: https://my.sepay.vn/userapi/transactions/list?limit=20</p>
-        <p>Bot chạy bằng process riêng: npm run bot. Web chỉ nhận webhook, cộng tiền và hiển thị report bot quét được gì.</p>
+        <h2>Luồng hoạt động</h2>
+        <ol className="steps">
+          <li>Web tạo mã nạp `NAP...` khi user chọn chuyển khoản.</li>
+          <li>Bot local lấy danh sách mã pending từ web.</li>
+          <li>Bot quét SePay và chỉ gửi giao dịch có nội dung chứa mã pending.</li>
+          <li>Web nhận webhook, kiểm tra mã/số tiền rồi cộng tiền.</li>
+        </ol>
       </div>
-      <form onSubmit={save}>
+      <form className="admin-form" onSubmit={save}>
+        <h2>Cấu hình lưu trên web</h2>
         <label>Bật bot
           <select value={form.sepay_bot_enabled || 'false'} onChange={(event) => setForm({ ...form, sepay_bot_enabled: event.target.value })}>
             <option value="false">Tắt</option>
@@ -1333,10 +1488,17 @@ function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) 
         <button type="button" onClick={runNow} disabled={loading}>{loading ? 'Đang chạy...' : 'Test quét thủ công trên web'}</button>
         <button type="button" onClick={loadStatus}>Tải lại trạng thái</button>
       </form>
-      {Boolean(status?.worker_last_result) && typeof status?.worker_last_result === 'object' && (
+      {workerReport && (
         <div className="panel">
           <h2>Report worker gần nhất</h2>
-          <TablePage title="Worker result" headers={['Trường', 'Giá trị']} rows={Object.entries(status.worker_last_result as Record<string, unknown>).map(([key, value]) => [key, typeof value === 'object' ? JSON.stringify(value) : String(value)])} />
+          <div className="stats-grid">
+            <Stat label="SePay trả về" value={String(workerReport.total ?? 0)} />
+            <Stat label="Mã pending" value={String(workerReport.pending_codes ?? 0)} />
+            <Stat label="Khớp mã" value={String(workerReport.matched ?? 0)} />
+            <Stat label="Đã gửi web" value={String(workerReport.delivered ?? 0)} />
+            <Stat label="Đã cộng tiền" value={String(workerReport.credited ?? 0)} />
+            <Stat label="Bị bỏ qua" value={String(workerReport.ignored ?? 0)} />
+          </div>
         </div>
       )}
       {result && (
