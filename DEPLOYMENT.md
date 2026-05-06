@@ -34,7 +34,7 @@ Lưu ý: dữ liệu database như user, số dư, đơn hàng, nạp tiền, se
 - **Biến môi trường**:
   - `NODE_ENV=production`
   - `JWT_SECRET=<chuoi-bi-mat-dai>`
-  - `CLIENT_ORIGIN=https://domain-frontend-cua-ban`
+  - `CLIENT_ORIGIN=https://www.nosroblox.com,https://nosroblox.com`
   - `SEPAY_WEBHOOK_SECRET=<secret-ban-dat-trong-sepay>`
   - `BANK_NAME=MB Bank`
   - `BANK_ACCOUNT_NAME=<ten-chu-tai-khoan>`
@@ -49,7 +49,7 @@ Vercel phù hợp để deploy frontend tĩnh. Không nên chạy backend SQLite
 - Deploy frontend lên Vercel.
 - Deploy backend lên Render free.
 - Set biến frontend `VITE_API_BASE_URL=https://backend-render-cua-ban.onrender.com`.
-- Set `CLIENT_ORIGIN=https://frontend-vercel-cua-ban.vercel.app` ở backend Render.
+- Set `CLIENT_ORIGIN=https://www.nosroblox.com,https://nosroblox.com` ở backend Render.
 
 ## SePay webhook cộng tiền tự động
 

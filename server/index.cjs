@@ -12,8 +12,14 @@ const { db, setting, setSetting, initPersistentStore } = require('./db.cjs');
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
-const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
-const allowedOrigins = clientOrigin.split(',').map((origin) => origin.trim()).filter(Boolean);
+const clientOrigin = process.env.CLIENT_ORIGIN || '';
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://nosroblox.com',
+  'https://www.nosroblox.com',
+  ...clientOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+];
 const jwtSecret = process.env.JWT_SECRET || 'change-this-secret-before-production';
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 const idAlphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -25,8 +31,22 @@ app.use(cors({
       callback(null, true);
       return;
     }
-    callback(new Error('CORS origin không được phép.'));
+    callback(null, false);
   },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-webhook-secret'],
+  credentials: true,
+}));
+app.options('*path', cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-webhook-secret'],
   credentials: true,
 }));
 app.use(express.json({ limit: '1mb' }));
