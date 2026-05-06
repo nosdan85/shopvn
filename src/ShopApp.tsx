@@ -848,6 +848,7 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
           ['orders', 'Quản lý đơn'],
           ['users', 'Quản lý user'],
           ['deposits', 'Giao dịch nạp'],
+          ['sepay-bot', 'SePay Bot'],
           ['balance', 'Log số dư'],
           ['chats', 'Chat user'],
           ['reviews', 'Đánh giá'],
@@ -860,6 +861,7 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
         {tab === 'orders' && <AdminOrders setNotice={setNotice} />}
         {tab === 'users' && <AdminUsers setNotice={setNotice} />}
         {tab === 'deposits' && <AdminDeposits setNotice={setNotice} />}
+        {tab === 'sepay-bot' && <AdminSepayBot setNotice={setNotice} />}
         {tab === 'balance' && <AdminBalanceLogs />}
         {tab === 'chats' && <AdminChats setNotice={setNotice} />}
         {tab === 'reviews' && <AdminReviews setNotice={setNotice} />}
@@ -1152,6 +1154,104 @@ function AdminSettings({ initial, setNotice }: { initial: Settings; setNotice: (
       {keys.map((key) => <label key={key}>{key}<input value={form[key] || ''} onChange={(event) => setForm({ ...form, [key]: event.target.value })} /></label>)}
       <button className="primary large">Lưu cấu hình</button>
     </form>
+  )
+}
+
+function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) {
+  const [form, setForm] = useState<Settings>({
+    sepay_bot_enabled: 'false',
+    sepay_bot_api_url: '',
+    sepay_bot_api_key: '',
+    sepay_bot_interval_ms: '15000',
+  })
+  const [status, setStatus] = useState<Record<string, unknown> | null>(null)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const loadStatus = () => api<{ status: Record<string, unknown> }>('/admin/sepay-bot/status').then((data) => setStatus(data.status))
+
+  useEffect(() => {
+    api<{ settings: Settings }>('/admin/settings').then((data) => {
+      setForm({
+        sepay_bot_enabled: data.settings.sepay_bot_enabled || 'false',
+        sepay_bot_api_url: data.settings.sepay_bot_api_url || '',
+        sepay_bot_api_key: data.settings.sepay_bot_api_key || '',
+        sepay_bot_interval_ms: data.settings.sepay_bot_interval_ms || '15000',
+      })
+    })
+    loadStatus()
+  }, [])
+
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    try {
+      await api('/admin/settings', { method: 'PATCH', body: JSON.stringify(form) })
+      setNotice('Đã lưu cấu hình SePay bot. Nếu đổi bật/tắt bot, hãy redeploy/restart backend để bot tự chạy theo cấu hình mới.')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  async function runNow() {
+    setLoading(true)
+    try {
+      const data = await api<Record<string, unknown>>('/admin/sepay-bot/run', { method: 'POST' })
+      setResult(data)
+      loadStatus()
+      setNotice('Đã chạy SePay bot thủ công.')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className="admin-form settings-form">
+      <h1>SePay Bot</h1>
+      {status && (
+        <div className="stats-grid">
+          <Stat label="Bot đang bật" value={status.enabled ? 'Có' : 'Không'} />
+          <Stat label="Đã cấu hình API" value={status.configured ? 'Có' : 'Chưa'} />
+          <Stat label="Đang chạy" value={status.running ? 'Có' : 'Không'} />
+          <Stat label="Chu kỳ quét" value={`${status.interval_ms || 15000} ms`} />
+          <Stat label="Lần chạy gần nhất" value={status.last_run_at ? dateTime(String(status.last_run_at)) : '-'} />
+          <Stat label="Lỗi gần nhất" value={status.last_error ? String(status.last_error) : 'Không'} />
+        </div>
+      )}
+      <div className="panel">
+        <h2>Cách lấy API SePay</h2>
+        <p>Đăng nhập SePay, vào Cấu hình Công ty → API Access, bấm + Thêm API, đặt trạng thái Hoạt động rồi copy API Token.</p>
+        <p>API URL danh sách giao dịch thường dùng: https://my.sepay.vn/userapi/transactions/list?limit=20</p>
+        <p>Bot sẽ gọi API bằng header Authorization: Bearer API_TOKEN. Nếu bạn dùng webhook thì không cần bật bot polling.</p>
+      </div>
+      <form onSubmit={save}>
+        <label>Bật bot
+          <select value={form.sepay_bot_enabled || 'false'} onChange={(event) => setForm({ ...form, sepay_bot_enabled: event.target.value })}>
+            <option value="false">Tắt</option>
+            <option value="true">Bật</option>
+          </select>
+        </label>
+        <label>SePay API URL<input placeholder="https://my.sepay.vn/userapi/transactions/list?limit=20" value={form.sepay_bot_api_url || ''} onChange={(event) => setForm({ ...form, sepay_bot_api_url: event.target.value })} /></label>
+        <label>SePay API Key<input type="password" placeholder="API key/token SePay" value={form.sepay_bot_api_key || ''} onChange={(event) => setForm({ ...form, sepay_bot_api_key: event.target.value })} /></label>
+        <label>Chu kỳ quét milliseconds<input type="number" min={5000} step={1000} value={form.sepay_bot_interval_ms || '15000'} onChange={(event) => setForm({ ...form, sepay_bot_interval_ms: event.target.value })} /></label>
+        <button className="primary large">Lưu cấu hình bot</button>
+        <button type="button" onClick={runNow} disabled={loading}>{loading ? 'Đang chạy...' : 'Chạy bot ngay'}</button>
+        <button type="button" onClick={loadStatus}>Tải lại trạng thái</button>
+      </form>
+      {status?.last_result && (
+        <div className="panel">
+          <h2>Kết quả lần chạy gần nhất</h2>
+          <TablePage title="Last result" headers={['Trường', 'Giá trị']} rows={Object.entries(status.last_result as Record<string, unknown>).map(([key, value]) => [key, typeof value === 'object' ? JSON.stringify(value) : String(value)])} />
+        </div>
+      )}
+      {result && (
+        <div className="panel">
+          <h2>Kết quả chạy bot</h2>
+          <TablePage title="Thông tin bot" headers={['Trường', 'Giá trị']} rows={Object.entries(result).map(([key, value]) => [key, typeof value === 'object' ? JSON.stringify(value) : String(value)])} />
+        </div>
+      )}
+    </section>
   )
 }
 

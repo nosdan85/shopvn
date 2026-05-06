@@ -2,6 +2,13 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
+let createClient = null;
+try {
+  ({ createClient } = require('@libsql/client'));
+} catch (_error) {
+  createClient = null;
+}
+
 const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 
@@ -12,8 +19,7 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-function migrate() {
-  db.exec(`
+const schemaSql = `
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
@@ -203,7 +209,172 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_balance_logs_user_id ON balance_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
     CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON chat_messages(user_id);
-  `);
+  `;
+function migrate() {
+  db.exec(schemaSql);
+}
+
+const persistentTables = [
+  'users',
+  'items',
+  'orders',
+  'order_items',
+  'order_status_logs',
+  'deposits',
+  'balance_logs',
+  'reviews',
+  'notifications',
+  'chat_messages',
+  'settings',
+  'admin_logs',
+];
+const originalPrepare = db.prepare.bind(db);
+const originalTransaction = db.transaction.bind(db);
+let remoteClient = null;
+let remoteQueue = Promise.resolve();
+let remoteReady = false;
+let transactionDepth = 0;
+let transactionQueue = [];
+
+function splitSqlStatements(sql) {
+  return sql.split(';').map((statement) => statement.trim()).filter(Boolean);
+}
+
+function localTableCount() {
+  return persistentTables.reduce((total, table) => {
+    return total + originalPrepare(`SELECT COUNT(*) as count FROM ${table}`).get().count;
+  }, 0);
+}
+
+function columnsFor(table) {
+  return originalPrepare(`PRAGMA table_info(${table})`).all().map((column) => column.name);
+}
+
+async function remoteTableCount() {
+  let total = 0;
+  for (const table of persistentTables) {
+    const result = await remoteClient.execute(`SELECT COUNT(*) as count FROM ${table}`);
+    total += Number(result.rows[0]?.count || 0);
+  }
+  return total;
+}
+
+async function migrateRemote() {
+  for (const statement of splitSqlStatements(schemaSql)) {
+    await remoteClient.execute(statement);
+  }
+}
+
+async function backupLocalToRemote() {
+  await remoteClient.execute('PRAGMA foreign_keys = OFF');
+  for (const table of [...persistentTables].reverse()) {
+    await remoteClient.execute(`DELETE FROM ${table}`);
+  }
+  for (const table of persistentTables) {
+    const rows = originalPrepare(`SELECT * FROM ${table}`).all();
+    const columns = columnsFor(table);
+    if (!rows.length) continue;
+    const placeholders = columns.map(() => '?').join(', ');
+    const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
+    for (const row of rows) {
+      await remoteClient.execute({ sql, args: columns.map((column) => row[column]) });
+    }
+  }
+  await remoteClient.execute('PRAGMA foreign_keys = ON');
+}
+
+async function restoreRemoteToLocal() {
+  originalPrepare('PRAGMA foreign_keys = OFF').run();
+  const deleteLocal = db.transaction(() => {
+    for (const table of [...persistentTables].reverse()) originalPrepare(`DELETE FROM ${table}`).run();
+  });
+  deleteLocal();
+  for (const table of persistentTables) {
+    const result = await remoteClient.execute(`SELECT * FROM ${table}`);
+    const rows = result.rows || [];
+    const columns = columnsFor(table);
+    if (!rows.length) continue;
+    const placeholders = columns.map(() => '?').join(', ');
+    const statement = originalPrepare(`INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`);
+    const insertRows = db.transaction(() => {
+      for (const row of rows) statement.run(columns.map((column) => row[column]));
+    });
+    insertRows();
+  }
+  originalPrepare('PRAGMA foreign_keys = ON').run();
+}
+
+function queueRemoteRun(sql, args) {
+  if (!remoteClient || !remoteReady) return;
+  const normalized = String(sql || '').trim().toLowerCase();
+  if (!normalized || normalized.startsWith('select') || normalized.startsWith('pragma')) return;
+  if (transactionDepth > 0) {
+    transactionQueue.push({ sql, args });
+    return;
+  }
+  remoteQueue = remoteQueue
+    .then(() => remoteClient.execute({ sql, args }))
+    .catch((error) => {
+      console.error('Turso mirror error:', error.message);
+    });
+}
+
+function flushRemoteRuns(items) {
+  for (const item of items) queueRemoteRun(item.sql, item.args);
+}
+
+function enableRemoteMirror() {
+  db.prepare = (sql) => {
+    const statement = originalPrepare(sql);
+    return {
+      get: (...args) => statement.get(...args),
+      all: (...args) => statement.all(...args),
+      run: (...args) => {
+        const result = statement.run(...args);
+        queueRemoteRun(sql, args);
+        return result;
+      },
+    };
+  };
+  db.transaction = (fn) => {
+    const transaction = originalTransaction((...args) => {
+      transactionDepth += 1;
+      const previousQueue = transactionQueue;
+      transactionQueue = [];
+      try {
+        const result = fn(...args);
+        const committedQueue = transactionQueue;
+        transactionQueue = previousQueue;
+        transactionDepth -= 1;
+        flushRemoteRuns(committedQueue);
+        return result;
+      } catch (error) {
+        transactionQueue = previousQueue;
+        transactionDepth -= 1;
+        throw error;
+      }
+    });
+    return (...args) => transaction(...args);
+  };
+}
+
+async function initPersistentStore() {
+  const url = process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+  if (!url || !authToken) return { enabled: false, message: 'Turso chưa được cấu hình.' };
+  if (!createClient) throw new Error('Thiếu dependency @libsql/client. Hãy chạy npm install sau khi cập nhật package.json.');
+  remoteClient = createClient({ url, authToken });
+  await migrateRemote();
+  const localCount = localTableCount();
+  const remoteCount = await remoteTableCount();
+  if (localCount === 0 && remoteCount > 0) {
+    await restoreRemoteToLocal();
+  } else if (localCount > 0 && remoteCount === 0) {
+    await backupLocalToRemote();
+  }
+  remoteReady = true;
+  enableRemoteMirror();
+  return { enabled: true, localCount: localTableCount(), remoteCount: await remoteTableCount() };
 }
 
 function setting(key, fallback = '') {
@@ -223,4 +394,4 @@ function setSetting(key, value) {
 
 migrate();
 
-module.exports = { db, migrate, setting, setSetting, dbPath };
+module.exports = { db, migrate, setting, setSetting, dbPath, initPersistentStore };

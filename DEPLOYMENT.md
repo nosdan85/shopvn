@@ -4,7 +4,26 @@
 
 Backend hiện dùng SQLite local qua `better-sqlite3`. Nếu chạy trên Render/Vercel free, filesystem không bền vững, nên database local có thể mất khi redeploy/restart/sleep. Không có cách code-only nào đảm bảo dữ liệu SQLite local tồn tại vĩnh viễn trên hạ tầng free không có persistent storage.
 
-Muốn vừa free vừa không mất dữ liệu thì cần đổi sang database ngoài có free tier như Supabase Postgres, Neon Postgres hoặc Turso. Việc này cần migrate lớp `server/db.cjs` và các query hiện tại sang driver database ngoài.
+Muốn vừa free vừa không mất dữ liệu thì cần dùng database ngoài có free tier như Turso, Supabase Postgres hoặc Neon Postgres.
+
+## Cách làm dữ liệu không mất bằng Turso free
+
+Turso là SQLite cloud, phù hợp nhất với project hiện tại vì schema đang là SQLite. Dữ liệu sẽ nằm trên cloud Turso, deploy lại Render/Vercel không làm mất user, số dư, đơn hàng, lịch sử nạp.
+
+Các bước tạo Turso:
+
+- Đăng ký/đăng nhập `https://turso.tech`.
+- Tạo database mới, ví dụ `sailor-piece-shop`.
+- Vào phần database vừa tạo để lấy:
+  - `Database URL`, thường có dạng `libsql://...turso.io`
+  - `Auth Token`
+- Set biến môi trường trên Render:
+  - `TURSO_DATABASE_URL=<database-url>`
+  - `TURSO_AUTH_TOKEN=<auth-token>`
+
+Backend giữ SQLite local để app chạy như cũ, nhưng tự đồng bộ các lệnh ghi lên Turso. Khi deploy/restart mà SQLite local trống, backend tự khôi phục dữ liệu từ Turso trước khi mở server.
+
+Lưu ý: dữ liệu database như user, số dư, đơn hàng, nạp tiền, settings sẽ được bảo vệ bằng Turso. Ảnh upload trong thư mục `/uploads` vẫn là file local; nếu muốn ảnh không mất, nên dùng URL ảnh ngoài hoặc dịch vụ lưu ảnh.
 
 ## Deploy free tạm thời
 
@@ -20,6 +39,8 @@ Muốn vừa free vừa không mất dữ liệu thì cần đổi sang database
   - `BANK_NAME=MB Bank`
   - `BANK_ACCOUNT_NAME=<ten-chu-tai-khoan>`
   - `BANK_ACCOUNT_NUMBER=<so-tai-khoan>`
+  - `TURSO_DATABASE_URL=<database-url>`
+  - `TURSO_AUTH_TOKEN=<auth-token>`
 
 ### Vercel
 
@@ -58,11 +79,19 @@ Luồng xử lý:
 
 Backend có bot polling SePay. Khi bật, bot tự gọi API SePay theo chu kỳ, lấy danh sách giao dịch, tìm nội dung chứa mã `NAP...`, rồi cộng tiền vào ví.
 
+Cách lấy API Token:
+
+- Đăng nhập `https://my.sepay.vn`.
+- Vào `Cấu hình Công ty` → `API Access`.
+- Bấm `+ Thêm API`.
+- Điền tên bất kỳ, chọn trạng thái `Hoạt động`, rồi bấm `Thêm`.
+- Copy API Token vừa tạo.
+
 Biến môi trường:
 
 - `SEPAY_BOT_ENABLED=true`
-- `SEPAY_BOT_API_URL=<url-api-danh-sach-giao-dich-sepay>`
-- `SEPAY_BOT_API_KEY=<api-key-sepay>`
+- `SEPAY_BOT_API_URL=https://my.sepay.vn/userapi/transactions/list?limit=20`
+- `SEPAY_BOT_API_KEY=<api-token-sepay>`
 - `SEPAY_BOT_INTERVAL_MS=15000`
 
 Admin có thể chạy bot thủ công bằng:

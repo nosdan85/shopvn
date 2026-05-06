@@ -28,3 +28,7 @@ services:
         sync: false
       - key: SEPAY_BOT_INTERVAL_MS
         value: 15000
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false

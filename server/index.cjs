@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
-const { db, setting, setSetting } = require('./db.cjs');
+const { db, setting, setSetting, initPersistentStore } = require('./db.cjs');
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -73,8 +73,6 @@ function ensureEnvAdmin() {
     VALUES (?, ?, ?, 'super_admin', 'active')
   `).run(username, email, passwordHash);
 }
-
-ensureEnvAdmin();
 
 function sanitizeUser(user) {
   if (!user) return null;
@@ -306,6 +304,9 @@ function processIncomingDepositTransfer(raw, source = 'Webhook') {
 }
 
 let sepayBotRunning = false;
+let sepayBotLastResult = null;
+let sepayBotLastRunAt = null;
+let sepayBotLastError = '';
 
 async function runSepayBotOnce() {
   if (sepayBotRunning) return { skipped: true, message: 'Bot đang chạy vòng trước.' };
@@ -313,6 +314,7 @@ async function runSepayBotOnce() {
   const apiKey = setting('sepay_bot_api_key');
   if (!apiUrl || !apiKey) return { skipped: true, message: 'Thiếu SEPAY_BOT_API_URL hoặc SEPAY_BOT_API_KEY.' };
   sepayBotRunning = true;
+  sepayBotLastRunAt = new Date().toISOString();
   try {
     const response = await fetch(apiUrl, {
       headers: {
@@ -325,15 +327,35 @@ async function runSepayBotOnce() {
     if (!response.ok) throw new Error(data?.message || `SePay API lỗi ${response.status}`);
     const transactions = transactionListFromResponse(data);
     const results = transactions.map((transaction) => processIncomingDepositTransfer(transaction, 'SePay bot'));
-    return {
+    sepayBotLastResult = {
       ok: true,
       total: transactions.length,
       credited: results.filter((result) => !result?.ignored).length,
       ignored: results.filter((result) => result?.ignored).length,
     };
+    sepayBotLastError = '';
+    return sepayBotLastResult;
+  } catch (error) {
+    sepayBotLastError = error.message;
+    throw error;
   } finally {
     sepayBotRunning = false;
   }
+}
+
+function sepayBotStatus() {
+  const apiUrl = setting('sepay_bot_api_url');
+  const apiKey = setting('sepay_bot_api_key');
+  return {
+    enabled: setting('sepay_bot_enabled', 'false') === 'true',
+    configured: Boolean(apiUrl && apiKey),
+    running: sepayBotRunning,
+    api_url: apiUrl,
+    interval_ms: Number(setting('sepay_bot_interval_ms', '15000')) || 15000,
+    last_run_at: sepayBotLastRunAt,
+    last_error: sepayBotLastError,
+    last_result: sepayBotLastResult,
+  };
 }
 
 function startSepayBot() {
@@ -578,6 +600,10 @@ app.post('/api/admin/sepay-bot/run', requireAdmin, async (_req, res) => {
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
+});
+
+app.get('/api/admin/sepay-bot/status', requireAdmin, (_req, res) => {
+  res.json({ status: sepayBotStatus() });
 });
 
 app.get('/api/orders', requireAuth, (req, res) => {
@@ -1126,7 +1152,23 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(port, () => {
-  console.log(`Sailor Piece API running at http://localhost:${port}`);
-  startSepayBot();
-});
+async function startServer() {
+  try {
+    const persistentStore = await initPersistentStore();
+    if (persistentStore.enabled) {
+      console.log(`Turso persistent store ready. Local rows: ${persistentStore.localCount}, remote rows: ${persistentStore.remoteCount}`);
+    } else {
+      console.log(persistentStore.message);
+    }
+    ensureEnvAdmin();
+    app.listen(port, () => {
+      console.log(`Sailor Piece API running at http://localhost:${port}`);
+      startSepayBot();
+    });
+  } catch (error) {
+    console.error('Không thể khởi động persistent store:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
