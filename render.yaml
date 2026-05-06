@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: sailor-piece-shop
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SEPAY_WEBHOOK_SECRET
+        sync: false
+      - key: BANK_NAME
+        sync: false
+      - key: BANK_ACCOUNT_NAME
+        sync: false
+      - key: BANK_ACCOUNT_NUMBER
+        sync: false
+      - key: SEPAY_BOT_ENABLED
+        value: false
+      - key: SEPAY_BOT_API_URL
+        sync: false
+      - key: SEPAY_BOT_API_KEY
+        sync: false
+      - key: SEPAY_BOT_INTERVAL_MS
+        value: 15000

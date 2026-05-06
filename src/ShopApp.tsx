@@ -1,0 +1,1179 @@
+import { useEffect, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
+import { api, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
+import type { AdminChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, Review, Settings, User } from './types'
+
+type Page =
+  | 'home'
+  | 'items'
+  | 'item'
+  | 'login'
+  | 'register'
+  | 'forgot'
+  | 'reset'
+  | 'deposit'
+  | 'deposits'
+  | 'orders'
+  | 'order'
+  | 'profile'
+  | 'review'
+  | 'chat'
+  | 'admin'
+
+const emptyItem = {
+  name: '',
+  slug: '',
+  item_code: '',
+  image: '',
+  gallery: [],
+  short_description: '',
+  description: '',
+  price: '',
+  original_price: '',
+  sale_price: '',
+  stock: '',
+  is_featured: 0,
+  is_best_seller: 0,
+  is_sale: 0,
+  status: 'active',
+  sort_order: '',
+  seo_title: '',
+  seo_description: '',
+}
+
+const placeholderImage = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="540" viewBox="0 0 720 540"%3E%3Crect width="720" height="540" fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%236b7280" font-family="Arial" font-size="28"%3ESailor Piece Item%3C/text%3E%3C/svg%3E'
+
+function messageFromError(error: unknown) {
+  return error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại.'
+}
+
+function numberInputValue(value: unknown) {
+  return value === 0 || value === null || value === undefined || value === '' ? '' : String(value)
+}
+
+function numberInputNext(value: string) {
+  return value === '' ? '' : Number(value)
+}
+
+function itemPayload(item: Record<string, unknown>) {
+  return {
+    ...item,
+    price: Number(item.price || 0),
+    original_price: Number(item.original_price || 0),
+    sale_price: item.sale_price === '' || item.sale_price === null || item.sale_price === undefined ? null : Number(item.sale_price),
+    stock: Number(item.stock || 0),
+    sort_order: Number(item.sort_order || 0),
+  }
+}
+
+function bankQrUrl(settings: Settings, deposit: Deposit) {
+  const accountNumber = settings.bank_account_number || '09696969696969'
+  const accountName = settings.bank_account_name || 'DOAN BAO SON'
+  const rawTemplate = String(settings.bank_qr_url || '').trim().replace(/^BANK_QR_URL=/, '')
+  const template = rawTemplate.startsWith('http') ? rawTemplate : `https://img.vietqr.io/image/MB-{account_number}-compact2.png?amount={amount}&addInfo={content}&accountName={accountName}`
+  return template
+    .replace(/MB-\d+-compact2\.png/, `MB-${accountNumber}-compact2.png`)
+    .replace('{amount}', String(deposit.amount))
+    .replace('{content}', encodeURIComponent(deposit.transfer_content))
+    .replace('{account_number}', accountNumber)
+    .replace('{accountName}', encodeURIComponent(accountName))
+}
+
+function ShopApp() {
+  const [page, setPage] = useState<Page>('home')
+  const [routeId, setRouteId] = useState<string>('')
+  const [user, setUser] = useState<User | null>(null)
+  const [settings, setSettings] = useState<Settings>({})
+  const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    api<{ user: User }>('/auth/me').then((data) => setUser(data.user)).catch(() => setUser(null))
+    api<Settings>('/settings/public').then(setSettings).catch(() => undefined)
+    const params = new URLSearchParams(window.location.search)
+    if (window.location.pathname.includes('reset-password') || params.has('token')) {
+      setPage('reset')
+    }
+  }, [])
+
+  function go(nextPage: Page, id = '') {
+    setPage(nextPage)
+    setRouteId(id)
+    setNotice('')
+    window.scrollTo({ top: 0 })
+  }
+
+  async function logout() {
+    try {
+      await api('/auth/logout', { method: 'POST' })
+      setUser(null)
+      go('home')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  const context = { user, setUser, go, settings, setNotice }
+
+  return (
+    <div className="app-shell">
+      <header className="site-header">
+        <button className="brand" onClick={() => go('home')}>
+          <span className="brand-mark">SP</span>
+          <span>
+            <strong>{settings.site_name || 'Sailor Piece Shop'}</strong>
+            <small>Roblox item store</small>
+          </span>
+        </button>
+        <nav>
+          <button onClick={() => go('home')}>Trang chủ</button>
+          <button onClick={() => go('items')}>Item</button>
+          <button onClick={() => go('deposit')}>Nạp tiền</button>
+          {user && <button onClick={() => go('orders')}>Đơn hàng</button>}
+          {user && <button onClick={() => go('chat')}>Chat admin</button>}
+          {user?.role !== 'user' && user && <button onClick={() => go('admin')}>Admin</button>}
+        </nav>
+        <div className="header-actions">
+          {user ? (
+            <>
+              <button className="wallet" onClick={() => go('profile')}>{money(user.balance)}</button>
+              <button className="ghost" onClick={logout}>Đăng xuất</button>
+            </>
+          ) : (
+            <>
+              <button className="ghost" onClick={() => go('login')}>Đăng nhập</button>
+              <button className="primary" onClick={() => go('register')}>Đăng ký</button>
+            </>
+          )}
+        </div>
+      </header>
+
+      {notice && <div className="toast">{notice}</div>}
+
+      <main>
+        {page === 'home' && <Home {...context} />}
+        {page === 'items' && <ItemsPage {...context} />}
+        {page === 'item' && <ItemDetail {...context} slug={routeId} />}
+        {page === 'login' && <Login {...context} />}
+        {page === 'register' && <Register {...context} />}
+        {page === 'forgot' && <ForgotPassword setNotice={setNotice} />}
+        {page === 'reset' && <ResetPassword setNotice={setNotice} />}
+        {page === 'deposit' && <DepositPage {...context} />}
+        {page === 'deposits' && <DepositsPage />}
+        {page === 'orders' && <OrdersPage go={go} />}
+        {page === 'order' && <OrderDetail id={routeId} />}
+        {page === 'profile' && <Profile {...context} />}
+        {page === 'review' && <ReviewPage setNotice={setNotice} />}
+        {page === 'chat' && <ChatPage user={user} go={go} setNotice={setNotice} />}
+        {page === 'admin' && <AdminPanel {...context} />}
+      </main>
+
+      <footer className="footer">
+        <div>
+          <strong>{settings.site_name || 'Sailor Piece Shop'}</strong>
+          <p>{settings.slogan || 'Shop item Sailor Piece Roblox uy tín, giao nhanh, hỗ trợ tận tâm.'}</p>
+        </div>
+        <div>
+          <p>Hỗ trợ: {settings.support_phone || '0900 000 000'} · {settings.support_email || 'support@sailorpiece.local'}</p>
+          <p>Facebook · Discord · Zalo</p>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+function Home({ go, settings }: { go: (page: Page, id?: string) => void; settings: Settings }) {
+  const [data, setData] = useState<{
+    featured: Item[]
+    bestSellers: Item[]
+    sales: Item[]
+    reviews: Review[]
+  }>({ featured: [], bestSellers: [], sales: [], reviews: [] })
+
+  useEffect(() => {
+    api<typeof data & { settings: Settings }>('/home').then(setData)
+  }, [])
+
+  return (
+    <>
+      <section className="hero-section">
+        <div className="hero-copy">
+          <span className="eyebrow">Roblox Sailor Piece Store</span>
+          <h1>{settings.hero_banner || 'Săn item Sailor Piece Roblox chỉ trong vài phút.'}</h1>
+          <p>{settings.slogan || 'Mua item Sailor Piece dễ dàng, an toàn, nhanh chóng.'}</p>
+          <div className="hero-buttons">
+            <button className="primary large" onClick={() => go('items')}>Mua item ngay</button>
+            <button className="secondary large" onClick={() => go('deposit')}>Nạp tiền</button>
+          </div>
+          <div className="trust-grid">
+            {['Giao item nhanh', 'Uy tín minh bạch', 'Hỗ trợ sau mua', 'Bảo mật thông tin'].map((text) => <span key={text}>{text}</span>)}
+          </div>
+        </div>
+        <div className="hero-card">
+          <div className="ship">⛵</div>
+          <h3>Hot deal hôm nay</h3>
+          <p>Item hiếm, số lượng giới hạn, xử lý đơn thủ công an toàn.</p>
+        </div>
+      </section>
+
+      <NoticeCard text={settings.homepage_notice || 'Tin mới: shop đang cập nhật thêm item Sailor Piece hiếm.'} />
+      <ItemSection title="Item nổi bật" items={data.featured} go={go} />
+      <ItemSection title="Item bán chạy" items={data.bestSellers} go={go} />
+      <ItemSection title="Item đang giảm giá" items={data.sales} go={go} />
+
+      <section className="section two-col">
+        <div className="panel">
+          <h2>Hướng dẫn mua hàng</h2>
+          <ol className="steps">
+            <li>Đăng ký hoặc đăng nhập tài khoản.</li>
+            <li>Nạp tiền vào ví bằng chuyển khoản.</li>
+            <li>Chọn item Sailor Piece muốn mua.</li>
+            <li>Nhập đúng Roblox Username.</li>
+            <li>Xác nhận mua và chờ admin giao item.</li>
+          </ol>
+        </div>
+        <div className="panel">
+          <h2>Đánh giá khách hàng</h2>
+          <div className="review-list">
+            {data.reviews.map((review) => (
+              <article key={review.id} className="review-card">
+                <strong>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</strong>
+                <p>{review.content}</p>
+                <small>{review.username} · {review.item_name}</small>
+              </article>
+            ))}
+            {!data.reviews.length && <p>Chưa có đánh giá được duyệt.</p>}
+          </div>
+        </div>
+      </section>
+    </>
+  )
+}
+
+function NoticeCard({ text }: { text: string }) {
+  return <div className="notice-card"><strong>Thông báo:</strong> {text}</div>
+}
+
+function ItemSection({ title, items, go }: { title: string; items: Item[]; go: (page: Page, id?: string) => void }) {
+  return (
+    <section className="section">
+      <div className="section-head">
+        <h2>{title}</h2>
+        <button onClick={() => go('items')}>Xem tất cả</button>
+      </div>
+      <div className="item-grid">
+        {items.map((item) => <ItemCard key={item.id} item={item} go={go} />)}
+      </div>
+      {!items.length && <div className="empty-state">Chưa có item trong mục này.</div>}
+    </section>
+  )
+}
+
+function ItemCard({ item, go }: { item: Item; go: (page: Page, id?: string) => void }) {
+  return (
+    <article className="item-card">
+      <button className="image-button" onClick={() => go('item', item.slug)}>
+        <img src={item.image || placeholderImage} alt={item.name} loading="lazy" onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        {item.discount_percent > 0 && <span className="sale-badge">-{item.discount_percent}%</span>}
+        <span className={item.stock > 0 ? 'stock-badge' : 'stock-badge out'}>{item.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</span>
+      </button>
+      <div className="item-body">
+        <h3>{item.name}</h3>
+        <p>{item.short_description}</p>
+        <div className="price-row">
+          <strong>{money(item.current_price)}</strong>
+          {item.original_price && item.original_price > item.current_price && <del>{money(item.original_price)}</del>}
+        </div>
+        <div className="meta-row">
+          <span>{item.stock > 0 ? `Còn ${item.stock}` : 'Hết hàng'}</span>
+          <span>Đã bán {item.sold_count}</span>
+        </div>
+        <div className="card-actions">
+          <button onClick={() => go('item', item.slug)}>Xem chi tiết</button>
+          <button className="primary" disabled={item.stock < 1} onClick={() => go('item', item.slug)}>Mua ngay</button>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
+  const [items, setItems] = useState<Item[]>([])
+  const [filter, setFilter] = useState('all')
+  const [sort, setSort] = useState('')
+  const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams({ filter, sort, search })
+    setLoading(true)
+    setError('')
+    api<{ items: Item[] }>(`/items?${params}`)
+      .then((data) => setItems(data.items))
+      .catch((err) => setError(messageFromError(err)))
+      .finally(() => setLoading(false))
+  }, [filter, sort, search])
+
+  return (
+    <section className="page-section">
+      <div className="section-head">
+        <div>
+          <span className="eyebrow">Sailor Piece inventory</span>
+          <h1>Danh sách item</h1>
+        </div>
+      </div>
+      <div className="filters">
+        <input placeholder="Tìm item gần đúng..." value={search} onChange={(event) => setSearch(event.target.value)} />
+        <div className="choice-group">
+          {[
+            ['all', 'Tất cả'],
+            ['featured', 'Nổi bật'],
+            ['best-seller', 'Bán chạy'],
+            ['sale', 'Giảm giá'],
+            ['in-stock', 'Còn hàng'],
+          ].map(([value, label]) => <button type="button" key={value} className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{label}</button>)}
+        </div>
+        <div className="choice-group">
+          {[
+            ['', 'Mặc định'],
+            ['price-asc', 'Giá thấp'],
+            ['price-desc', 'Giá cao'],
+          ].map(([value, label]) => <button type="button" key={value || 'default'} className={sort === value ? 'active' : ''} onClick={() => setSort(value)}>{label}</button>)}
+        </div>
+      </div>
+      {loading && <div className="skeleton-grid"><span /><span /><span /></div>}
+      {error && <div className="empty-state"><p>{error}</p><button onClick={() => { setSearch(''); setFilter('all'); setSort('') }}>Thử lại</button></div>}
+      <div className="item-grid">
+        {!loading && !error && items.map((item) => <ItemCard key={item.id} item={item} go={go} />)}
+      </div>
+      {!loading && !error && !items.length && <div className="empty-state">Không tìm thấy sản phẩm phù hợp.</div>}
+    </section>
+  )
+}
+
+function ItemDetail({
+  slug,
+  user,
+  go,
+  setUser,
+  setNotice,
+}: {
+  slug: string
+  user: User | null
+  go: (page: Page, id?: string) => void
+  setUser: (user: User | null) => void
+  setNotice: (message: string) => void
+}) {
+  const [item, setItem] = useState<Item | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [form, setForm] = useState({ quantity: 1, robloxUsername: '', robloxProfile: '', robloxDisplayName: '', customerNote: '' })
+
+  useEffect(() => {
+    api<{ item: Item; reviews: Review[] }>(`/items/${slug}`).then((data) => {
+      setItem(data.item)
+      setReviews(data.reviews)
+    })
+  }, [slug])
+
+  async function buy(event: FormEvent) {
+    event.preventDefault()
+    if (!user) {
+      setNotice('Vui lòng đăng nhập trước khi mua.')
+      go('login')
+      return
+    }
+    if (!item) return
+    try {
+      const data = await api<{ order: Order }>('/orders/buy', {
+        method: 'POST',
+        body: JSON.stringify({ itemId: item.id, ...form }),
+      })
+      const me = await api<{ user: User }>('/auth/me')
+      setUser(me.user)
+      setNotice(`Đã tạo đơn ${data.order.order_code}.`)
+      go('order', String(data.order.id))
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  if (!item) return <section className="page-section">Đang tải item...</section>
+
+  return (
+    <section className="page-section detail-layout">
+      <div className="gallery">
+        <img src={item.image || placeholderImage} alt={item.name} onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        <div className="thumbs">{item.gallery.map((image) => <img key={image} src={image || placeholderImage} alt={`${item.name} gallery`} onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
+      </div>
+      <div className="detail-card">
+        <button className="ghost" onClick={() => go('items')}>Quay lại danh sách item</button>
+        <h1>{item.name}</h1>
+        <p>{item.description}</p>
+        <div className="price-row big">
+          <strong>{money(item.current_price)}</strong>
+          {item.original_price && item.original_price > item.current_price && <del>{money(item.original_price)}</del>}
+          {item.discount_percent > 0 && <span className="sale-badge inline">-{item.discount_percent}%</span>}
+        </div>
+        <div className="meta-grid">
+          <span>Số lượng còn: <strong>{item.stock}</strong></span>
+          <span>Đã bán: <strong>{item.sold_count}</strong></span>
+          <span>Trạng thái: <strong>{item.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</strong></span>
+        </div>
+        <div className="info-box">
+          <h3>Hướng dẫn nhận item</h3>
+          <p>Nhập đúng Roblox Username, giữ online hoặc theo dõi thông báo để admin liên hệ giao item.</p>
+          <h3>Lưu ý trước khi mua</h3>
+          <p>Shop chỉ bán item Sailor Piece, không hỏi mật khẩu Roblox và không bán nick/account.</p>
+        </div>
+        <form className="form-card" onSubmit={buy}>
+          <h2>Form mua hàng</h2>
+          <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
+          <input placeholder="Link profile Roblox" value={form.robloxProfile} onChange={(event) => setForm({ ...form, robloxProfile: event.target.value })} />
+          <input placeholder="Display Name" value={form.robloxDisplayName} onChange={(event) => setForm({ ...form, robloxDisplayName: event.target.value })} />
+          <label>Số lượng mua<input required min={1} max={item.stock} type="number" placeholder="Nhập số lượng" value={numberInputValue(form.quantity)} onChange={(event) => setForm({ ...form, quantity: Number(event.target.value || 0) })} /></label>
+          <textarea placeholder="Ghi chú cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
+          <button className="primary large" disabled={item.stock < 1}>Mua ngay bằng số dư</button>
+        </form>
+        <div className="review-list">
+          <h2>Đánh giá đã duyệt</h2>
+          {reviews.map((review) => <article className="review-card" key={review.id}><strong>{'★'.repeat(review.rating)}</strong><p>{review.content}</p><small>{review.username}</small></article>)}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Login({ setUser, go, setNotice }: { setUser: (user: User | null) => void; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
+  const [form, setForm] = useState({ account: '', password: '' })
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    try {
+      const data = await api<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(form) })
+      setUser(data.user)
+      setNotice('Đăng nhập thành công.')
+      go(data.user.role === 'user' ? 'profile' : 'admin')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return (
+    <AuthCard title="Đăng nhập" onSubmit={submit}>
+      <input required placeholder="Username hoặc email" value={form.account} onChange={(event) => setForm({ ...form, account: event.target.value })} />
+      <input required type="password" placeholder="Mật khẩu" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+      <button className="primary large">Đăng nhập</button>
+      <button type="button" className="ghost" onClick={() => go('forgot')}>Quên mật khẩu?</button>
+    </AuthCard>
+  )
+}
+
+function Register({ setUser, go, setNotice }: { setUser: (user: User | null) => void; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
+  const [form, setForm] = useState({ username: '', email: '', password: '', confirmPassword: '' })
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    try {
+      const data = await api<{ user: User }>('/auth/register', { method: 'POST', body: JSON.stringify(form) })
+      setUser(data.user)
+      setNotice('Đăng ký thành công.')
+      go('profile')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return (
+    <AuthCard title="Đăng ký tài khoản" onSubmit={submit}>
+      <input required placeholder="Username" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
+      <input required type="email" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+      <input required type="password" placeholder="Mật khẩu" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+      <input required type="password" placeholder="Nhập lại mật khẩu" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} />
+      <button className="primary large">Tạo tài khoản</button>
+    </AuthCard>
+  )
+}
+
+function AuthCard({ title, onSubmit, children }: { title: string; onSubmit: (event: FormEvent) => void; children: React.ReactNode }) {
+  return (
+    <section className="auth-page">
+      <form className="auth-card" onSubmit={onSubmit}>
+        <span className="eyebrow">Sailor Piece Account</span>
+        <h1>{title}</h1>
+        {children}
+      </form>
+    </section>
+  )
+}
+
+function ForgotPassword({ setNotice }: { setNotice: (message: string) => void }) {
+  const [email, setEmail] = useState('')
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    try {
+      const data = await api<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) })
+      setNotice(data.message)
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return <AuthCard title="Quên mật khẩu" onSubmit={submit}><input required type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} /><button className="primary large">Gửi link đặt lại</button></AuthCard>
+}
+
+function ResetPassword({ setNotice }: { setNotice: (message: string) => void }) {
+  const params = new URLSearchParams(window.location.search)
+  const [form, setForm] = useState({ email: params.get('email') || '', token: params.get('token') || '', password: '', confirmPassword: '' })
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    try {
+      const data = await api<{ message: string }>('/auth/reset-password', { method: 'POST', body: JSON.stringify(form) })
+      setNotice(data.message)
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return (
+    <AuthCard title="Đặt lại mật khẩu" onSubmit={submit}>
+      <input required type="email" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+      <input required placeholder="Token reset" value={form.token} onChange={(event) => setForm({ ...form, token: event.target.value })} />
+      <input required type="password" placeholder="Mật khẩu mới" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+      <input required type="password" placeholder="Nhập lại mật khẩu" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} />
+      <button className="primary large">Cập nhật mật khẩu</button>
+    </AuthCard>
+  )
+}
+
+function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Settings; go: (page: Page, id?: string) => void; user: User | null; setUser: (user: User | null) => void; setNotice: (message: string) => void }) {
+  const [amount, setAmount] = useState(100000)
+  const [method, setMethod] = useState('bank_transfer')
+  const [card, setCard] = useState({ provider: 'viettel_card', serial: '', code: '', declaredValue: 20000 })
+  const [deposit, setDeposit] = useState<Deposit | null>(null)
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (!user) {
+      setNotice('Vui lòng đăng nhập để nạp tiền.')
+      go('login')
+      return
+    }
+    const payload = method === 'bank_transfer'
+      ? { amount, method }
+      : { amount: card.declaredValue, method: card.provider, serial: card.serial, code: card.code }
+    try {
+      const data = await api<{ deposit: Deposit }>('/deposits', { method: 'POST', body: JSON.stringify(payload) })
+      setDeposit(data.deposit)
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  const qrUrl = deposit && method === 'bank_transfer'
+    ? bankQrUrl(settings, deposit)
+    : ''
+
+  useEffect(() => {
+    if (!deposit || deposit.status !== 'pending') return undefined
+    const timer = window.setInterval(async () => {
+      try {
+        const data = await api<{ deposits: Deposit[] }>('/deposits')
+        const current = data.deposits.find((item) => item.id === deposit.id)
+        if (current) setDeposit(current)
+        if (current?.status === 'success') {
+          const me = await api<{ user: User }>('/auth/me')
+          setUser(me.user)
+          setNotice('Nạp tiền thành công, số dư đã được cộng vào ví.')
+          window.clearInterval(timer)
+        }
+      } catch (_error) {
+        window.clearInterval(timer)
+      }
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [deposit, setNotice, setUser])
+
+  return (
+    <section className="page-section two-col">
+      <form className="panel deposit-panel" onSubmit={submit}>
+        <span className="eyebrow">Wallet top-up</span>
+        <h1>Nạp tiền vào ví</h1>
+        <p>Chọn chuyển khoản để tạo nội dung nạp riêng, hoặc gửi thông tin thẻ cào để chờ cổng thẻ xử lý tự động.</p>
+        <div className="method-grid">
+          <button type="button" className={method === 'bank_transfer' ? 'primary' : ''} onClick={() => setMethod('bank_transfer')}>Chuyển khoản MB Bank/Sepay</button>
+          <button type="button" className={method !== 'bank_transfer' ? 'primary' : ''} onClick={() => setMethod(card.provider)}>Thẻ cào</button>
+        </div>
+        {method === 'bank_transfer' ? (
+          <label>Số tiền muốn nạp<input type="number" min={10000} step={10000} placeholder="Ví dụ: 10000" value={numberInputValue(amount)} onChange={(event) => setAmount(Number(event.target.value || 0))} /></label>
+        ) : (
+          <>
+            <div className="choice-group">
+              {[
+                ['viettel_card', 'Viettel'],
+                ['mobifone_card', 'Mobifone'],
+                ['vinaphone_card', 'Vinaphone'],
+              ].map(([value, label]) => <button type="button" key={value} className={card.provider === value ? 'active' : ''} onClick={() => { setCard({ ...card, provider: value }); setMethod(value) }}>{label}</button>)}
+            </div>
+            <label>Mệnh giá thẻ<input type="number" min={10000} step={10000} placeholder="Ví dụ: 20000" value={numberInputValue(card.declaredValue)} onChange={(event) => setCard({ ...card, declaredValue: Number(event.target.value || 0) })} /></label>
+            <label>Số serial thẻ<input required placeholder="Nhập số serial in trên thẻ" value={card.serial} onChange={(event) => setCard({ ...card, serial: event.target.value })} /></label>
+            <label>Mã thẻ/PIN<input required placeholder="Nhập mã thẻ/PIN" value={card.code} onChange={(event) => setCard({ ...card, code: event.target.value })} /></label>
+          </>
+        )}
+        <button className="primary large">Tạo giao dịch nạp</button>
+        <button type="button" onClick={() => go('deposits')}>Xem lịch sử nạp</button>
+      </form>
+      <div className="panel deposit-guide">
+        <h2>Thông tin thanh toán</h2>
+        <p>Ngân hàng: <strong>{settings.bank_name || 'MB Bank'}</strong></p>
+        <p>Chủ tài khoản: <strong>{settings.bank_account_name}</strong></p>
+        <p>Số tài khoản: <strong>{settings.bank_account_number}</strong></p>
+        {deposit && (
+          <div className="bank-box">
+            <h3>Giao dịch vừa tạo</h3>
+            <p>Mã: <strong>{deposit.transaction_code}</strong></p>
+            <p>Phương thức: <strong>{depositMethod[deposit.method] || deposit.method}</strong></p>
+            <p>Số tiền: <strong>{money(deposit.amount)}</strong></p>
+            <p>Nội dung/mã xử lý: <strong>{deposit.transfer_content}</strong></p>
+            <p>Trạng thái: {depositStatus[deposit.status]}</p>
+            {deposit.status === 'success' && (
+              <div className="success-box">
+                <h3>Đã nhận được tiền</h3>
+                <p>Số dư tài khoản của bạn đã được cộng. Bạn có thể quay về trang chủ để tiếp tục mua item.</p>
+                <button className="primary large" onClick={() => go('home')}>Quay về trang chủ</button>
+              </div>
+            )}
+            {qrUrl && <img className="qr-preview" src={qrUrl} alt="QR nạp tiền" />}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+function DepositsPage() {
+  const [deposits, setDeposits] = useState<Deposit[]>([])
+  useEffect(() => {
+    api<{ deposits: Deposit[] }>('/deposits').then((data) => setDeposits(data.deposits))
+  }, [])
+  return <TablePage title="Lịch sử nạp tiền" headers={['Mã GD', 'Phương thức', 'Số tiền', 'Trạng thái', 'Tạo lúc', 'Hoàn thành']} rows={deposits.map((deposit) => [deposit.transaction_code, depositMethod[deposit.method] || deposit.method, money(deposit.amount), depositStatus[deposit.status], dateTime(deposit.created_at), dateTime(deposit.completed_at)])} />
+}
+
+function OrdersPage({ go }: { go: (page: Page, id?: string) => void }) {
+  const [orders, setOrders] = useState<Order[]>([])
+  useEffect(() => {
+    api<{ orders: Order[] }>('/orders').then((data) => setOrders(data.orders))
+  }, [])
+  return (
+    <section className="page-section">
+      <h1>Lịch sử mua hàng</h1>
+      <div className="table-card">
+        <table>
+          <thead><tr><th>Mã đơn</th><th>Item</th><th>Tổng tiền</th><th>Roblox Username</th><th>Trạng thái</th><th>Thời gian</th><th></th></tr></thead>
+          <tbody>{orders.map((order) => <tr key={order.id}><td>{order.order_code}</td><td>{order.item_names}</td><td>{money(order.total_amount)}</td><td>{order.roblox_username}</td><td>{orderStatus[order.status]}</td><td>{dateTime(order.created_at)}</td><td><button onClick={() => go('order', String(order.id))}>Chi tiết</button></td></tr>)}</tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function OrderDetail({ id }: { id: string }) {
+  const [data, setData] = useState<{ order: Order; items: Array<{ item_name: string; quantity: number; price: number; total_price: number }>; logs: Array<{ old_status?: string; new_status: string; note?: string; created_at: string }> } | null>(null)
+  useEffect(() => {
+    api<typeof data>(`/orders/${id}`).then(setData)
+  }, [id])
+  if (!data) return <section className="page-section">Đang tải đơn hàng...</section>
+  return (
+    <section className="page-section detail-layout">
+      <div className="panel">
+        <h1>Đơn {data.order.order_code}</h1>
+        <p>Trạng thái: <strong>{orderStatus[data.order.status]}</strong></p>
+        <p>Roblox Username: <strong>{data.order.roblox_username}</strong></p>
+        <p>Profile: {data.order.roblox_profile || '-'}</p>
+        <p>Ghi chú khách: {data.order.customer_note || '-'}</p>
+        <p>Ghi chú admin: {data.order.admin_note || '-'}</p>
+        <p>Tổng tiền: <strong>{money(data.order.total_amount)}</strong></p>
+      </div>
+      <div className="panel">
+        <h2>Item trong đơn</h2>
+        {data.items.map((item) => <p key={item.item_name}>{item.quantity} x {item.item_name} · {money(item.total_price)}</p>)}
+        <h2>Lịch sử trạng thái</h2>
+        {data.logs.map((log, index) => <p key={index}>{dateTime(log.created_at)} · {orderStatus[log.new_status] || log.new_status} · {log.note}</p>)}
+      </div>
+    </section>
+  )
+}
+
+function Profile({ setUser, user, go, setNotice }: { setUser: (user: User | null) => void; user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
+  const [summary, setSummary] = useState<{ user: User; total_deposited: number; total_spent: number } | null>(null)
+  const [logs, setLogs] = useState<BalanceLog[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [profile, setProfile] = useState({ full_name: '', phone: '' })
+  const [password, setPassword] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+  useEffect(() => {
+    if (!user) {
+      go('login')
+      return
+    }
+    api<typeof summary>('/profile/summary').then((data) => {
+      setSummary(data)
+      setProfile({ full_name: data?.user.full_name || '', phone: data?.user.phone || '' })
+    })
+    api<{ logs: BalanceLog[] }>('/balance-logs').then((data) => setLogs(data.logs))
+    api<{ notifications: Notification[] }>('/notifications').then((data) => setNotifications(data.notifications))
+  }, [go, user])
+
+  async function saveProfile(event: FormEvent) {
+    event.preventDefault()
+    try {
+      const data = await api<{ user: User }>('/profile', { method: 'PATCH', body: JSON.stringify(profile) })
+      setUser(data.user)
+      setNotice('Đã cập nhật hồ sơ.')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  async function changePassword(event: FormEvent) {
+    event.preventDefault()
+    try {
+      const data = await api<{ message: string }>('/profile/change-password', { method: 'POST', body: JSON.stringify(password) })
+      setNotice(data.message)
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  if (!summary) return <section className="page-section">Đang tải hồ sơ...</section>
+
+  return (
+    <section className="page-section">
+      <div className="section-head">
+        <h1>Hồ sơ cá nhân</h1>
+        <button onClick={() => go('deposit')}>Nạp tiền</button>
+      </div>
+      <div className="stats-grid">
+        <Stat label="Số dư" value={money(summary.user.balance)} />
+        <Stat label="Tổng đã nạp" value={money(summary.total_deposited)} />
+        <Stat label="Tổng đã mua" value={money(summary.total_spent)} />
+        <Stat label="Ngày tạo" value={dateTime(summary.user.created_at)} />
+      </div>
+      <section className="two-col">
+        <form className="panel" onSubmit={saveProfile}>
+          <h2>Cập nhật thông tin</h2>
+          <input value={profile.full_name} placeholder="Họ tên" onChange={(event) => setProfile({ ...profile, full_name: event.target.value })} />
+          <input value={profile.phone} placeholder="Số điện thoại/Zalo" onChange={(event) => setProfile({ ...profile, phone: event.target.value })} />
+          <button className="primary">Lưu hồ sơ</button>
+        </form>
+        <form className="panel" onSubmit={changePassword}>
+          <h2>Đổi mật khẩu</h2>
+          <input type="password" placeholder="Mật khẩu hiện tại" value={password.currentPassword} onChange={(event) => setPassword({ ...password, currentPassword: event.target.value })} />
+          <input type="password" placeholder="Mật khẩu mới" value={password.newPassword} onChange={(event) => setPassword({ ...password, newPassword: event.target.value })} />
+          <input type="password" placeholder="Nhập lại mật khẩu mới" value={password.confirmPassword} onChange={(event) => setPassword({ ...password, confirmPassword: event.target.value })} />
+          <button className="primary">Đổi mật khẩu</button>
+        </form>
+      </section>
+      <TablePage title="Biến động số dư" headers={['Loại', 'Số tiền', 'Trước', 'Sau', 'Ghi chú', 'Thời gian']} rows={logs.map((log) => [log.type, money(log.amount), money(log.balance_before), money(log.balance_after), log.note || '', dateTime(log.created_at)])} />
+      <TablePage title="Thông báo" headers={['Tiêu đề', 'Nội dung', 'Loại', 'Thời gian']} rows={notifications.map((item) => [item.title, item.content, item.type, dateTime(item.created_at)])} />
+    </section>
+  )
+}
+
+function ReviewPage({ setNotice }: { setNotice: (message: string) => void }) {
+  const [form, setForm] = useState({ orderId: '', rating: 5, content: '', image: '' })
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    try {
+      const data = await api<{ message: string }>('/reviews', { method: 'POST', body: JSON.stringify(form) })
+      setNotice(data.message)
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return (
+    <AuthCard title="Đánh giá sau mua" onSubmit={submit}>
+      <input required placeholder="ID đơn hàng đã hoàn thành" value={form.orderId} onChange={(event) => setForm({ ...form, orderId: event.target.value })} />
+      <label>Số sao<input required min={1} max={5} type="number" placeholder="Từ 1 đến 5" value={numberInputValue(form.rating)} onChange={(event) => setForm({ ...form, rating: Number(event.target.value || 0) })} /></label>
+      <textarea required placeholder="Nội dung đánh giá" value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} />
+      <input placeholder="Link ảnh minh họa (nếu có)" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} />
+      <button className="primary large">Gửi đánh giá</button>
+    </AuthCard>
+  )
+}
+
+function ChatPage({ user, go, setNotice }: { user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [message, setMessage] = useState('')
+  const load = () => api<{ messages: ChatMessage[] }>('/chat').then((data) => setMessages(data.messages))
+  useEffect(() => {
+    if (!user) return
+    load()
+    const timer = window.setInterval(load, 5000)
+    return () => window.clearInterval(timer)
+  }, [user])
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (!user) {
+      go('login')
+      return
+    }
+    try {
+      await api('/chat', { method: 'POST', body: JSON.stringify({ message }) })
+      setMessage('')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  if (!user) return <section className="page-section"><h1>Vui lòng đăng nhập để chat với admin.</h1><button className="primary" onClick={() => go('login')}>Đăng nhập</button></section>
+  return (
+    <section className="page-section">
+      <div className="panel chat-panel">
+        <h1>Chat với admin</h1>
+        <div className="chat-box">
+          {messages.length === 0 && <p className="muted">Chưa có tin nhắn nào.</p>}
+          {messages.map((item) => <div key={item.id} className={`chat-message ${item.sender_id === user.id ? 'mine' : 'staff'}`}><strong>{item.sender_id === user.id ? 'Bạn' : item.sender_username || 'Admin'}</strong><p>{item.message}</p><small>{dateTime(item.created_at)}</small></div>)}
+        </div>
+        <form className="chat-form" onSubmit={submit}>
+          <input required placeholder="Nhập tin nhắn cần hỗ trợ" value={message} onChange={(event) => setMessage(event.target.value)} />
+          <button className="primary">Gửi</button>
+        </form>
+      </div>
+    </section>
+  )
+}
+
+function AdminPanel({ user, settings, setNotice }: { user: User | null; settings: Settings; setNotice: (message: string) => void }) {
+  const [tab, setTab] = useState('dashboard')
+  if (!user || user.role === 'user') return <section className="page-section"><h1>Không có quyền truy cập admin.</h1></section>
+  return (
+    <section className="page-section admin-layout">
+      <aside className="admin-menu">
+        {[
+          ['dashboard', 'Dashboard'],
+          ['items', 'Quản lý item'],
+          ['orders', 'Quản lý đơn'],
+          ['users', 'Quản lý user'],
+          ['deposits', 'Giao dịch nạp'],
+          ['balance', 'Log số dư'],
+          ['chats', 'Chat user'],
+          ['reviews', 'Đánh giá'],
+          ['settings', 'Cấu hình'],
+        ].map(([key, label]) => <button className={tab === key ? 'active' : ''} key={key} onClick={() => setTab(key)}>{label}</button>)}
+      </aside>
+      <div className="admin-content">
+        {tab === 'dashboard' && <AdminDashboard />}
+        {tab === 'items' && <AdminItems setNotice={setNotice} />}
+        {tab === 'orders' && <AdminOrders setNotice={setNotice} />}
+        {tab === 'users' && <AdminUsers setNotice={setNotice} />}
+        {tab === 'deposits' && <AdminDeposits setNotice={setNotice} />}
+        {tab === 'balance' && <AdminBalanceLogs />}
+        {tab === 'chats' && <AdminChats setNotice={setNotice} />}
+        {tab === 'reviews' && <AdminReviews setNotice={setNotice} />}
+        {tab === 'settings' && <AdminSettings initial={settings} setNotice={setNotice} />}
+      </div>
+    </section>
+  )
+}
+
+function AdminDashboard() {
+  const [data, setData] = useState<{
+    stats: Record<string, number>
+    topItems: Item[]
+    deposits: Deposit[]
+    orders: Order[]
+  } | null>(null)
+  useEffect(() => {
+    api<typeof data>('/admin/dashboard').then(setData)
+  }, [])
+  if (!data) return <p>Đang tải dashboard...</p>
+  return (
+    <>
+      <h1>Dashboard admin</h1>
+      <div className="stats-grid">
+        <Stat label="Tổng user" value={data.stats.totalUsers} />
+        <Stat label="Tổng số dư user" value={money(data.stats.totalUserBalance)} />
+        <Stat label="Tổng doanh thu" value={money(data.stats.totalRevenue)} />
+        <Stat label="Doanh thu hôm nay" value={money(data.stats.revenueToday)} />
+        <Stat label="Doanh thu tháng này" value={money(data.stats.revenueMonth)} />
+        <Stat label="Đơn chờ xử lý" value={data.stats.pendingOrders} />
+      </div>
+      <ItemSection title="Item bán chạy" items={data.topItems} go={() => undefined} />
+      <TablePage title="Nạp tiền gần đây" headers={['Mã', 'User', 'Số tiền', 'Trạng thái', 'Thời gian']} rows={data.deposits.map((deposit) => [deposit.transaction_code, deposit.username || '', money(deposit.amount), depositStatus[deposit.status], dateTime(deposit.created_at)])} />
+      <TablePage title="Đơn mới nhất" headers={['Mã', 'User', 'Tổng', 'Trạng thái', 'Thời gian']} rows={data.orders.map((order) => [order.order_code, order.username || '', money(order.total_amount), orderStatus[order.status], dateTime(order.created_at)])} />
+    </>
+  )
+}
+
+function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
+  const [items, setItems] = useState<Item[]>([])
+  const [editing, setEditing] = useState<Record<string, unknown>>(emptyItem)
+  const [isEditing, setIsEditing] = useState(false)
+  const load = () => api<{ items: Item[] }>('/admin/items').then((data) => setItems(data.items))
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    const path = isEditing ? `/admin/items/${editing.id}` : '/admin/items'
+    try {
+      await api(path, { method: isEditing ? 'PATCH' : 'POST', body: JSON.stringify(itemPayload(editing)) })
+      setEditing(emptyItem)
+      setIsEditing(false)
+      setNotice('Đã lưu item.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  async function hide(id: number) {
+    await api(`/admin/items/${id}`, { method: 'DELETE' })
+    setNotice('Đã ẩn item.')
+    load()
+  }
+
+  async function uploadMainImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      const data = await uploadImage(file)
+      setEditing({ ...editing, image: data.url })
+      setNotice('Đã upload ảnh đại diện.')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  async function uploadGalleryImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      const data = await uploadImage(file)
+      const gallery = Array.isArray(editing.gallery) ? editing.gallery : []
+      setEditing({ ...editing, gallery: [...gallery, data.url] })
+      setNotice('Đã thêm ảnh vào gallery.')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  return (
+    <>
+      <h1>Quản lý item</h1>
+      <form className="admin-form" onSubmit={save}>
+        <p className="form-note">Nhập tên, giá, số lượng và upload ảnh. Các ô giá có thể để trống, khi lưu hệ thống sẽ tự chuyển về 0 nếu cần.</p>
+        <label>Tên item<input required placeholder="Ví dụ: Light Fruit" value={String(editing.name || '')} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
+        <label>Slug URL<input placeholder="Tự nhập hoặc để trống" value={String(editing.slug || '')} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} /></label>
+        <label>Ảnh đại diện URL<input placeholder="Dán link ảnh hoặc upload bên dưới" value={String(editing.image || '')} onChange={(event) => setEditing({ ...editing, image: event.target.value })} /></label>
+        <label className="upload-field"><span>Upload ảnh đại diện</span><span className="upload-button">Chọn ảnh từ máy</span><input type="file" accept="image/*" onChange={uploadMainImage} /></label>
+        <label className="upload-field"><span>Thêm ảnh gallery</span><span className="upload-button">Chọn ảnh gallery</span><input type="file" accept="image/*" onChange={uploadGalleryImage} /></label>
+        {Boolean(editing.image) && <img className="admin-image-preview" src={String(editing.image)} alt="Ảnh item" />}
+        {Array.isArray(editing.gallery) && editing.gallery.length > 0 && <div className="gallery-editor">{editing.gallery.map((image) => <span key={String(image)}><img src={String(image)} alt="Gallery" /><button type="button" onClick={() => setEditing({ ...editing, gallery: (editing.gallery as unknown[]).filter((item) => item !== image) })}>Xóa</button></span>)}</div>}
+        <label>Giá bán<input type="number" placeholder="Ví dụ: 50000" value={numberInputValue(editing.price)} onChange={(event) => setEditing({ ...editing, price: numberInputNext(event.target.value) })} /></label>
+        <label>Giá gốc<input type="number" placeholder="Ví dụ: 70000" value={numberInputValue(editing.original_price)} onChange={(event) => setEditing({ ...editing, original_price: numberInputNext(event.target.value) })} /></label>
+        <label>Giá khuyến mãi<input type="number" placeholder="Không giảm thì bỏ trống" value={numberInputValue(editing.sale_price)} onChange={(event) => setEditing({ ...editing, sale_price: numberInputNext(event.target.value) })} /></label>
+        <label>Tồn kho<input type="number" placeholder="Ví dụ: 10" value={numberInputValue(editing.stock)} onChange={(event) => setEditing({ ...editing, stock: numberInputNext(event.target.value) })} /></label>
+        <label>Mô tả ngắn<textarea placeholder="Mô tả ngắn hiển thị trên card" value={String(editing.short_description || '')} onChange={(event) => setEditing({ ...editing, short_description: event.target.value })} /></label>
+        <label>Mô tả chi tiết<textarea placeholder="Thông tin chi tiết cho trang sản phẩm" value={String(editing.description || '')} onChange={(event) => setEditing({ ...editing, description: event.target.value })} /></label>
+        <div className="choice-group admin-flags">
+          <button type="button" className={editing.is_featured ? 'active' : ''} onClick={() => setEditing({ ...editing, is_featured: editing.is_featured ? 0 : 1 })}>Nổi bật</button>
+          <button type="button" className={editing.is_best_seller ? 'active' : ''} onClick={() => setEditing({ ...editing, is_best_seller: editing.is_best_seller ? 0 : 1 })}>Bán chạy</button>
+          <button type="button" className={editing.is_sale ? 'active' : ''} onClick={() => setEditing({ ...editing, is_sale: editing.is_sale ? 0 : 1 })}>Giảm giá</button>
+        </div>
+        <button className="primary">{isEditing ? 'Cập nhật item' : 'Thêm item'}</button>
+      </form>
+      <TablePage title="Danh sách item" headers={['Tên', 'Giá', 'Kho', 'Trạng thái', 'Thao tác']} rows={items.map((item) => [item.name, money(item.current_price), item.stock, item.status, <span className="actions"><button onClick={() => { setEditing(item); setIsEditing(true) }}>Sửa</button><button onClick={() => hide(item.id)}>Ẩn</button></span>])} />
+    </>
+  )
+}
+
+function AdminOrders({ setNotice }: { setNotice: (message: string) => void }) {
+  const [orders, setOrders] = useState<Order[]>([])
+  const load = () => api<{ orders: Order[] }>('/admin/orders').then((data) => setOrders(data.orders))
+  useEffect(() => {
+    load()
+  }, [])
+  async function update(id: number, status: string) {
+    const adminNote = window.prompt('Ghi chú cho khách/admin:', orderStatus[status]) || ''
+    const refundReason = status === 'refunded' ? window.prompt('Lý do hoàn tiền:', 'Hoàn tiền theo yêu cầu') || '' : ''
+    try {
+      await api(`/admin/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, admin_note: adminNote, refund_reason: refundReason }) })
+      setNotice('Đã cập nhật đơn hàng.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return (
+    <>
+      <h1>Quản lý đơn hàng</h1>
+      <TablePage title="Danh sách đơn" headers={['Mã', 'User', 'Roblox', 'Tổng', 'Trạng thái', 'Thao tác']} rows={orders.map((order) => [order.order_code, order.username || '', order.roblox_username, money(order.total_amount), orderStatus[order.status], <span className="actions"><button onClick={() => update(order.id, 'processing')}>Đang xử lý</button><button onClick={() => update(order.id, 'completed')}>Đã giao</button><button onClick={() => update(order.id, 'cancelled')}>Hủy</button><button onClick={() => update(order.id, 'refunded')}>Hoàn tiền</button></span>])} />
+    </>
+  )
+}
+
+function AdminUsers({ setNotice }: { setNotice: (message: string) => void }) {
+  const [users, setUsers] = useState<User[]>([])
+  const load = () => api<{ users: User[] }>('/admin/users').then((data) => setUsers(data.users))
+  useEffect(() => {
+    load()
+  }, [])
+  async function toggle(user: User) {
+    try {
+      await api(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify({ status: user.status === 'active' ? 'locked' : 'active' }) })
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  async function adjust(user: User) {
+    const amount = Number(window.prompt('Nhập số tiền cộng/trừ:', '100000'))
+    const note = window.prompt('Lý do cộng/trừ tiền:', 'Điều chỉnh thủ công') || ''
+    if (!amount || !note) return
+    try {
+      await api(`/admin/users/${user.id}/adjust-balance`, { method: 'POST', body: JSON.stringify({ amount, note }) })
+      setNotice('Đã điều chỉnh số dư.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return <TablePage title="Quản lý user" headers={['Username', 'Email', 'Số dư', 'Vai trò', 'Trạng thái', 'Thao tác']} rows={users.map((item) => [item.username, item.email, money(item.balance), item.role, item.status, <span className="actions"><button onClick={() => toggle(item)}>{item.status === 'active' ? 'Khóa' : 'Mở khóa'}</button><button onClick={() => adjust(item)}>Cộng/trừ tiền</button></span>])} />
+}
+
+function AdminDeposits({ setNotice }: { setNotice: (message: string) => void }) {
+  const [deposits, setDeposits] = useState<Deposit[]>([])
+  const load = () => api<{ deposits: Deposit[] }>('/admin/deposits').then((data) => setDeposits(data.deposits))
+  useEffect(() => {
+    load()
+  }, [])
+  async function update(id: number, status: string) {
+    const note = window.prompt('Ghi chú giao dịch:', depositStatus[status]) || ''
+    try {
+      await api(`/admin/deposits/${id}`, { method: 'PATCH', body: JSON.stringify({ status, admin_note: note }) })
+      setNotice('Đã cập nhật giao dịch nạp.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return <TablePage title="Quản lý giao dịch nạp" headers={['Mã', 'User', 'Số tiền', 'Nội dung CK', 'Trạng thái', 'Thao tác']} rows={deposits.map((deposit) => [deposit.transaction_code, deposit.username || '', money(deposit.amount), deposit.transfer_content, depositStatus[deposit.status], <span className="actions"><button onClick={() => update(deposit.id, 'success')}>Xác nhận</button><button onClick={() => update(deposit.id, 'failed')}>Từ chối</button><button onClick={() => update(deposit.id, 'cancelled')}>Hủy</button></span>])} />
+}
+
+function AdminBalanceLogs() {
+  const [logs, setLogs] = useState<BalanceLog[]>([])
+  useEffect(() => {
+    api<{ logs: BalanceLog[] }>('/admin/balance-logs').then((data) => setLogs(data.logs))
+  }, [])
+  return <TablePage title="Log biến động số dư" headers={['User', 'Loại', 'Số tiền', 'Trước', 'Sau', 'Ref', 'Ghi chú', 'Thời gian']} rows={logs.map((log) => [log.username || '', log.type, money(log.amount), money(log.balance_before), money(log.balance_after), `${log.reference_type || ''}#${log.reference_id || ''}`, log.note || '', dateTime(log.created_at)])} />
+}
+
+function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
+  const [chats, setChats] = useState<AdminChat[]>([])
+  const [selected, setSelected] = useState<AdminChat | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [message, setMessage] = useState('')
+  const loadChats = () => api<{ chats: AdminChat[] }>('/admin/chats').then((data) => setChats(data.chats))
+  async function loadThread(chat: AdminChat) {
+    setSelected(chat)
+    const data = await api<{ messages: ChatMessage[] }>(`/admin/chats/${chat.user_id}`)
+    setMessages(data.messages)
+    loadChats()
+  }
+  useEffect(() => {
+    loadChats()
+  }, [])
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (!selected) return
+    try {
+      await api(`/admin/chats/${selected.user_id}`, { method: 'POST', body: JSON.stringify({ message }) })
+      setMessage('')
+      loadThread(selected)
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return (
+    <div className="admin-chat-grid">
+      <div className="panel">
+        <h1>Chat user</h1>
+        {chats.length === 0 && <p className="muted">Chưa có cuộc chat nào.</p>}
+        <div className="chat-list">
+          {chats.map((chat) => <button key={chat.user_id} className={selected?.user_id === chat.user_id ? 'active' : ''} onClick={() => loadThread(chat)}><strong>{chat.username}</strong><span>{chat.last_message || 'Chưa có nội dung'}</span>{chat.unread_count > 0 && <small>{chat.unread_count} mới</small>}</button>)}
+        </div>
+      </div>
+      <div className="panel chat-panel">
+        <h2>{selected ? `Đang chat với ${selected.username}` : 'Chọn user để trả lời'}</h2>
+        <div className="chat-box">
+          {messages.map((item) => <div key={item.id} className={`chat-message ${item.sender_role === 'user' ? 'staff' : 'mine'}`}><strong>{item.sender_username || 'Admin'}</strong><p>{item.message}</p><small>{dateTime(item.created_at)}</small></div>)}
+        </div>
+        <form className="chat-form" onSubmit={submit}>
+          <input required disabled={!selected} placeholder="Nhập phản hồi cho user" value={message} onChange={(event) => setMessage(event.target.value)} />
+          <button className="primary" disabled={!selected}>Gửi</button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function AdminReviews({ setNotice }: { setNotice: (message: string) => void }) {
+  const [reviews, setReviews] = useState<Review[]>([])
+  const load = () => api<{ reviews: Review[] }>('/admin/reviews').then((data) => setReviews(data.reviews))
+  useEffect(() => {
+    load()
+  }, [])
+  async function update(id: number, status: string) {
+    const reply = window.prompt('Phản hồi admin (nếu có):', '') || ''
+    try {
+      await api(`/admin/reviews/${id}`, { method: 'PATCH', body: JSON.stringify({ status, admin_reply: reply }) })
+      setNotice('Đã cập nhật đánh giá.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  return <TablePage title="Quản lý đánh giá" headers={['User', 'Item', 'Sao', 'Nội dung', 'Trạng thái', 'Thao tác']} rows={reviews.map((review) => [review.username || '', review.item_name || '', review.rating, review.content, review.status, <span className="actions"><button onClick={() => update(review.id, 'approved')}>Duyệt</button><button onClick={() => update(review.id, 'hidden')}>Ẩn</button><button onClick={() => update(review.id, 'deleted')}>Xóa</button></span>])} />
+}
+
+function AdminSettings({ initial, setNotice }: { initial: Settings; setNotice: (message: string) => void }) {
+  const [form, setForm] = useState<Settings>(initial)
+  useEffect(() => {
+    api<{ settings: Settings }>('/admin/settings').then((data) => setForm(data.settings))
+  }, [])
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    try {
+      await api('/admin/settings', { method: 'PATCH', body: JSON.stringify(form) })
+      setNotice('Đã lưu cấu hình website.')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+  const keys = ['site_name', 'slogan', 'support_email', 'support_phone', 'zalo_url', 'discord_url', 'facebook_url', 'maintenance_mode', 'registration_enabled', 'deposit_enabled', 'purchase_enabled', 'bank_name', 'bank_account_name', 'bank_account_number', 'bank_qr_url', 'sepay_webhook_secret', 'card_gateway_name', 'card_webhook_secret', 'google_login_enabled', 'facebook_login_enabled', 'smtp_enabled', 'homepage_notice', 'hero_banner']
+  return (
+    <form className="admin-form settings-form" onSubmit={save}>
+      <h1>Cấu hình website</h1>
+      {keys.map((key) => <label key={key}>{key}<input value={form[key] || ''} onChange={(event) => setForm({ ...form, [key]: event.target.value })} /></label>)}
+      <button className="primary large">Lưu cấu hình</button>
+    </form>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return <div className="stat-card"><span>{label}</span><strong>{value}</strong></div>
+}
+
+function TablePage({ title, headers, rows }: { title: string; headers: string[]; rows: Array<Array<React.ReactNode>> }) {
+  return (
+    <section className="table-section">
+      <h2>{title}</h2>
+      <div className="table-card">
+        <table>
+          <thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
+          <tbody>
+            {rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex} data-label={headers[cellIndex]}>{cell}</td>)}</tr>)}
+            {!rows.length && <tr><td colSpan={headers.length}>Chưa có dữ liệu.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+export default ShopApp
