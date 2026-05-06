@@ -135,6 +135,15 @@ function ShopApp() {
   }
 
   const context = { user, setUser, go, settings, setNotice, addToCart }
+  const cartCount = cart.reduce((sum, entry) => sum + entry.quantity, 0)
+  const navItems = [
+    { page: 'home' as Page, label: 'Trang chủ', icon: '⌂', show: true },
+    { page: 'items' as Page, label: 'Item', icon: '◆', show: true },
+    { page: 'cart' as Page, label: `Giỏ (${cartCount})`, icon: '🛒', show: true },
+    { page: 'deposit' as Page, label: 'Nạp', icon: '₫', show: true },
+    { page: 'orders' as Page, label: 'Đơn', icon: '☰', show: Boolean(user) },
+    { page: 'admin' as Page, label: 'Admin', icon: '⚙', show: Boolean(user && user.role !== 'user') },
+  ].filter((item) => item.show)
 
   return (
     <div className="app-shell">
@@ -146,14 +155,9 @@ function ShopApp() {
             <small>Roblox item store</small>
           </span>
         </button>
-        <nav>
-          <button onClick={() => go('home')}>Trang chủ</button>
-          <button onClick={() => go('items')}>Item</button>
-          <button onClick={() => go('cart')}>Giỏ hàng ({cart.reduce((sum, entry) => sum + entry.quantity, 0)})</button>
-          <button onClick={() => go('deposit')}>Nạp tiền</button>
-          {user && <button onClick={() => go('orders')}>Đơn hàng</button>}
-          {user && <button onClick={() => go('chat')}>Support chat</button>}
-          {user?.role !== 'user' && user && <button onClick={() => go('admin')}>Admin</button>}
+        <nav className="desktop-nav">
+          {navItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}>{item.label}</button>)}
+          {user && <button className={page === 'chat' ? 'active' : ''} onClick={() => go('chat')}>Support chat</button>}
         </nav>
         <div className="header-actions">
           {user ? (
@@ -169,6 +173,9 @@ function ShopApp() {
           )}
         </div>
       </header>
+      <nav className="mobile-bottom-nav">
+        {navItems.slice(0, 5).map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><span>{item.icon}</span><small>{item.label}</small></button>)}
+      </nav>
 
       {notice && <div className="toast">{notice}</div>}
 
