@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
+const nodemailer = require('nodemailer');
 const { db, setting, setSetting, initPersistentStore } = require('./db.cjs');
 
 const app = express();
@@ -113,6 +114,30 @@ function authCookieOptions() {
 
 function signToken(user) {
   return jwt.sign({ id: user.id, role: user.role }, jwtSecret, { expiresIn: '7d' });
+}
+
+function primaryClientOrigin() {
+  return clientOrigin.split(',').map((origin) => origin.trim()).filter(Boolean)[0] || 'https://nosroblox.com';
+}
+
+async function sendEmail({ to, subject, text, html }) {
+  const host = process.env.SMTP_HOST;
+  const portValue = Number(process.env.SMTP_PORT || 587);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM || user;
+  if (!host || !user || !pass || !from) {
+    console.log(`Email chưa cấu hình SMTP. Nội dung gửi đến ${to}: ${text}`);
+    return false;
+  }
+  const transporter = nodemailer.createTransport({
+    host,
+    port: portValue,
+    secure: portValue === 465,
+    auth: { user, pass },
+  });
+  await transporter.sendMail({ from, to, subject, text, html });
+  return true;
 }
 
 function getCurrentUser(req) {
@@ -456,17 +481,27 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({ user: sanitizeUser(req.user) });
 });
 
-app.post('/api/auth/forgot-password', (req, res) => {
+app.post('/api/auth/forgot-password', async (req, res) => {
   const { email } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
   if (user) {
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = String(crypto.randomInt(100000, 1000000));
     const hash = crypto.createHash('sha256').update(token).digest('hex');
-    const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const expires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
     db.prepare('UPDATE users SET reset_token_hash = ?, reset_token_expires_at = ? WHERE id = ?').run(hash, expires, user.id);
-    console.log(`Reset password link for ${email}: ${clientOrigin}/reset-password?token=${token}&email=${encodeURIComponent(email)}`);
+    const resetUrl = `${primaryClientOrigin()}/reset-password?email=${encodeURIComponent(email)}`;
+    try {
+      await sendEmail({
+        to: email,
+        subject: 'Mã đặt lại mật khẩu NosRoblox',
+        text: `Mã đặt lại mật khẩu của bạn là ${token}. Mã có hiệu lực trong 15 phút. Nhập mã tại ${resetUrl}`,
+        html: `<p>Mã đặt lại mật khẩu của bạn là:</p><h2>${token}</h2><p>Mã có hiệu lực trong 15 phút.</p><p>Nhập mã tại <a href="${resetUrl}">${resetUrl}</a></p>`,
+      });
+    } catch (error) {
+      console.error('Không thể gửi email reset mật khẩu:', error.message);
+    }
   }
-  res.json({ message: 'Nếu email tồn tại, hệ thống đã tạo link đặt lại mật khẩu.' });
+  res.json({ message: 'Nếu email tồn tại, hệ thống đã gửi mã đặt lại mật khẩu.' });
 });
 
 app.post('/api/auth/reset-password', (req, res) => {
@@ -569,7 +604,7 @@ app.post('/api/deposits', requireAuth, (req, res) => {
     return;
   }
   const code = `NAP${nanoid()}`;
-  let transferContent = `${req.user.username}-${code}`;
+  let transferContent = code;
   if (cardMethods.includes(method)) {
     if (!req.body.serial || !req.body.code) {
       res.status(400).json({ message: 'Vui lòng nhập serial và mã thẻ.' });
@@ -645,7 +680,7 @@ app.post('/api/orders/buy', requireAuth, (req, res) => {
     res.status(403).json({ message: 'Website đang tắt mua hàng.' });
     return;
   }
-  const { itemId, quantity, robloxUsername, robloxProfile, robloxDisplayName, customerNote } = req.body;
+  const { itemId, quantity, robloxUsername, customerNote } = req.body;
   const qty = Number(quantity);
   if (!robloxUsername || !Number.isInteger(qty) || qty < 1) {
     res.status(400).json({ message: 'Vui lòng nhập Roblox Username và số lượng hợp lệ.' });
@@ -671,7 +706,7 @@ app.post('/api/orders/buy', requireAuth, (req, res) => {
       const orderResult = db.prepare(`
         INSERT INTO orders (order_code, user_id, total_amount, status, roblox_username, roblox_profile, roblox_display_name, customer_note)
         VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)
-      `).run(orderCode, user.id, total, robloxUsername, robloxProfile || '', robloxDisplayName || '', customerNote || '');
+      `).run(orderCode, user.id, total, robloxUsername, '', '', customerNote || '');
       db.prepare(`
         INSERT INTO order_items (order_id, item_id, item_name, quantity, price, total_price)
         VALUES (?, ?, ?, ?, ?, ?)

@@ -366,7 +366,7 @@ function ItemDetail({
 }) {
   const [item, setItem] = useState<Item | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
-  const [form, setForm] = useState({ quantity: 1, robloxUsername: '', robloxProfile: '', robloxDisplayName: '', customerNote: '' })
+  const [form, setForm] = useState({ quantity: 1, robloxUsername: '', customerNote: '' })
 
   useEffect(() => {
     api<{ item: Item; reviews: Review[] }>(`/items/${slug}`).then((data) => {
@@ -428,8 +428,6 @@ function ItemDetail({
         <form className="form-card" onSubmit={buy}>
           <h2>Form mua hàng</h2>
           <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
-          <input placeholder="Link profile Roblox" value={form.robloxProfile} onChange={(event) => setForm({ ...form, robloxProfile: event.target.value })} />
-          <input placeholder="Display Name" value={form.robloxDisplayName} onChange={(event) => setForm({ ...form, robloxDisplayName: event.target.value })} />
           <label>Số lượng mua<input required min={1} max={item.stock} type="number" placeholder="Nhập số lượng" value={numberInputValue(form.quantity)} onChange={(event) => setForm({ ...form, quantity: Number(event.target.value || 0) })} /></label>
           <textarea placeholder="Ghi chú cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
           <button className="primary large" disabled={item.stock < 1}>Mua ngay bằng số dư</button>
@@ -513,7 +511,7 @@ function ForgotPassword({ setNotice }: { setNotice: (message: string) => void })
       setNotice(messageFromError(error))
     }
   }
-  return <AuthCard title="Quên mật khẩu" onSubmit={submit}><input required type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} /><button className="primary large">Gửi link đặt lại</button></AuthCard>
+  return <AuthCard title="Quên mật khẩu" onSubmit={submit}><input required type="email" placeholder="Email đã đăng ký" value={email} onChange={(event) => setEmail(event.target.value)} /><button className="primary large">Gửi mã về Gmail</button></AuthCard>
 }
 
 function ResetPassword({ setNotice }: { setNotice: (message: string) => void }) {
@@ -531,7 +529,7 @@ function ResetPassword({ setNotice }: { setNotice: (message: string) => void }) 
   return (
     <AuthCard title="Đặt lại mật khẩu" onSubmit={submit}>
       <input required type="email" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-      <input required placeholder="Token reset" value={form.token} onChange={(event) => setForm({ ...form, token: event.target.value })} />
+      <input required inputMode="numeric" placeholder="Mã xác nhận trong Gmail" value={form.token} onChange={(event) => setForm({ ...form, token: event.target.value })} />
       <input required type="password" placeholder="Mật khẩu mới" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
       <input required type="password" placeholder="Nhập lại mật khẩu" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} />
       <button className="primary large">Cập nhật mật khẩu</button>

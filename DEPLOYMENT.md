@@ -41,6 +41,13 @@ Lưu ý: dữ liệu database như user, số dư, đơn hàng, nạp tiền, se
   - `BANK_ACCOUNT_NUMBER=<so-tai-khoan>`
   - `TURSO_DATABASE_URL=<database-url>`
   - `TURSO_AUTH_TOKEN=<auth-token>`
+  - `SMTP_HOST=smtp.gmail.com`
+  - `SMTP_PORT=465`
+  - `SMTP_USER=<gmail-cua-shop>`
+  - `SMTP_PASS=<gmail-app-password>`
+  - `SMTP_FROM=<gmail-cua-shop>`
+
+Với Gmail, `SMTP_PASS` không phải mật khẩu Gmail thường. Hãy bật 2-Step Verification rồi tạo App Password trong Google Account.
 
 ### Vercel
 
