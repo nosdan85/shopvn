@@ -1,6 +1,17 @@
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
+const publicCache = new Map<string, { expiresAt: number; data: unknown }>()
+const publicCacheMs = 30_000
+
+function canCache(path: string, options: RequestInit) {
+  const method = String(options.method || 'GET').toUpperCase()
+  return method === 'GET' && (path === '/home' || path === '/settings/public' || path.startsWith('/items'))
+}
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (canCache(path, options)) {
+    const cached = publicCache.get(path)
+    if (cached && cached.expiresAt > Date.now()) return cached.data as T
+  }
   const response = await fetch(`${apiBaseUrl}/api${path}`, {
     credentials: 'include',
     headers: {
@@ -15,6 +26,10 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 
   if (!response.ok) {
     throw new Error(data?.message || 'Có lỗi xảy ra, vui lòng thử lại.')
+  }
+
+  if (canCache(path, options)) {
+    publicCache.set(path, { data, expiresAt: Date.now() + publicCacheMs })
   }
 
   return data as T

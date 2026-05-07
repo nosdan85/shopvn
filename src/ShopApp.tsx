@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { api, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
 import type { AdminChat, AdminOrderChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, OrderItem, Review, Settings, User } from './types'
@@ -44,7 +44,8 @@ const emptyItem = {
 
 const placeholderImage = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="540" viewBox="0 0 720 540"%3E%3Crect width="720" height="540" fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%236b7280" font-family="Arial" font-size="28"%3ESailor Piece Item%3C/text%3E%3C/svg%3E'
 
-type CartItem = { item: Item; quantity: number }
+type CartItem = { item: Item; quantity: number | '' }
+const cartStorageKey = 'sailor_piece_cart'
 
 function messageFromError(error: unknown) {
   return error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại.'
@@ -54,8 +55,21 @@ function numberInputValue(value: unknown) {
   return value === 0 || value === null || value === undefined || value === '' ? '' : String(value)
 }
 
-function numberInputNext(value: string) {
+function numberInputNext(value: string): number | '' {
   return value === '' ? '' : Number(value)
+}
+
+function safeQuantity(value: number | '') {
+  return Math.max(1, Number(value || 1))
+}
+
+function loadSavedCart() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(cartStorageKey) || '[]')
+    return Array.isArray(parsed) ? parsed.filter((entry) => entry?.item?.id).map((entry) => ({ item: entry.item, quantity: safeQuantity(entry.quantity) })) : []
+  } catch (_error) {
+    return []
+  }
 }
 
 function itemPayload(item: Record<string, unknown>) {
@@ -97,7 +111,9 @@ function ShopApp() {
   const [user, setUser] = useState<User | null>(null)
   const [settings, setSettings] = useState<Settings>({})
   const [notice, setNotice] = useState('')
-  const [cart, setCart] = useState<CartItem[]>([])
+  const [cart, setCart] = useState<CartItem[]>(loadSavedCart)
+  const lastNotificationId = useRef<number | null>(null)
+  const lastAdminUnread = useRef({ support: 0, order: 0 })
 
   useEffect(() => {
     api<{ user: User }>('/auth/me').then((data) => setUser(data.user)).catch(() => setUser(null))
@@ -107,6 +123,55 @@ function ShopApp() {
       setPage('reset')
     }
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem(cartStorageKey, JSON.stringify(cart.filter((entry) => entry.item?.id).map((entry) => ({ ...entry, quantity: safeQuantity(entry.quantity) }))))
+  }, [cart])
+
+  useEffect(() => {
+    if (!user) return undefined
+    const refreshUser = () => api<{ user: User }>('/auth/me').then((data) => {
+      setUser((current) => {
+        if (current && data.user.balance > current.balance) setNotice(`Số dư đã được cộng: ${money(data.user.balance - current.balance)}.`)
+        return data.user
+      })
+    }).catch(() => undefined)
+    const timer = window.setInterval(refreshUser, 15000)
+    return () => window.clearInterval(timer)
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user) return undefined
+    const checkNotifications = () => {
+      api<{ notifications: Notification[] }>('/notifications').then((data) => {
+        const latest = data.notifications[0]
+        if (!latest) return
+        if (lastNotificationId.current === null) {
+          lastNotificationId.current = latest.id
+          return
+        }
+        if (latest.id > lastNotificationId.current) {
+          lastNotificationId.current = latest.id
+          setNotice(`${latest.title}: ${latest.content}`)
+        }
+      }).catch(() => undefined)
+      if (user.role !== 'user') {
+        Promise.all([
+          api<{ chats: AdminChat[] }>('/admin/chats'),
+          api<{ chats: AdminOrderChat[] }>('/admin/order-chats'),
+        ]).then(([support, order]) => {
+          const supportUnread = support.chats.reduce((sum, chat) => sum + Number(chat.unread_count || 0), 0)
+          const orderUnread = order.chats.reduce((sum, chat) => sum + Number(chat.unread_count || 0), 0)
+          if (supportUnread > lastAdminUnread.current.support) setNotice('Support chat có tin nhắn mới.')
+          if (orderUnread > lastAdminUnread.current.order) setNotice('Order chat có tin nhắn mới.')
+          lastAdminUnread.current = { support: supportUnread, order: orderUnread }
+        }).catch(() => undefined)
+      }
+    }
+    checkNotifications()
+    const timer = window.setInterval(checkNotifications, 12000)
+    return () => window.clearInterval(timer)
+  }, [user?.id, user?.role])
 
   function go(nextPage: Page, id = '') {
     setPage(nextPage)
@@ -128,20 +193,21 @@ function ShopApp() {
   function addToCart(item: Item, quantity = 1) {
     setCart((current) => {
       const existing = current.find((entry) => entry.item.id === item.id)
-      if (existing) return current.map((entry) => entry.item.id === item.id ? { ...entry, quantity: Math.min(item.stock, entry.quantity + quantity) } : entry)
+      if (existing) return current.map((entry) => entry.item.id === item.id ? { ...entry, quantity: Math.min(item.stock, safeQuantity(entry.quantity) + quantity) } : entry)
       return [...current, { item, quantity: Math.min(item.stock, quantity) }]
     })
     setNotice('Đã thêm vào giỏ hàng.')
   }
 
   const context = { user, setUser, go, settings, setNotice, addToCart }
-  const cartCount = cart.reduce((sum, entry) => sum + entry.quantity, 0)
+  const cartCount = cart.reduce((sum, entry) => sum + safeQuantity(entry.quantity), 0)
   const navItems = [
     { page: 'home' as Page, label: 'Trang chủ', icon: '⌂', show: true },
     { page: 'items' as Page, label: 'Item', icon: '◆', show: true },
     { page: 'cart' as Page, label: `Giỏ (${cartCount})`, icon: '🛒', show: true },
     { page: 'deposit' as Page, label: 'Nạp', icon: '₫', show: true },
     { page: 'orders' as Page, label: 'Đơn', icon: '☰', show: Boolean(user) },
+    { page: 'chat' as Page, label: 'Chat', icon: '✉', show: Boolean(user) },
     { page: 'admin' as Page, label: 'Admin', icon: '⚙', show: Boolean(user && user.role !== 'user') },
   ].filter((item) => item.show)
 
@@ -174,7 +240,7 @@ function ShopApp() {
         </div>
       </header>
       <nav className="mobile-bottom-nav">
-        {navItems.slice(0, 5).map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><span>{item.icon}</span><small>{item.label}</small></button>)}
+        {navItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><span>{item.icon}</span><small>{item.label}</small></button>)}
       </nav>
 
       {notice && <div className="toast">{notice}</div>}
@@ -303,7 +369,7 @@ function ItemCard({ item, go }: { item: Item; go: (page: Page, id?: string) => v
   return (
     <article className="item-card">
       <button className="image-button" onClick={() => go('item', item.slug)}>
-        <img src={item.image || placeholderImage} alt={item.name} loading="lazy" onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        <img src={item.image || placeholderImage} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
         {item.discount_percent > 0 && <span className="sale-badge">-{item.discount_percent}%</span>}
         <span className={item.stock > 0 ? 'stock-badge' : 'stock-badge out'}>{item.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</span>
       </button>
@@ -332,18 +398,24 @@ function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
   const [filter, setFilter] = useState('all')
   const [sort, setSort] = useState('')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const params = new URLSearchParams({ filter, sort, search })
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 350)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    const params = new URLSearchParams({ filter, sort, search: debouncedSearch })
     setLoading(true)
     setError('')
     api<{ items: Item[] }>(`/items?${params}`)
       .then((data) => setItems(data.items))
       .catch((err) => setError(messageFromError(err)))
       .finally(() => setLoading(false))
-  }, [filter, sort, search])
+  }, [filter, sort, debouncedSearch])
 
   return (
     <section className="page-section">
@@ -399,7 +471,7 @@ function ItemDetail({
 }) {
   const [item, setItem] = useState<Item | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
-  const [form, setForm] = useState({ quantity: 1, robloxUsername: '', customerNote: '' })
+  const [form, setForm] = useState<{ quantity: number | ''; robloxUsername: string; customerNote: string }>({ quantity: 1, robloxUsername: '', customerNote: '' })
 
   useEffect(() => {
     api<{ item: Item; reviews: Review[] }>(`/items/${slug}`).then((data) => {
@@ -419,7 +491,7 @@ function ItemDetail({
     try {
       const data = await api<{ order: Order }>('/orders/buy', {
         method: 'POST',
-        body: JSON.stringify({ itemId: item.id, ...form }),
+        body: JSON.stringify({ itemId: item.id, ...form, quantity: safeQuantity(form.quantity) }),
       })
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
@@ -435,8 +507,8 @@ function ItemDetail({
   return (
     <section className="page-section detail-layout">
       <div className="gallery">
-        <img src={item.image || placeholderImage} alt={item.name} onError={(event) => { event.currentTarget.src = placeholderImage }} />
-        <div className="thumbs">{item.gallery.map((image) => <img key={image} src={image || placeholderImage} alt={`${item.name} gallery`} onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
+        <img src={item.image || placeholderImage} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        <div className="thumbs">{item.gallery.map((image) => <img key={image} src={image || placeholderImage} alt={`${item.name} gallery`} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
       </div>
       <div className="detail-card">
         <button className="ghost" onClick={() => go('items')}>Quay lại danh sách item</button>
@@ -461,9 +533,9 @@ function ItemDetail({
         <form className="form-card" onSubmit={buy}>
           <h2>Form mua hàng</h2>
           <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
-          <label>Số lượng mua<input required min={1} max={item.stock} type="number" placeholder="Nhập số lượng" value={numberInputValue(form.quantity)} onChange={(event) => setForm({ ...form, quantity: Number(event.target.value || 0) })} /></label>
+          <label>Số lượng mua<input required min={1} max={item.stock} type="number" placeholder="Nhập số lượng" value={numberInputValue(form.quantity)} onChange={(event) => setForm({ ...form, quantity: numberInputNext(event.target.value) })} /></label>
           <textarea placeholder="Ghi chú cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
-          <button type="button" onClick={() => addToCart(item, Number(form.quantity || 1))}>Thêm vào giỏ hàng</button>
+          <button type="button" onClick={() => addToCart(item, safeQuantity(form.quantity))}>Thêm vào giỏ hàng</button>
           <button className="primary large" disabled={item.stock < 1}>Mua ngay bằng số dư</button>
         </form>
         <div className="review-list">
@@ -477,9 +549,9 @@ function ItemDetail({
 
 function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User | null; cart: CartItem[]; setCart: (cart: CartItem[]) => void; go: (page: Page, id?: string) => void; setUser: (user: User | null) => void; setNotice: (message: string) => void }) {
   const [form, setForm] = useState({ robloxUsername: '', customerNote: '' })
-  const total = cart.reduce((sum, entry) => sum + entry.item.current_price * entry.quantity, 0)
-  function updateQuantity(itemId: number, quantity: number) {
-    setCart(cart.map((entry) => entry.item.id === itemId ? { ...entry, quantity: Math.max(1, Math.min(entry.item.stock, quantity)) } : entry))
+  const total = cart.reduce((sum, entry) => sum + entry.item.current_price * safeQuantity(entry.quantity), 0)
+  function updateQuantity(itemId: number, quantity: number | '') {
+    setCart(cart.map((entry) => entry.item.id === itemId ? { ...entry, quantity: quantity === '' ? '' : Math.max(1, Math.min(entry.item.stock, quantity)) } : entry))
   }
   async function checkout(event: FormEvent) {
     event.preventDefault()
@@ -498,7 +570,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
         body: JSON.stringify({
           robloxUsername: form.robloxUsername,
           customerNote: form.customerNote,
-          items: cart.map((entry) => ({ itemId: entry.item.id, quantity: entry.quantity })),
+          items: cart.map((entry) => ({ itemId: entry.item.id, quantity: safeQuantity(entry.quantity) })),
         }),
       })
       const me = await api<{ user: User }>('/auth/me')
@@ -517,11 +589,11 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
         {!cart.length && <p className="muted">Giỏ hàng đang trống.</p>}
         {cart.map((entry) => (
           <div className="cart-row" key={entry.item.id}>
-            <img src={entry.item.image || placeholderImage} alt={entry.item.name} onError={(event) => { event.currentTarget.src = placeholderImage }} />
+            <img src={entry.item.image || placeholderImage} alt={entry.item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
             <div>
               <strong>{entry.item.name}</strong>
               <p>{money(entry.item.current_price)} · Còn {entry.item.stock}</p>
-              <input min={1} max={entry.item.stock} type="number" value={entry.quantity} onChange={(event) => updateQuantity(entry.item.id, Number(event.target.value || 1))} />
+              <input min={1} max={entry.item.stock} type="number" value={numberInputValue(entry.quantity)} onChange={(event) => updateQuantity(entry.item.id, numberInputNext(event.target.value))} />
             </div>
             <button onClick={() => setCart(cart.filter((item) => item.item.id !== entry.item.id))}>Xóa</button>
           </div>

@@ -43,7 +43,12 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
-app.use('/uploads', express.static(uploadDir));
+app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: true }));
+
+function publicCache(_req, res, next) {
+  res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+  next();
+}
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false });
 const upload = multer({
@@ -431,7 +436,7 @@ function startSepayBot() {
   }, intervalMs);
 }
 
-app.get('/api/settings/public', (_req, res) => {
+app.get('/api/settings/public', publicCache, (_req, res) => {
   res.json(publicSettings());
 });
 
@@ -551,7 +556,7 @@ app.post('/api/auth/reset-password', (req, res) => {
   res.json({ message: 'Đổi mật khẩu thành công.' });
 });
 
-app.get('/api/items', (req, res) => {
+app.get('/api/items', publicCache, (req, res) => {
   const filter = String(req.query.filter || 'all');
   const search = String(req.query.search || '').trim();
   const sort = String(req.query.sort || '');
@@ -581,7 +586,7 @@ app.get('/api/items', (req, res) => {
   res.json({ items: rows.map(parseItem), total, page, limit });
 });
 
-app.get('/api/items/:slug', (req, res) => {
+app.get('/api/items/:slug', publicCache, (req, res) => {
   const item = db.prepare('SELECT * FROM items WHERE slug = ? AND status = ?').get(req.params.slug, 'active');
   if (!item) {
     res.status(404).json({ message: 'Không tìm thấy item.' });
@@ -596,7 +601,7 @@ app.get('/api/items/:slug', (req, res) => {
   res.json({ item: parseItem(item), reviews });
 });
 
-app.get('/api/home', (_req, res) => {
+app.get('/api/home', publicCache, (_req, res) => {
   const featured = db.prepare("SELECT * FROM items WHERE status = 'active' AND is_featured = 1 ORDER BY sort_order ASC LIMIT 6").all().map(parseItem);
   const bestSellers = db.prepare("SELECT * FROM items WHERE status = 'active' ORDER BY sold_count DESC LIMIT 6").all().map(parseItem);
   const sales = db.prepare("SELECT * FROM items WHERE status = 'active' AND is_sale = 1 ORDER BY sort_order ASC LIMIT 6").all().map(parseItem);
@@ -1348,7 +1353,7 @@ app.patch('/api/admin/settings', requireAdmin, (req, res) => {
 });
 
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '..', 'dist')));
+  app.use(express.static(path.join(__dirname, '..', 'dist'), { maxAge: '1d' }));
   app.use((_req, res) => {
     res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
   });
