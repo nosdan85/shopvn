@@ -29,11 +29,19 @@
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100svh;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 12% 8%, rgba(57, 217, 255, 0.24), transparent 30%),
     radial-gradient(circle at 86% 18%, rgba(139, 92, 246, 0.24), transparent 30%),
     linear-gradient(180deg, #061322 0%, #08182a 50%, #061322 100%);
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
 }
 
 button,
@@ -46,6 +54,7 @@ select {
 button {
   border: 0;
   border-radius: 999px;
+  min-height: 44px;
   padding: 0.78rem 1rem;
   color: #eaf6ff;
   background: rgba(255, 255, 255, 0.08);
@@ -76,6 +85,7 @@ select {
   color: #f7fbff;
   background: rgba(255, 255, 255, 0.08);
   outline: none;
+  font-size: 16px;
 }
 
 textarea {
@@ -114,6 +124,69 @@ th {
   max-width: 1440px;
   margin: 0 auto;
   overflow-x: hidden;
+}
+
+.boot-screen {
+  display: grid;
+  min-height: 100svh;
+  padding: 1.25rem;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(57, 217, 255, 0.2), transparent 36%),
+    linear-gradient(180deg, #061322, #08182a);
+}
+
+.boot-card {
+  display: grid;
+  width: min(92vw, 420px);
+  gap: 0.9rem;
+  padding: 1.4rem;
+  border: 1px solid rgba(57, 217, 255, 0.22);
+  border-radius: 28px;
+  color: #f7fbff;
+  text-align: center;
+  background: rgba(13, 35, 62, 0.82);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.34);
+}
+
+.boot-dog {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  font-size: 2.1rem;
+  animation: boot-dog-run 1.2s ease-in-out infinite alternate;
+}
+
+.boot-track {
+  position: relative;
+  overflow: hidden;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.boot-track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), #7df7c1);
+  animation: boot-track-load 1.05s ease-in-out infinite;
+}
+
+.boot-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+@keyframes boot-dog-run {
+  from { transform: translateX(-28px) rotate(-5deg); }
+  to { transform: translateX(28px) rotate(5deg); }
+}
+
+@keyframes boot-track-load {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(240%); }
 }
 
 * {
@@ -1601,6 +1674,32 @@ main > section,
 
 .item-card:hover img {
   transform: scale(1.035);
+}
+
+.section,
+.page-section,
+.item-card,
+.panel {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 520px;
+}
+
+@media (hover: none) {
+  button:hover:not(:disabled),
+  .item-card:hover img {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 @media (max-width: 700px) {

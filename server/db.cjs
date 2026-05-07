@@ -213,16 +213,36 @@ const schemaSql = `
       FOREIGN KEY (admin_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS security_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_type TEXT NOT NULL,
+      user_id INTEGER,
+      severity TEXT NOT NULL DEFAULT 'info',
+      message TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      metadata TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_items_slug ON items(slug);
     CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
+    CREATE INDEX IF NOT EXISTS idx_items_featured ON items(status, is_featured);
+    CREATE INDEX IF NOT EXISTS idx_items_sale ON items(status, is_sale);
+    CREATE INDEX IF NOT EXISTS idx_items_sold ON items(status, sold_count);
     CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+    CREATE INDEX IF NOT EXISTS idx_order_items_item_id ON order_items(item_id);
     CREATE INDEX IF NOT EXISTS idx_deposits_user_id ON deposits(user_id);
     CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status);
+    CREATE INDEX IF NOT EXISTS idx_deposits_transaction_code ON deposits(transaction_code);
+    CREATE INDEX IF NOT EXISTS idx_deposits_bank_transaction_id ON deposits(bank_transaction_id);
     CREATE INDEX IF NOT EXISTS idx_balance_logs_user_id ON balance_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
     CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON chat_messages(user_id);
     CREATE INDEX IF NOT EXISTS idx_order_chat_messages_order_id ON order_chat_messages(order_id);
+    CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at);
   `;
 function migrate() {
   db.exec(schemaSql);
@@ -242,6 +262,7 @@ const persistentTables = [
   'order_chat_messages',
   'settings',
   'admin_logs',
+  'security_events',
 ];
 const originalPrepare = db.prepare.bind(db);
 const originalTransaction = db.transaction.bind(db);

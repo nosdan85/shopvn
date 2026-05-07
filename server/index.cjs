@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
@@ -24,6 +25,10 @@ const allowedOrigins = [
 const jwtSecret = process.env.JWT_SECRET || 'change-this-secret-before-production';
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 const idAlphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change-this-secret-before-production')) {
+  throw new Error('Missing secure JWT_SECRET for production.');
+}
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use((req, res, next) => {
@@ -51,6 +56,10 @@ function publicCache(_req, res, next) {
 }
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false });
+const adminLimiter = rateLimit({ windowMs: 60 * 1000, max: 90, standardHeaders: true, legacyHeaders: false });
+const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false });
+const depositLimiter = rateLimit({ windowMs: 60 * 1000, max: 12, standardHeaders: true, legacyHeaders: false });
+const purchaseLimiter = rateLimit({ windowMs: 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
 const upload = multer({
   dest: uploadDir,
   limits: { fileSize: 2 * 1024 * 1024 },
@@ -113,8 +122,18 @@ function authCookieOptions() {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
+    path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
+}
+
+function isSupportedImage(buffer) {
+  if (!buffer || buffer.length < 12) return false;
+  const png = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+  const jpg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  const gif = buffer.toString('ascii', 0, 6) === 'GIF87a' || buffer.toString('ascii', 0, 6) === 'GIF89a';
+  const webp = buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+  return png || jpg || gif || webp;
 }
 
 function signToken(user) {
@@ -159,6 +178,7 @@ function getCurrentUser(req) {
 function requireAuth(req, res, next) {
   const user = getCurrentUser(req);
   if (!user || user.status !== 'active') {
+    logSecurity({ eventType: 'auth_required_denied', severity: 'low', message: 'Unauthenticated request blocked.', req });
     res.status(401).json({ message: 'Vui lòng đăng nhập.' });
     return;
   }
@@ -169,6 +189,7 @@ function requireAuth(req, res, next) {
 function requireAdmin(req, res, next) {
   const user = getCurrentUser(req);
   if (!user || user.status !== 'active' || !['admin', 'super_admin'].includes(user.role)) {
+    logSecurity({ eventType: 'admin_access_denied', userId: user?.id, severity: 'medium', message: 'Admin request blocked.', req });
     res.status(403).json({ message: 'Bạn không có quyền truy cập admin.' });
     return;
   }
@@ -181,6 +202,25 @@ function logAdmin(adminId, action, targetType, targetId, req) {
     INSERT INTO admin_logs (admin_id, action, target_type, target_id, ip_address, user_agent)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(adminId, action, targetType, targetId || null, req.ip, req.get('user-agent') || '');
+}
+
+function logSecurity({ eventType, userId = null, severity = 'info', message = '', req = null, metadata = null }) {
+  try {
+    db.prepare(`
+      INSERT INTO security_events (event_type, user_id, severity, message, ip_address, user_agent, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      eventType,
+      userId,
+      severity,
+      message,
+      req?.ip || '',
+      req?.get?.('user-agent') || '',
+      metadata ? JSON.stringify(metadata).slice(0, 2000) : null,
+    );
+  } catch (error) {
+    console.error('security event log failed:', error.message);
+  }
 }
 
 function notifyUser(userId, title, content, type) {
@@ -251,6 +291,10 @@ function parseAmount(value) {
   return Number(String(value || '').replace(/[^\d.-]/g, ''));
 }
 
+function clampText(value, maxLength) {
+  return String(value || '').trim().slice(0, maxLength);
+}
+
 function normalizePaymentText(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -263,6 +307,25 @@ function extractWebhookSecret(req) {
     req.headers['x-webhook-secret'],
     apiKeyMatch ? apiKeyMatch[1] : '',
   ].map((value) => String(value || '').trim()).filter(Boolean);
+}
+
+function timingSafeEqualText(left, right) {
+  const a = Buffer.from(String(left || ''));
+  const b = Buffer.from(String(right || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function verifyOptionalWebhookSignature(req) {
+  const secret = String(setting('sepay_webhook_hmac_secret') || process.env.SEPAY_WEBHOOK_HMAC_SECRET || '').trim();
+  if (!secret) return true;
+  const signature = String(req.headers['x-webhook-signature'] || req.headers['x-signature'] || '').replace(/^sha256=/i, '');
+  const timestamp = String(req.headers['x-webhook-timestamp'] || req.headers['x-timestamp'] || '');
+  if (!signature || !timestamp) return false;
+  const ageMs = Math.abs(Date.now() - Number(timestamp));
+  if (!Number.isFinite(ageMs) || ageMs > 5 * 60 * 1000) return false;
+  const payload = `${timestamp}.${JSON.stringify(req.body || {})}`;
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return timingSafeEqualText(signature, expected);
 }
 
 function extractDepositCode(value) {
@@ -285,7 +348,7 @@ function normalizeIncomingTransfer(raw = {}) {
   return {
     transferType,
     content: String(raw.content || raw.description || raw.transferContent || raw.transfer_content || raw.transaction_content || raw.transactionContent || raw.note || raw.memo || ''),
-    transactionId: String(raw.transaction_id || raw.transactionId || raw.reference || raw.referenceCode || raw.reference_code || raw.id || raw.code || ''),
+    transactionId: clampText(raw.transaction_id || raw.transactionId || raw.reference || raw.referenceCode || raw.reference_code || raw.id || raw.code || '', 160),
     amount,
   };
 }
@@ -498,6 +561,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
     const lockedUntil = failed >= 5 ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null;
     db.prepare('UPDATE users SET failed_login_count = ?, locked_until = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
       .run(failed, lockedUntil, user.id);
+    logSecurity({ eventType: 'login_failed', userId: user.id, severity: failed >= 5 ? 'high' : 'medium', message: 'Invalid password.', req, metadata: { failed } });
     res.status(401).json({ message: 'Sai tài khoản hoặc mật khẩu.' });
     return;
   }
@@ -507,7 +571,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
 });
 
 app.post('/api/auth/logout', (_req, res) => {
-  res.clearCookie('token').json({ ok: true });
+  res.clearCookie('token', authCookieOptions()).json({ ok: true });
 });
 
 app.get('/api/auth/me', requireAuth, (req, res) => {
@@ -620,7 +684,7 @@ app.get('/api/deposits', requireAuth, (req, res) => {
   res.json({ deposits });
 });
 
-app.post('/api/deposits', requireAuth, (req, res) => {
+app.post('/api/deposits', requireAuth, depositLimiter, (req, res) => {
   if (setting('deposit_enabled', 'true') !== 'true') {
     res.status(403).json({ message: 'Website đang tắt nạp tiền.' });
     return;
@@ -636,14 +700,20 @@ app.post('/api/deposits', requireAuth, (req, res) => {
     res.status(400).json({ message: 'Số tiền nạp tối thiểu là 10.000đ.' });
     return;
   }
+  if (amount > 100000000 || amount % 1000 !== 0) {
+    res.status(400).json({ message: 'Số tiền nạp không hợp lệ.' });
+    return;
+  }
   const code = `NAP${nanoid()}`;
   let transferContent = code;
   if (cardMethods.includes(method)) {
-    if (!req.body.serial || !req.body.code) {
+    const serial = clampText(req.body.serial, 80);
+    const cardCode = clampText(req.body.code, 80);
+    if (!serial || !cardCode) {
       res.status(400).json({ message: 'Vui lòng nhập serial và mã thẻ.' });
       return;
     }
-    transferContent = `CARD-${method.toUpperCase()}-${String(req.body.serial).slice(-6)}-${code}`;
+    transferContent = `CARD-${method.toUpperCase()}-${serial.slice(-6)}-${code}`;
   }
   const result = db.prepare(`
     INSERT INTO deposits (transaction_code, user_id, method, amount, transfer_content, status)
@@ -653,11 +723,17 @@ app.post('/api/deposits', requireAuth, (req, res) => {
   res.json({ deposit, bank: publicSettings() });
 });
 
-app.post('/api/webhooks/deposits', (req, res) => {
+app.post('/api/webhooks/deposits', webhookLimiter, (req, res) => {
   const allowedSecrets = [setting('sepay_webhook_secret'), setting('card_webhook_secret')].map((value) => String(value || '').trim()).filter(Boolean);
   const providedSecrets = extractWebhookSecret(req);
   if (!allowedSecrets.length || !providedSecrets.some((secret) => allowedSecrets.includes(secret))) {
+    logSecurity({ eventType: 'webhook_secret_denied', severity: 'high', message: 'Invalid deposit webhook secret.', req });
     res.status(401).json({ success: false, ignored: true, message: 'Webhook secret không hợp lệ.' });
+    return;
+  }
+  if (!verifyOptionalWebhookSignature(req)) {
+    logSecurity({ eventType: 'webhook_signature_denied', severity: 'high', message: 'Invalid deposit webhook signature.', req });
+    res.status(401).json({ success: false, ignored: true, message: 'Webhook signature không hợp lệ.' });
     return;
   }
   try {
@@ -672,10 +748,11 @@ app.post('/api/webhooks/deposits', (req, res) => {
   }
 });
 
-app.get('/api/webhooks/deposits/pending-codes', (req, res) => {
+app.get('/api/webhooks/deposits/pending-codes', webhookLimiter, (req, res) => {
   const allowedSecrets = [setting('sepay_webhook_secret')].map((value) => String(value || '').trim()).filter(Boolean);
   const providedSecrets = extractWebhookSecret(req);
   if (!allowedSecrets.length || !providedSecrets.some((secret) => allowedSecrets.includes(secret))) {
+    logSecurity({ eventType: 'pending_codes_secret_denied', severity: 'high', message: 'Invalid pending-codes secret.', req });
     res.status(401).json({ success: false, message: 'Webhook secret không hợp lệ.' });
     return;
   }
@@ -689,10 +766,11 @@ app.get('/api/webhooks/deposits/pending-codes', (req, res) => {
   res.json({ deposits });
 });
 
-app.post('/api/webhooks/sepay-bot/report', (req, res) => {
+app.post('/api/webhooks/sepay-bot/report', webhookLimiter, (req, res) => {
   const allowedSecrets = [setting('sepay_webhook_secret')].map((value) => String(value || '').trim()).filter(Boolean);
   const providedSecrets = extractWebhookSecret(req);
   if (!allowedSecrets.length || !providedSecrets.some((secret) => allowedSecrets.includes(secret))) {
+    logSecurity({ eventType: 'bot_report_secret_denied', severity: 'high', message: 'Invalid bot report secret.', req });
     res.status(401).json({ success: false, message: 'Webhook secret không hợp lệ.' });
     return;
   }
@@ -702,6 +780,8 @@ app.post('/api/webhooks/sepay-bot/report', (req, res) => {
   setSetting('sepay_bot_last_result', JSON.stringify(report).slice(0, 5000));
   res.json({ success: true });
 });
+
+app.use('/api/admin', adminLimiter);
 
 app.post('/api/admin/sepay-bot/run', requireAdmin, async (_req, res) => {
   try {
@@ -739,17 +819,27 @@ app.get('/api/orders/:id', requireAuth, (req, res) => {
   res.json({ order, items, logs });
 });
 
-app.post('/api/orders/buy', requireAuth, (req, res) => {
+app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
   if (setting('purchase_enabled', 'true') !== 'true') {
     res.status(403).json({ message: 'Website đang tắt mua hàng.' });
     return;
   }
-  const { itemId, quantity, robloxUsername, customerNote } = req.body;
+  const { itemId, quantity } = req.body;
+  const robloxUsername = clampText(req.body.robloxUsername, 32);
+  const customerNote = clampText(req.body.customerNote, 500);
   const requestedItems = Array.isArray(req.body.items) && req.body.items.length
     ? req.body.items
     : [{ itemId, quantity }];
   if (!robloxUsername || !requestedItems.length) {
     res.status(400).json({ message: 'Vui lòng nhập Roblox Username và item cần mua.' });
+    return;
+  }
+  if (!/^[A-Za-z0-9_]{3,32}$/.test(robloxUsername)) {
+    res.status(400).json({ message: 'Roblox Username không hợp lệ.' });
+    return;
+  }
+  if (requestedItems.length > 20) {
+    res.status(400).json({ message: 'Giỏ hàng có quá nhiều loại item.' });
     return;
   }
 
@@ -759,7 +849,7 @@ app.post('/api/orders/buy', requireAuth, (req, res) => {
       const normalizedItems = requestedItems.map((entry) => ({
         itemId: Number(entry.itemId),
         quantity: Number(entry.quantity),
-      })).filter((entry) => Number.isInteger(entry.itemId) && Number.isInteger(entry.quantity) && entry.quantity > 0);
+      })).filter((entry) => Number.isInteger(entry.itemId) && Number.isInteger(entry.quantity) && entry.quantity > 0 && entry.quantity <= 999);
       if (!normalizedItems.length) throw new Error('Giỏ hàng không hợp lệ.');
       const merged = new Map();
       for (const entry of normalizedItems) merged.set(entry.itemId, (merged.get(entry.itemId) || 0) + entry.quantity);
@@ -772,6 +862,7 @@ app.post('/api/orders/buy', requireAuth, (req, res) => {
         orderItems.push({ item, qty, price, total: price * qty });
       }
       const total = orderItems.reduce((sum, entry) => sum + entry.total, 0);
+      if (!Number.isSafeInteger(total) || total <= 0) throw new Error('Tổng đơn hàng không hợp lệ.');
       if (user.balance < total) throw new Error('Số dư không đủ. Vui lòng nạp thêm tiền.');
       const before = user.balance;
       const after = before - total;
@@ -783,8 +874,9 @@ app.post('/api/orders/buy', requireAuth, (req, res) => {
         VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)
       `).run(orderCode, user.id, total, robloxUsername, '', '', customerNote || '');
       for (const entry of orderItems) {
-        db.prepare('UPDATE items SET stock = stock - ?, sold_count = sold_count + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(entry.qty, entry.qty, entry.item.id);
+        const stockUpdate = db.prepare('UPDATE items SET stock = stock - ?, sold_count = sold_count + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND stock >= ?')
+          .run(entry.qty, entry.qty, entry.item.id, entry.qty);
+        if (stockUpdate.changes !== 1) throw new Error(`${entry.item.name} vừa hết hàng, vui lòng thử lại.`);
         db.prepare(`
           INSERT INTO order_items (order_id, item_id, item_name, quantity, price, total_price)
           VALUES (?, ?, ?, ?, ?, ?)
@@ -810,6 +902,7 @@ app.post('/api/orders/buy', requireAuth, (req, res) => {
     })();
     res.json({ order: result });
   } catch (error) {
+    logSecurity({ eventType: 'purchase_failed', userId: req.user.id, severity: 'low', message: error.message, req });
     res.status(400).json({ message: error.message });
   }
 });
@@ -901,6 +994,12 @@ app.post('/api/profile/change-password', requireAuth, (req, res) => {
 });
 
 app.post('/api/uploads/image', requireAdmin, upload.single('image'), (req, res) => {
+  const buffer = fs.readFileSync(req.file.path);
+  if (!isSupportedImage(buffer)) {
+    fs.unlinkSync(req.file.path);
+    res.status(400).json({ message: 'File upload không phải ảnh hợp lệ.' });
+    return;
+  }
   res.json({ url: `/uploads/${req.file.filename}` });
 });
 
@@ -1104,21 +1203,36 @@ app.patch('/api/admin/users/:id', requireAdmin, (req, res) => {
     res.status(404).json({ message: 'Không tìm thấy user.' });
     return;
   }
-  if (req.body.role && req.user.role !== 'super_admin' && req.body.role === 'super_admin') {
-    res.status(403).json({ message: 'Không thể tự nâng quyền cao nhất.' });
+  const nextStatus = req.body.status || user.status;
+  const nextRole = req.body.role || user.role;
+  if (!['active', 'locked', 'banned'].includes(nextStatus) || !['user', 'admin', 'super_admin'].includes(nextRole)) {
+    res.status(400).json({ message: 'Trạng thái hoặc quyền không hợp lệ.' });
+    return;
+  }
+  if (req.body.role && req.user.role !== 'super_admin') {
+    logSecurity({ eventType: 'role_update_denied', userId: req.user.id, severity: 'high', message: 'Non-super-admin attempted role change.', req, metadata: { targetUserId: user.id, nextRole } });
+    res.status(403).json({ message: 'Chỉ super admin được đổi quyền tài khoản.' });
+    return;
+  }
+  if (user.id === req.user.id && nextStatus !== 'active') {
+    res.status(400).json({ message: 'Không thể tự khóa tài khoản đang đăng nhập.' });
     return;
   }
   db.prepare('UPDATE users SET status = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .run(req.body.status || user.status, req.body.role || user.role, user.id);
+    .run(nextStatus, nextRole, user.id);
   logAdmin(req.user.id, 'update_user', 'user', user.id, req);
   res.json({ user: sanitizeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });
 });
 
 app.post('/api/admin/users/:id/adjust-balance', requireAdmin, (req, res) => {
   const amount = Number(req.body.amount);
-  const note = String(req.body.note || '');
+  const note = clampText(req.body.note, 300);
   if (!Number.isInteger(amount) || amount === 0 || !note) {
     res.status(400).json({ message: 'Cần nhập số tiền cộng/trừ và lý do.' });
+    return;
+  }
+  if (Math.abs(amount) > 100000000) {
+    res.status(400).json({ message: 'Số tiền điều chỉnh quá lớn.' });
     return;
   }
   try {
@@ -1350,6 +1464,11 @@ app.patch('/api/admin/settings', requireAdmin, (req, res) => {
   }
   logAdmin(req.user.id, 'update_settings', 'settings', null, req);
   res.json({ settings: adminSettings() });
+});
+
+app.use('/api', (error, req, res, _next) => {
+  logSecurity({ eventType: 'api_error', userId: req.user?.id, severity: 'medium', message: error.message, req });
+  res.status(error.status || 500).json({ message: error.message || 'Có lỗi xảy ra, vui lòng thử lại.' });
 });
 
 if (process.env.NODE_ENV === 'production') {

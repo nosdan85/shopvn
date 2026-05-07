@@ -105,10 +105,24 @@ async function copyText(value: string, setNotice: (message: string) => void) {
   }
 }
 
+function BootScreen() {
+  return (
+    <div className="boot-screen" role="status" aria-live="polite">
+      <div className="boot-card">
+        <div className="boot-dog">🐕</div>
+        <div className="boot-track"><span /></div>
+        <strong>Đang tải tài khoản...</strong>
+        <p>Shop đang kiểm tra phiên đăng nhập của bạn.</p>
+      </div>
+    </div>
+  )
+}
+
 function ShopApp() {
   const [page, setPage] = useState<Page>('home')
   const [routeId, setRouteId] = useState<string>('')
   const [user, setUser] = useState<User | null>(null)
+  const [booting, setBooting] = useState(true)
   const [settings, setSettings] = useState<Settings>({})
   const [notice, setNotice] = useState('')
   const [cart, setCart] = useState<CartItem[]>(loadSavedCart)
@@ -116,11 +130,25 @@ function ShopApp() {
   const lastAdminUnread = useRef({ support: 0, order: 0 })
 
   useEffect(() => {
-    api<{ user: User }>('/auth/me').then((data) => setUser(data.user)).catch(() => setUser(null))
-    api<Settings>('/settings/public').then(setSettings).catch(() => undefined)
+    let active = true
+    const timeout = window.setTimeout(() => {
+      if (active) setBooting(false)
+    }, 3500)
+    Promise.allSettled([
+      api<{ user: User }>('/auth/me').then((data) => setUser(data.user)).catch(() => setUser(null)),
+      api<Settings>('/settings/public').then(setSettings).catch(() => undefined),
+    ]).finally(() => {
+      if (!active) return
+      window.clearTimeout(timeout)
+      setBooting(false)
+    })
     const params = new URLSearchParams(window.location.search)
     if (window.location.pathname.includes('reset-password') || params.has('token')) {
       setPage('reset')
+    }
+    return () => {
+      active = false
+      window.clearTimeout(timeout)
     }
   }, [])
 
@@ -211,6 +239,8 @@ function ShopApp() {
     { page: 'admin' as Page, label: 'Admin', icon: '⚙', show: Boolean(user && user.role !== 'user') },
   ].filter((item) => item.show)
 
+  if (booting) return <BootScreen />
+
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -223,7 +253,6 @@ function ShopApp() {
         </button>
         <nav className="desktop-nav">
           {navItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}>{item.label}</button>)}
-          {user && <button className={page === 'chat' ? 'active' : ''} onClick={() => go('chat')}>Support chat</button>}
         </nav>
         <div className="header-actions">
           {user ? (
@@ -766,7 +795,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
         <h1>Nạp tiền vào ví</h1>
         <p>Chọn chuyển khoản để tạo nội dung nạp riêng, hoặc gửi thông tin thẻ cào để chờ cổng thẻ xử lý tự động.</p>
         <div className="method-grid">
-          <button type="button" className={method === 'bank_transfer' ? 'primary' : ''} onClick={() => setMethod('bank_transfer')}>Chuyển khoản MB Bank/Sepay</button>
+          <button type="button" className={method === 'bank_transfer' ? 'primary' : ''} onClick={() => setMethod('bank_transfer')}>Chuyển khoản</button>
           <button type="button" className={method !== 'bank_transfer' ? 'primary' : ''} onClick={() => setMethod(card.provider)}>Thẻ cào</button>
         </div>
         {method === 'bank_transfer' ? (
