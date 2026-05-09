@@ -338,7 +338,23 @@ function verifyOptionalWebhookSignature(req) {
 }
 
 function extractDepositCode(value) {
-  const match = normalizePaymentText(value).match(/nap[a-z0-9]+/i);
+  const rawMatch = String(value || '').match(/nap[\s._-]*[a-z0-9]{8}/i);
+  if (rawMatch) return normalizePaymentText(rawMatch[0]).toUpperCase();
+  const normalized = normalizePaymentText(value);
+  const pendingCodes = db.prepare(`
+    SELECT transaction_code, transfer_content
+    FROM deposits
+    WHERE status = 'pending' AND method = 'bank_transfer'
+    ORDER BY created_at DESC
+    LIMIT 300
+  `).all();
+  const matchedPending = pendingCodes.find((deposit) => {
+    const code = normalizePaymentText(deposit.transaction_code);
+    const content = normalizePaymentText(deposit.transfer_content);
+    return (code && normalized.includes(code)) || (content && normalized.includes(content));
+  });
+  if (matchedPending) return matchedPending.transaction_code;
+  const match = normalized.match(/nap[a-z0-9]{8}/i);
   return match ? match[0].toUpperCase() : '';
 }
 
@@ -352,7 +368,7 @@ function transactionListFromResponse(data) {
 }
 
 function normalizeIncomingTransfer(raw = {}) {
-  const amount = parseAmount(raw.amount || raw.paid_amount || raw.transferAmount || raw.transfer_amount || raw.amount_in || raw.amountIn || raw.creditAmount || raw.credit_amount || raw.money || 0);
+  const amount = parseAmount(raw.amount || raw.paid_amount || raw.transferAmount || raw.transfer_amount || raw.amount_in || raw.amountIn || raw.creditAmount || raw.credit_amount || raw.money || raw.value || raw.transaction_amount || raw.transactionAmount || raw.transfer_amount_vnd || 0);
   const transferType = String(raw.transferType || raw.transfer_type || raw.type || raw.transaction_type || raw.direction || (amount > 0 ? 'in' : '')).trim().toLowerCase();
   return {
     transferType,

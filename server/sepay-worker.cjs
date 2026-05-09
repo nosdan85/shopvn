@@ -69,6 +69,10 @@ function transactionContent(raw = {}) {
   return String(raw.content || raw.description || raw.transferContent || raw.transfer_content || raw.transaction_content || raw.transactionContent || raw.note || raw.memo || '');
 }
 
+function transactionAmount(raw = {}) {
+  return raw.amount || raw.paid_amount || raw.transferAmount || raw.transfer_amount || raw.amount_in || raw.amountIn || raw.creditAmount || raw.credit_amount || raw.money || raw.value || raw.transaction_amount || raw.transactionAmount || raw.transfer_amount_vnd || '';
+}
+
 async function pendingDepositCodes() {
   const url = pendingCodesUrl();
   if (!url) return [];
@@ -133,7 +137,7 @@ async function pollSepayOnce() {
   if (debugEnabled()) {
     console.log(`[debug] matched_transactions=${matchedTransactions.length}`);
     for (const transaction of matchedTransactions.slice(0, 5)) {
-      console.log(`[debug] matched content="${transactionContent(transaction).slice(0, 160)}" amount="${transaction.amount || transaction.paid_amount || transaction.transferAmount || transaction.transfer_amount || transaction.money || ''}"`);
+      console.log(`[debug] matched content="${transactionContent(transaction).slice(0, 160)}" amount="${transactionAmount(transaction)}" keys=${Object.keys(transaction).join(',')}`);
     }
   }
   const deliveries = [];
