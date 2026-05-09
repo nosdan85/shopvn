@@ -75,7 +75,7 @@ const upload = multer({
 const orderStatusLabels = {
   pending: 'Chờ xử lý',
   processing: 'Đang xử lý',
-  completed: 'Đã giao item',
+  completed: 'Đã giao hàng',
   cancelled: 'Đã hủy',
   refunded: 'Đã hoàn tiền',
 };
@@ -134,6 +134,15 @@ function isSupportedImage(buffer) {
   const gif = buffer.toString('ascii', 0, 6) === 'GIF87a' || buffer.toString('ascii', 0, 6) === 'GIF89a';
   const webp = buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
   return png || jpg || gif || webp;
+}
+
+function validateUploadedImage(file) {
+  if (!file?.path) throw new Error('Kh?ng t?m th?y file upload.');
+  const buffer = fs.readFileSync(file.path);
+  if (!isSupportedImage(buffer)) {
+    fs.unlinkSync(file.path);
+    throw new Error('File upload kh?ng ph?i ?nh h?p l?.');
+  }
 }
 
 function signToken(user) {
@@ -409,14 +418,23 @@ function processIncomingDepositTransfer(raw, source = 'Webhook') {
 
 function createOrderChatSummary({ order, items }) {
   const lines = [
-    `Đơn mới ${order.order_code}`,
+    `Mã đơn: ${order.order_code}`,
     `Tài khoản web: ${order.username || ''}`,
-    `Roblox Username: ${order.roblox_username}`,
+    `Tên Roblox: ${order.roblox_username}`,
     `Tổng tiền: ${order.total_amount} VND`,
-    'Danh sách item:',
-    ...items.map((item) => `- ${item.item_name} x${item.quantity} = ${item.total_price} VND`),
+    `Đồ mua: ${items.map((item) => `${item.item_name} x${item.quantity}`).join(', ')}`,
   ];
   return lines.join('\n');
+}
+
+function chatMessageWithImage(message, imageUrl) {
+  const text = clampText(message, 2000);
+  const image = clampText(imageUrl, 500);
+  if (!image) return text;
+  if (!/^\/uploads\/[A-Za-z0-9._-]+$/.test(image) && !/^https?:\/\/\S{1,480}$/i.test(image)) {
+    throw new Error('Link ảnh không hợp lệ.');
+  }
+  return [text, `Ảnh: ${image}`].filter(Boolean).join('\n');
 }
 
 function createInitialOrderChat({ orderId, userId, message }) {
@@ -816,7 +834,37 @@ app.get('/api/orders/:id', requireAuth, (req, res) => {
   }
   const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
   const logs = db.prepare('SELECT * FROM order_status_logs WHERE order_id = ? ORDER BY created_at ASC').all(order.id);
-  res.json({ order, items, logs });
+  const messages = db.prepare(`
+    SELECT order_chat_messages.*, users.username as sender_username, users.role as sender_role
+    FROM order_chat_messages
+    JOIN users ON users.id = order_chat_messages.sender_id
+    WHERE order_chat_messages.order_id = ?
+    ORDER BY order_chat_messages.created_at ASC
+    LIMIT 300
+  `).all(order.id);
+  db.prepare('UPDATE order_chat_messages SET is_read = 1 WHERE order_id = ? AND sender_id != ?').run(order.id, req.user.id);
+  res.json({ order, items, logs, messages });
+});
+
+app.post('/api/orders/:id/chat', requireAuth, (req, res) => {
+  const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  if (!order) {
+    res.status(404).json({ message: 'Kh?ng t?m th?y ??n h?ng.' });
+    return;
+  }
+  try {
+    const message = chatMessageWithImage(req.body.message, req.body.image_url);
+    if (!message) {
+      res.status(400).json({ message: 'Vui l?ng nh?p n?i dung ho?c g?i ?nh.' });
+      return;
+    }
+    db.prepare('INSERT INTO order_chat_messages (order_id, user_id, sender_id, message) VALUES (?, ?, ?, ?)')
+      .run(order.id, req.user.id, req.user.id, message);
+    notifyUser(req.user.id, '?? g?i tin nh?n ??n h?ng', `Shop s? ph?n h?i ??n ${order.order_code}.`, 'order');
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 });
 
 app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
@@ -931,14 +979,18 @@ app.get('/api/chat', requireAuth, (req, res) => {
 });
 
 app.post('/api/chat', requireAuth, (req, res) => {
-  const message = String(req.body.message || '').trim();
-  if (!message) {
-    res.status(400).json({ message: 'Vui lòng nhập nội dung chat.' });
-    return;
+  try {
+    const message = chatMessageWithImage(req.body.message, req.body.image_url);
+    if (!message) {
+      res.status(400).json({ message: 'Vui l?ng nh?p n?i dung ho?c g?i ?nh.' });
+      return;
+    }
+    db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)').run(req.user.id, req.user.id, message.slice(0, 2500));
+    notifyUser(req.user.id, '?? g?i tin nh?n', 'Admin s? ph?n h?i trong th?i gian s?m nh?t.', 'chat');
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
-  db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)').run(req.user.id, req.user.id, message.slice(0, 1000));
-  notifyUser(req.user.id, 'Đã gửi tin nhắn', 'Admin sẽ phản hồi trong thời gian sớm nhất.', 'chat');
-  res.json({ ok: true });
 });
 
 app.post('/api/reviews', requireAuth, (req, res) => {
@@ -993,14 +1045,22 @@ app.post('/api/profile/change-password', requireAuth, (req, res) => {
   res.json({ message: 'Đổi mật khẩu thành công.' });
 });
 
-app.post('/api/uploads/image', requireAdmin, upload.single('image'), (req, res) => {
-  const buffer = fs.readFileSync(req.file.path);
-  if (!isSupportedImage(buffer)) {
-    fs.unlinkSync(req.file.path);
-    res.status(400).json({ message: 'File upload không phải ảnh hợp lệ.' });
-    return;
+app.post('/api/uploads/chat-image', requireAuth, upload.single('image'), (req, res) => {
+  try {
+    validateUploadedImage(req.file);
+    res.json({ url: `/uploads/${req.file.filename}` });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
-  res.json({ url: `/uploads/${req.file.filename}` });
+});
+
+app.post('/api/uploads/image', requireAdmin, upload.single('image'), (req, res) => {
+  try {
+    validateUploadedImage(req.file);
+    res.json({ url: `/uploads/${req.file.filename}` });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 });
 
 app.get('/api/admin/dashboard', requireAdmin, (_req, res) => {
@@ -1101,9 +1161,14 @@ app.patch('/api/admin/items/:id', requireAdmin, (req, res) => {
 });
 
 app.delete('/api/admin/items/:id', requireAdmin, (req, res) => {
-  db.prepare("UPDATE items SET status = 'hidden', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
-  logAdmin(req.user.id, 'hide_item', 'item', Number(req.params.id), req);
-  res.json({ ok: true });
+  const used = db.prepare('SELECT COUNT(*) as count FROM order_items WHERE item_id = ?').get(req.params.id).count;
+  if (used > 0) {
+    db.prepare("UPDATE items SET status = 'hidden', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+  } else {
+    db.prepare('DELETE FROM items WHERE id = ?').run(req.params.id);
+  }
+  logAdmin(req.user.id, 'delete_item', 'item', Number(req.params.id), req);
+  res.json({ ok: true, softDeleted: used > 0 });
 });
 
 app.get('/api/admin/orders', requireAdmin, (req, res) => {
@@ -1127,6 +1192,23 @@ app.get('/api/admin/orders', requireAdmin, (req, res) => {
     ORDER BY orders.created_at DESC
   `).all(...params);
   res.json({ orders });
+});
+
+app.delete('/api/admin/orders/:id', requireAdmin, (req, res) => {
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  if (!order) {
+    res.status(404).json({ message: 'Kh?ng t?m th?y ??n h?ng.' });
+    return;
+  }
+  db.transaction(() => {
+    db.prepare('DELETE FROM order_chat_messages WHERE order_id = ?').run(order.id);
+    db.prepare('DELETE FROM reviews WHERE order_id = ?').run(order.id);
+    db.prepare('DELETE FROM order_status_logs WHERE order_id = ?').run(order.id);
+    db.prepare('DELETE FROM order_items WHERE order_id = ?').run(order.id);
+    db.prepare('DELETE FROM orders WHERE id = ?').run(order.id);
+    logAdmin(req.user.id, 'delete_order', 'order', order.id, req);
+  })();
+  res.json({ ok: true });
 });
 
 app.get('/api/admin/orders/:id', requireAdmin, (req, res) => {
@@ -1301,20 +1383,24 @@ app.get('/api/admin/chats/:userId', requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/chats/:userId', requireAdmin, (req, res) => {
-  const message = String(req.body.message || '').trim();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.userId);
   if (!user) {
-    res.status(404).json({ message: 'Không tìm thấy user.' });
+    res.status(404).json({ message: 'Kh?ng t?m th?y user.' });
     return;
   }
-  if (!message) {
-    res.status(400).json({ message: 'Vui lòng nhập nội dung chat.' });
-    return;
+  try {
+    const message = chatMessageWithImage(req.body.message, req.body.image_url);
+    if (!message) {
+      res.status(400).json({ message: 'Vui l?ng nh?p n?i dung ho?c g?i ?nh.' });
+      return;
+    }
+    db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)').run(user.id, req.user.id, message.slice(0, 2500));
+    notifyUser(user.id, 'Admin ?? ph?n h?i chat', message.slice(0, 180), 'chat');
+    logAdmin(req.user.id, 'reply_chat', 'user', user.id, req);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
-  db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)').run(user.id, req.user.id, message.slice(0, 1000));
-  notifyUser(user.id, 'Admin đã phản hồi chat', message.slice(0, 180), 'chat');
-  logAdmin(req.user.id, 'reply_chat', 'user', user.id, req);
-  res.json({ ok: true });
 });
 
 app.get('/api/admin/order-chats', requireAdmin, (_req, res) => {
@@ -1363,21 +1449,25 @@ app.get('/api/admin/order-chats/:orderId', requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/order-chats/:orderId', requireAdmin, (req, res) => {
-  const message = String(req.body.message || '').trim();
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.orderId);
   if (!order) {
-    res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+    res.status(404).json({ message: 'Kh?ng t?m th?y ??n h?ng.' });
     return;
   }
-  if (!message) {
-    res.status(400).json({ message: 'Vui lòng nhập nội dung chat.' });
-    return;
+  try {
+    const message = chatMessageWithImage(req.body.message, req.body.image_url);
+    if (!message) {
+      res.status(400).json({ message: 'Vui l?ng nh?p n?i dung ho?c g?i ?nh.' });
+      return;
+    }
+    db.prepare('INSERT INTO order_chat_messages (order_id, user_id, sender_id, message) VALUES (?, ?, ?, ?)')
+      .run(order.id, order.user_id, req.user.id, message.slice(0, 2500));
+    notifyUser(order.user_id, 'Admin ph?n h?i ??n h?ng', message.slice(0, 180), 'order');
+    logAdmin(req.user.id, 'reply_order_chat', 'order', order.id, req);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
-  db.prepare('INSERT INTO order_chat_messages (order_id, user_id, sender_id, message) VALUES (?, ?, ?, ?)')
-    .run(order.id, order.user_id, req.user.id, message.slice(0, 2000));
-  notifyUser(order.user_id, 'Admin phản hồi đơn hàng', message.slice(0, 180), 'order');
-  logAdmin(req.user.id, 'reply_order_chat', 'order', order.id, req);
-  res.json({ ok: true });
 });
 
 app.get('/api/admin/deposits', requireAdmin, (req, res) => {
@@ -1426,6 +1516,21 @@ app.patch('/api/admin/deposits/:id', requireAdmin, (req, res) => {
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
+});
+
+app.delete('/api/admin/deposits/:id', requireAdmin, (req, res) => {
+  const deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(req.params.id);
+  if (!deposit) {
+    res.status(404).json({ message: 'Kh?ng t?m th?y giao d?ch.' });
+    return;
+  }
+  if (deposit.status === 'success') {
+    res.status(400).json({ message: 'Kh?ng x?a giao d?ch ?? c?ng ti?n ?? tr?nh l?ch log s? d?.' });
+    return;
+  }
+  db.prepare('DELETE FROM deposits WHERE id = ?').run(deposit.id);
+  logAdmin(req.user.id, 'delete_deposit', 'deposit', deposit.id, req);
+  res.json({ ok: true });
 });
 
 app.get('/api/admin/balance-logs', requireAdmin, (_req, res) => {

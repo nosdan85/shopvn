@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const DEFAULT_INTERVAL_MS = 10000;
 
 function parseBoolean(value) {
@@ -27,6 +29,14 @@ function reportUrl() {
   const secret = process.env.SEPAY_WEBHOOK_SECRET;
   if (!apiBase || !secret) return '';
   return `${apiBase}/api/webhooks/sepay-bot/report?secret=${encodeURIComponent(secret)}`;
+}
+
+function signedJsonHeaders(payload) {
+  const secret = String(process.env.SEPAY_WEBHOOK_HMAC_SECRET || '').trim();
+  if (!secret) return { 'content-type': 'application/json' };
+  const timestamp = String(Date.now());
+  const signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${payload}`).digest('hex');
+  return { 'content-type': 'application/json', 'x-webhook-timestamp': timestamp, 'x-webhook-signature': `sha256=${signature}` };
 }
 
 function pendingCodesUrl() {
@@ -59,7 +69,7 @@ async function sendReport(report) {
   try {
     await fetch(url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: signedJsonHeaders(JSON.stringify(report)),
       body: JSON.stringify(report),
     });
   } catch (error) {
@@ -96,7 +106,7 @@ async function pollSepayOnce() {
     try {
       const webhookResponse = await fetch(targetWebhook, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: signedJsonHeaders(JSON.stringify(transaction)),
         body: JSON.stringify(transaction),
       });
       const result = await webhookResponse.json().catch(() => ({}));

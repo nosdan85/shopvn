@@ -1916,3 +1916,43 @@ main > section,
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+@media (max-width: 760px) {
+  .site-header nav.desktop-nav,
+  .desktop-nav {
+    position: static !important;
+    display: none !important;
+  }
+
+  .mobile-bottom-nav {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(74px, 1fr);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .mobile-bottom-nav::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (min-width: 761px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+.chat-image,
+.chat-image-preview {
+  max-width: min(100%, 280px);
+  max-height: 320px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.chat-image-preview {
+  margin-top: 0.65rem;
+}

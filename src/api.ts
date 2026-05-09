@@ -35,10 +35,10 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   return data as T
 }
 
-export async function uploadImage(file: File): Promise<{ url: string }> {
+export async function uploadImage(file: File, path = '/uploads/image'): Promise<{ url: string }> {
   const body = new FormData()
   body.append('image', file)
-  const response = await fetch(`${apiBaseUrl}/api/uploads/image`, {
+  const response = await fetch(`${apiBaseUrl}/api${path}`, {
     method: 'POST',
     credentials: 'include',
     body,
