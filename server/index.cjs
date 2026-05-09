@@ -47,6 +47,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(cookieParser());
 app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: true }));
 
@@ -432,6 +433,83 @@ function processIncomingDepositTransfer(raw, source = 'Webhook') {
   })();
 }
 
+function cardWebhookPayload(req) {
+  return { ...(req.query || {}), ...(req.body || {}) };
+}
+
+function cardWebhookValue(payload, keys) {
+  for (const key of keys) {
+    if (payload[key] !== undefined && payload[key] !== null && String(payload[key]).trim() !== '') return payload[key];
+  }
+  return '';
+}
+
+function normalizeCardWebhookStatus(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (['1', 'success', 'successful', 'done', 'completed', 'approved', 'thanhcong', 'thanh_cong', 'đúng', 'dung'].includes(text)) return 'success';
+  if (['2', 'pending', 'processing', 'wait', 'waiting', 'cho_xu_ly', 'chờ xử lý'].includes(text)) return 'pending';
+  if (['3', 'fail', 'failed', 'error', 'cancel', 'cancelled', 'rejected', 'sai', 'thatbai', 'that_bai'].includes(text)) return 'failed';
+  return text;
+}
+
+function cardCallbackSecretOk(req, payload) {
+  const allowedSecrets = [
+    setting('card_webhook_secret'),
+    process.env.CARD_WEBHOOK_SECRET,
+    setting('gachthefast_webhook_secret'),
+    process.env.GACHTHEFAST_WEBHOOK_SECRET,
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+  if (!allowedSecrets.length) return true;
+  const providedSecrets = [
+    ...extractWebhookSecret(req),
+    payload.secret,
+    payload.token,
+    payload.api_key,
+    payload.apiKey,
+    payload.partner_key,
+    payload.partnerKey,
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+  return providedSecrets.some((secret) => allowedSecrets.some((allowed) => timingSafeEqualText(secret, allowed)));
+}
+
+function processGachTheFastCallback(payload) {
+  const requestId = clampText(cardWebhookValue(payload, ['request_id', 'requestId', 'trans_id', 'transId', 'transaction_id', 'transactionId', 'code', 'ref_id', 'refId']), 160);
+  const cardSerial = clampText(cardWebhookValue(payload, ['serial', 'card_serial', 'seri']), 80);
+  const status = normalizeCardWebhookStatus(cardWebhookValue(payload, ['status', 'card_status', 'result', 'state']));
+  const callbackAmount = parseAmount(cardWebhookValue(payload, ['real_amount', 'receive_amount', 'value_receive', 'amount_receive', 'amount', 'value', 'declared_value', 'menhgia']));
+  const note = clampText(cardWebhookValue(payload, ['message', 'msg', 'note', 'reason', 'description']), 300);
+  const lookupValues = [requestId, cardSerial].filter(Boolean);
+  const current = lookupValues.length
+    ? db.prepare(`
+      SELECT * FROM deposits
+      WHERE method IN ('viettel_card','mobifone_card','vinaphone_card')
+        AND status = 'pending'
+        AND (${lookupValues.map(() => '(transaction_code = ? OR transfer_content LIKE ?)').join(' OR ')})
+      ORDER BY created_at DESC
+      LIMIT 1
+    `).get(...lookupValues.flatMap((value) => [value, `%${value}%`]))
+    : null;
+  if (!current) return { ignored: true, message: 'Không tìm thấy giao dịch thẻ pending tương ứng.' };
+  if (status === 'success') {
+    return db.transaction(() => {
+      const fresh = db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id);
+      if (!fresh || fresh.status !== 'pending') return { ignored: true, message: 'Giao dịch thẻ đã được xử lý trước đó.', deposit: fresh || current };
+      if (Number.isFinite(callbackAmount) && callbackAmount > 0 && callbackAmount < fresh.amount) {
+        return { ignored: true, message: `Mệnh giá callback ${callbackAmount} nhỏ hơn mệnh giá khai báo ${fresh.amount}.`, deposit: fresh };
+      }
+      return completeDeposit(fresh, { transactionId: requestId || `GTF-${fresh.transaction_code}`, adminNote: `GachTheFast xác nhận${note ? `: ${note}` : ''}`, note: `GachTheFast xác nhận ${fresh.transaction_code}` });
+    })();
+  }
+  if (status === 'failed') {
+    db.prepare(`
+      UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status = 'pending'
+    `).run(note || 'GachTheFast báo thẻ thất bại.', requestId || null, current.id);
+    return { ignored: true, message: 'GachTheFast báo thẻ thất bại.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
+  }
+  return { ignored: true, message: 'GachTheFast callback chưa hoàn tất.', deposit: current };
+}
+
 function createOrderChatSummary({ order, items }) {
   const lines = [
     `Mã đơn: ${order.order_code}`,
@@ -781,6 +859,28 @@ app.post('/api/webhooks/deposits', webhookLimiter, (req, res) => {
     res.json({ success: false, ignored: true, message: error.message });
   }
 });
+
+function handleGachTheFastWebhook(req, res) {
+  const payload = cardWebhookPayload(req);
+  if (!cardCallbackSecretOk(req, payload)) {
+    logSecurity({ eventType: 'card_webhook_secret_denied', severity: 'high', message: 'Invalid GachTheFast webhook secret.', req });
+    res.status(401).json({ success: false, ignored: true, message: 'Card webhook secret không hợp lệ.' });
+    return;
+  }
+  try {
+    const result = processGachTheFastCallback(payload);
+    if (result?.ignored) {
+      res.json({ success: false, ignored: true, message: result.message, deposit: result.deposit || null });
+      return;
+    }
+    res.json({ success: true, ignored: false, message: 'Đã xác nhận thẻ và cộng tiền.', deposit: result });
+  } catch (error) {
+    res.json({ success: false, ignored: true, message: error.message });
+  }
+}
+
+app.get('/api/webhooks/cards/gachthefast', webhookLimiter, handleGachTheFastWebhook);
+app.post('/api/webhooks/cards/gachthefast', webhookLimiter, handleGachTheFastWebhook);
 
 app.get('/api/webhooks/deposits/pending-codes', webhookLimiter, (req, res) => {
   const allowedSecrets = [setting('sepay_webhook_secret')].map((value) => String(value || '').trim()).filter(Boolean);
