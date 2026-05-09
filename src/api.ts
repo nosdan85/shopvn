@@ -69,7 +69,7 @@ export function dateTime(value?: string) {
 export const orderStatus: Record<string, string> = {
   pending: 'Chờ xử lý',
   processing: 'Đang xử lý',
-  completed: 'Đã giao item',
+  completed: 'Đã giao hàng',
   cancelled: 'Đã hủy',
   refunded: 'Đã hoàn tiền',
 }

@@ -240,8 +240,8 @@ function ShopApp() {
     { page: 'admin' as Page, label: 'Admin', icon: '⚙', show: Boolean(user && user.role !== 'user') },
   ].filter((item) => item.show)
   const mobileNavItems = user
-    ? [...navItems, { page: 'profile' as Page, label: 'T\u00e0i kho\u1ea3n', icon: '\uD83D\uDC64', show: true }]
-    : [...navItems, { page: 'login' as Page, label: '\u0110\u0103ng nh\u1eadp', icon: '\u21AA', show: true }, { page: 'register' as Page, label: '\u0110\u0103ng k\u00fd', icon: '+', show: true }]
+    ? [...navItems, { page: 'profile' as Page, label: 'Tài khoản', icon: '👤', show: true }]
+    : [...navItems, { page: 'login' as Page, label: 'Đăng nhập', icon: '↪', show: true }, { page: 'register' as Page, label: 'Đăng ký', icon: '+', show: true }]
 
   if (booting) return <BootScreen />
 
@@ -771,6 +771,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
   const qrUrl = deposit && method === 'bank_transfer'
     ? bankQrUrl(settings, deposit)
     : ''
+  const waitingForBank = deposit?.method === 'bank_transfer' && deposit.status === 'pending'
 
   useEffect(() => {
     if (!deposit || deposit.status !== 'pending') return undefined
@@ -855,9 +856,25 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
           </div>
         )}
       </div>
+      {waitingForBank && <DepositWaitingOverlay deposit={deposit} />}
     </section>
   )
 }
+
+function DepositWaitingOverlay({ deposit }: { deposit: Deposit }) {
+  return (
+    <div className="deposit-waiting-overlay" role="status" aria-live="polite">
+      <div className="deposit-waiting-card">
+        <div className="dog-runner" aria-hidden="true">{'\uD83D\uDC15'}</div>
+        <div className="loading-track"><span /></div>
+        <h2>{'\u0110ang ch\u1edd c\u1ed9ng ti\u1ec1n'}</h2>
+        <p>{'Vui l\u00f2ng ch\u1edd v\u00e0i gi\u00e2y \u0111\u1ec3 h\u1ec7 th\u1ed1ng x\u00e1c nh\u1eadn giao d\u1ecbch '}<strong>{deposit.transaction_code}</strong>.</p>
+        <p className="muted">{'B\u1ea1n kh\u00f4ng c\u1ea7n t\u1ea1o th\u00eam giao d\u1ecbch m\u1edbi. Khi ti\u1ec1n \u0111\u01b0\u1ee3c c\u1ed9ng, web s\u1ebd t\u1ef1 t\u1ea3i l\u1ea1i.'}</p>
+      </div>
+    </div>
+  )
+}
+
 function DepositsPage() {
   const [deposits, setDeposits] = useState<Deposit[]>([])
   useEffect(() => {
@@ -905,33 +922,33 @@ function OrderDetail({ id }: { id: string }) {
     setImageUrl('')
     load()
   }
-  if (!data) return <section className="page-section">{'\u0110ang t\u1ea3i \u0111\u01a1n h\u00e0ng...'}</section>
+  if (!data) return <section className="page-section">{'Đang tải đơn hàng...'}</section>
   return (
     <section className="page-section detail-layout">
       <div className="panel">
-        <h1>{'\u0110\u01a1n'} {data.order.order_code}</h1>
-        <p>{'Tr\u1ea1ng th\u00e1i:'} <strong>{orderStatus[data.order.status]}</strong></p>
+        <h1>{'Đơn'} {data.order.order_code}</h1>
+        <p>{'Trạng thái:'} <strong>{orderStatus[data.order.status]}</strong></p>
         <p>Roblox Username: <strong>{data.order.roblox_username}</strong></p>
-        <p>{'Ghi ch\u00fa kh\u00e1ch:'} {data.order.customer_note || '-'}</p>
-        <p>{'Ghi ch\u00fa admin:'} {data.order.admin_note || '-'}</p>
-        <p>{'T\u1ed5ng ti\u1ec1n:'} <strong>{money(data.order.total_amount)}</strong></p>
-        <h2>{'Item trong \u0111\u01a1n'}</h2>
-        {data.items.map((item) => <p key={item.item_name}>{item.quantity} x {item.item_name} ? {money(item.total_price)}</p>)}
+        <p>{'Ghi chú khách:'} {data.order.customer_note || '-'}</p>
+        <p>{'Ghi chú admin:'} {data.order.admin_note || '-'}</p>
+        <p>{'Tổng tiền:'} <strong>{money(data.order.total_amount)}</strong></p>
+        <h2>{'Item trong đơn'}</h2>
+        {data.items.map((item) => <p key={item.item_name}>{item.quantity} x {item.item_name} · {money(item.total_price)}</p>)}
       </div>
       <div className="panel chat-panel">
-        <h2>{'Chat \u0111\u01a1n h\u00e0ng'}</h2>
+        <h2>{'Chat đơn hàng'}</h2>
         <div className="chat-box">
-          {data.messages.length === 0 && <p className="muted">{'Ch\u01b0a c\u00f3 tin nh\u1eafn \u0111\u01a1n h\u00e0ng.'}</p>}
+          {data.messages.length === 0 && <p className="muted">{'Chưa có tin nhắn đơn hàng.'}</p>}
           {data.messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_role === 'user'} />)}
         </div>
         <form className="chat-form" onSubmit={send}>
-          <input placeholder={'Nh\u1eafn cho shop v\u1ec1 \u0111\u01a1n n\u00e0y'} value={message} onChange={(event) => setMessage(event.target.value)} />
-          <label className="upload-button">{'\u1ea2nh'}<input type="file" accept="image/*" onChange={uploadChatImage} /></label>
-          <button className="primary" disabled={!message && !imageUrl}>{'G\u1eedi'}</button>
+          <input placeholder={'Nhắn cho shop về đơn này'} value={message} onChange={(event) => setMessage(event.target.value)} />
+          <label className="upload-button">{'Ảnh'}<input type="file" accept="image/*" onChange={uploadChatImage} /></label>
+          <button className="primary" disabled={!message && !imageUrl}>{'Gửi'}</button>
         </form>
-        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt={'\u1ea2nh chu\u1ea9n b\u1ecb g\u1eedi'} />}
-        <h2>{'L\u1ecbch s\u1eed tr\u1ea1ng th\u00e1i'}</h2>
-        {data.logs.map((log, index) => <p key={index}>{dateTime(log.created_at)} ? {orderStatus[log.new_status] || log.new_status} ? {log.note}</p>)}
+        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt={'Ảnh chuẩn bị gửi'} />}
+        <h2>{'Lịch sử trạng thái'}</h2>
+        {data.logs.map((log, index) => <p key={index}>{dateTime(log.created_at)} · {orderStatus[log.new_status] || log.new_status} · {log.note}</p>)}
       </div>
     </section>
   )
@@ -1036,9 +1053,9 @@ function ReviewPage({ setNotice }: { setNotice: (message: string) => void }) {
 }
 
 function ChatBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
-  const imageMatch = item.message.match(/(?:^|\n)\u1ea2nh: (\S+)/)
-  const text = item.message.replace(/(?:^|\n)\u1ea2nh: \S+/, '').trim()
-  return <div className={`chat-message ${mine ? 'mine' : 'staff'}`}><strong>{mine ? 'B\u1ea1n' : item.sender_username || 'Admin'}</strong>{text && <p>{text}</p>}{imageMatch && <img className="chat-image" src={imageMatch[1]} alt="\u1ea2nh chat" />}<small>{dateTime(item.created_at)}</small></div>
+  const imageMatch = item.message.match(/(?:^|\n)Ảnh: (\S+)/)
+  const text = item.message.replace(/(?:^|\n)Ảnh: \S+/, '').trim()
+  return <div className={`chat-message ${mine ? 'mine' : 'staff'}`}><strong>{mine ? 'Bạn' : item.sender_username || 'Admin'}</strong>{text && <p>{text}</p>}{imageMatch && <img className="chat-image" src={imageMatch[1]} alt="Ảnh chat" />}<small>{dateTime(item.created_at)}</small></div>
 }
 
 function ChatPage({ user, go, setNotice }: { user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
@@ -1077,21 +1094,21 @@ function ChatPage({ user, go, setNotice }: { user: User | null; go: (page: Page,
       setNotice(messageFromError(error))
     }
   }
-  if (!user) return <section className="page-section"><h1>Vui l\u00f2ng \u0111\u0103ng nh\u1eadp \u0111\u1ec3 chat v\u1edbi admin.</h1><button className="primary" onClick={() => go('login')}>\u0110\u0103ng nh\u1eadp</button></section>
+  if (!user) return <section className="page-section"><h1>Vui lòng đăng nhập để chat với admin.</h1><button className="primary" onClick={() => go('login')}>Đăng nhập</button></section>
   return (
     <section className="page-section">
       <div className="panel chat-panel">
-        <h1>Chat v\u1edbi admin</h1>
+        <h1>Chat với admin</h1>
         <div className="chat-box">
-          {messages.length === 0 && <p className="muted">Ch\u01b0a c\u00f3 tin nh\u1eafn n\u00e0o.</p>}
+          {messages.length === 0 && <p className="muted">Chưa có tin nhắn nào.</p>}
           {messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_id === user.id} />)}
         </div>
         <form className="chat-form" onSubmit={submit}>
-          <input placeholder="Nh\u1eadp tin nh\u1eafn c\u1ea7n h\u1ed7 tr\u1ee3" value={message} onChange={(event) => setMessage(event.target.value)} />
-          <label className="upload-button">\u1ea2nh<input type="file" accept="image/*" onChange={uploadChatImage} /></label>
-          <button className="primary" disabled={!message && !imageUrl}>G\u1eedi</button>
+          <input placeholder="Nhập tin nhắn cần hỗ trợ" value={message} onChange={(event) => setMessage(event.target.value)} />
+          <label className="upload-button">Ảnh<input type="file" accept="image/*" onChange={uploadChatImage} /></label>
+          <button className="primary" disabled={!message && !imageUrl}>Gửi</button>
         </form>
-        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt="\u1ea2nh chu\u1ea9n b\u1ecb g\u1eedi" />}
+        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt="Ảnh chuẩn bị gửi" />}
       </div>
     </section>
   )
@@ -1450,11 +1467,11 @@ function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
           {messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_role !== 'user'} />)}
         </div>
         <form className="chat-form" onSubmit={submit}>
-          <input disabled={!selected} placeholder={'Nh\u1eadp ph\u1ea3n h\u1ed3i cho user'} value={message} onChange={(event) => setMessage(event.target.value)} />
-          <label className="upload-button">{'\u1ea2nh'}<input disabled={!selected} type="file" accept="image/*" onChange={uploadChatImage} /></label>
-          <button className="primary" disabled={!selected || (!message && !imageUrl)}>{'G\u1eedi'}</button>
+          <input disabled={!selected} placeholder={'Nhập phản hồi cho user'} value={message} onChange={(event) => setMessage(event.target.value)} />
+          <label className="upload-button">{'Ảnh'}<input disabled={!selected} type="file" accept="image/*" onChange={uploadChatImage} /></label>
+          <button className="primary" disabled={!selected || (!message && !imageUrl)}>{'Gửi'}</button>
         </form>
-        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt={'\u1ea2nh chu\u1ea9n b\u1ecb g\u1eedi'} />}
+        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt={'Ảnh chuẩn bị gửi'} />}
       </div>
     </div>
   )
@@ -1512,9 +1529,9 @@ function AdminOrderChats({ setNotice }: { setNotice: (message: string) => void }
           {messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_role !== 'user'} />)}
         </div>
         <form className="chat-form" onSubmit={submit}>
-          <input disabled={!selected} placeholder={'Nh\u1eadp ph\u1ea3n h\u1ed3i cho \u0111\u01a1n h\u00e0ng'} value={message} onChange={(event) => setMessage(event.target.value)} />
-          <label className="upload-button">{'\u1ea2nh'}<input disabled={!selected} type="file" accept="image/*" onChange={uploadChatImage} /></label>
-          <button className="primary" disabled={!selected || (!message && !imageUrl)}>{'G\u1eedi'}</button>
+          <input disabled={!selected} placeholder={'Nhập phản hồi cho đơn hàng'} value={message} onChange={(event) => setMessage(event.target.value)} />
+          <label className="upload-button">{'Ảnh'}<input disabled={!selected} type="file" accept="image/*" onChange={uploadChatImage} /></label>
+          <button className="primary" disabled={!selected || (!message && !imageUrl)}>{'Gửi'}</button>
         </form>
       </div>
     </div>

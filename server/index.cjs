@@ -137,11 +137,11 @@ function isSupportedImage(buffer) {
 }
 
 function validateUploadedImage(file) {
-  if (!file?.path) throw new Error('Kh?ng t?m th?y file upload.');
+  if (!file?.path) throw new Error('Kh\u00f4ng t\u00ecm th\u1ea5y file upload.');
   const buffer = fs.readFileSync(file.path);
   if (!isSupportedImage(buffer)) {
     fs.unlinkSync(file.path);
-    throw new Error('File upload kh?ng ph?i ?nh h?p l?.');
+    throw new Error('File upload kh\u00f4ng ph\u1ea3i \u1ea3nh h\u1ee3p l\u1ec7.');
   }
 }
 
@@ -671,7 +671,7 @@ app.get('/api/items', publicCache, (req, res) => {
 app.get('/api/items/:slug', publicCache, (req, res) => {
   const item = db.prepare('SELECT * FROM items WHERE slug = ? AND status = ?').get(req.params.slug, 'active');
   if (!item) {
-    res.status(404).json({ message: 'Không tìm thấy item.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
   const reviews = db.prepare(`
@@ -829,7 +829,7 @@ app.get('/api/orders', requireAuth, (req, res) => {
 app.get('/api/orders/:id', requireAuth, (req, res) => {
   const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!order) {
-    res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
   const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
@@ -849,18 +849,18 @@ app.get('/api/orders/:id', requireAuth, (req, res) => {
 app.post('/api/orders/:id/chat', requireAuth, (req, res) => {
   const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!order) {
-    res.status(404).json({ message: 'Kh?ng t?m th?y ??n h?ng.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
   try {
     const message = chatMessageWithImage(req.body.message, req.body.image_url);
     if (!message) {
-      res.status(400).json({ message: 'Vui l?ng nh?p n?i dung ho?c g?i ?nh.' });
+      res.status(400).json({ message: 'Vui l\u00f2ng nh\u1eadp n\u1ed9i dung ho\u1eb7c g\u1eedi \u1ea3nh.' });
       return;
     }
     db.prepare('INSERT INTO order_chat_messages (order_id, user_id, sender_id, message) VALUES (?, ?, ?, ?)')
       .run(order.id, req.user.id, req.user.id, message);
-    notifyUser(req.user.id, '?? g?i tin nh?n ??n h?ng', `Shop s? ph?n h?i ??n ${order.order_code}.`, 'order');
+    notifyUser(req.user.id, '\u0110\u00e3 g\u1eedi tin nh\u1eafn \u0111\u01a1n h\u00e0ng', `Shop s\u1ebd ph\u1ea3n h\u1ed3i \u0111\u01a1n ${order.order_code}.`, 'order');
     res.json({ ok: true });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -982,11 +982,11 @@ app.post('/api/chat', requireAuth, (req, res) => {
   try {
     const message = chatMessageWithImage(req.body.message, req.body.image_url);
     if (!message) {
-      res.status(400).json({ message: 'Vui l?ng nh?p n?i dung ho?c g?i ?nh.' });
+      res.status(400).json({ message: 'Vui l\u00f2ng nh\u1eadp n\u1ed9i dung ho\u1eb7c g\u1eedi \u1ea3nh.' });
       return;
     }
     db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)').run(req.user.id, req.user.id, message.slice(0, 2500));
-    notifyUser(req.user.id, '?? g?i tin nh?n', 'Admin s? ph?n h?i trong th?i gian s?m nh?t.', 'chat');
+    notifyUser(req.user.id, '\u0110\u00e3 g\u1eedi tin nh\u1eafn', 'Admin s\u1ebd ph\u1ea3n h\u1ed3i trong th\u1eddi gian s\u1edbm nh\u1ea5t.', 'chat');
     res.json({ ok: true });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -1127,7 +1127,7 @@ app.patch('/api/admin/items/:id', requireAdmin, (req, res) => {
   const body = req.body;
   const existing = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
   if (!existing) {
-    res.status(404).json({ message: 'Không tìm thấy item.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
   db.prepare(`
@@ -1197,7 +1197,7 @@ app.get('/api/admin/orders', requireAdmin, (req, res) => {
 app.delete('/api/admin/orders/:id', requireAdmin, (req, res) => {
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
   if (!order) {
-    res.status(404).json({ message: 'Kh?ng t?m th?y ??n h?ng.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
   db.transaction(() => {
@@ -1214,7 +1214,7 @@ app.delete('/api/admin/orders/:id', requireAdmin, (req, res) => {
 app.get('/api/admin/orders/:id', requireAdmin, (req, res) => {
   const order = db.prepare('SELECT orders.*, users.username, users.email FROM orders JOIN users ON users.id = orders.user_id WHERE orders.id = ?').get(req.params.id);
   if (!order) {
-    res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
   const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
@@ -1260,7 +1260,7 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
       db.prepare('INSERT INTO order_status_logs (order_id, old_status, new_status, note, created_by) VALUES (?, ?, ?, ?, ?)')
         .run(order.id, order.status, status, admin_note || orderStatusLabels[status], req.user.id);
       if (status === 'processing') notifyUser(order.user_id, 'Đơn đang xử lý', `Đơn ${order.order_code} đang được shop xử lý.`, 'order');
-      if (status === 'completed') notifyUser(order.user_id, 'Đơn đã giao item', `Đơn ${order.order_code} đã hoàn thành.`, 'order');
+      if (status === 'completed') notifyUser(order.user_id, '\u0110\u01a1n \u0111\u00e3 giao h\u00e0ng', `\u0110\u01a1n ${order.order_code} \u0111\u00e3 giao h\u00e0ng.`, 'order');
       if (status === 'cancelled') notifyUser(order.user_id, 'Đơn đã hủy', `Đơn ${order.order_code} đã bị hủy.`, 'order');
       logAdmin(req.user.id, 'update_order_status', 'order', order.id, req);
       return db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id);
@@ -1282,7 +1282,7 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 app.patch('/api/admin/users/:id', requireAdmin, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) {
-    res.status(404).json({ message: 'Không tìm thấy user.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y user.' });
     return;
   }
   const nextStatus = req.body.status || user.status;
@@ -1367,7 +1367,7 @@ app.get('/api/admin/chats', requireAdmin, (_req, res) => {
 app.get('/api/admin/chats/:userId', requireAdmin, (req, res) => {
   const user = db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(req.params.userId);
   if (!user) {
-    res.status(404).json({ message: 'Không tìm thấy user.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y user.' });
     return;
   }
   const messages = db.prepare(`
@@ -1385,17 +1385,17 @@ app.get('/api/admin/chats/:userId', requireAdmin, (req, res) => {
 app.post('/api/admin/chats/:userId', requireAdmin, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.userId);
   if (!user) {
-    res.status(404).json({ message: 'Kh?ng t?m th?y user.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y user.' });
     return;
   }
   try {
     const message = chatMessageWithImage(req.body.message, req.body.image_url);
     if (!message) {
-      res.status(400).json({ message: 'Vui l?ng nh?p n?i dung ho?c g?i ?nh.' });
+      res.status(400).json({ message: 'Vui l\u00f2ng nh\u1eadp n\u1ed9i dung ho\u1eb7c g\u1eedi \u1ea3nh.' });
       return;
     }
     db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)').run(user.id, req.user.id, message.slice(0, 2500));
-    notifyUser(user.id, 'Admin ?? ph?n h?i chat', message.slice(0, 180), 'chat');
+    notifyUser(user.id, 'Admin \u0111\u00e3 ph\u1ea3n h\u1ed3i chat', message.slice(0, 180), 'chat');
     logAdmin(req.user.id, 'reply_chat', 'user', user.id, req);
     res.json({ ok: true });
   } catch (error) {
@@ -1432,7 +1432,7 @@ app.get('/api/admin/order-chats/:orderId', requireAdmin, (req, res) => {
     WHERE orders.id = ?
   `).get(req.params.orderId);
   if (!order) {
-    res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
   const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
@@ -1451,18 +1451,18 @@ app.get('/api/admin/order-chats/:orderId', requireAdmin, (req, res) => {
 app.post('/api/admin/order-chats/:orderId', requireAdmin, (req, res) => {
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.orderId);
   if (!order) {
-    res.status(404).json({ message: 'Kh?ng t?m th?y ??n h?ng.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
   try {
     const message = chatMessageWithImage(req.body.message, req.body.image_url);
     if (!message) {
-      res.status(400).json({ message: 'Vui l?ng nh?p n?i dung ho?c g?i ?nh.' });
+      res.status(400).json({ message: 'Vui l\u00f2ng nh\u1eadp n\u1ed9i dung ho\u1eb7c g\u1eedi \u1ea3nh.' });
       return;
     }
     db.prepare('INSERT INTO order_chat_messages (order_id, user_id, sender_id, message) VALUES (?, ?, ?, ?)')
       .run(order.id, order.user_id, req.user.id, message.slice(0, 2500));
-    notifyUser(order.user_id, 'Admin ph?n h?i ??n h?ng', message.slice(0, 180), 'order');
+    notifyUser(order.user_id, 'Admin ph\u1ea3n h\u1ed3i \u0111\u01a1n h\u00e0ng', message.slice(0, 180), 'order');
     logAdmin(req.user.id, 'reply_order_chat', 'order', order.id, req);
     res.json({ ok: true });
   } catch (error) {
@@ -1521,11 +1521,11 @@ app.patch('/api/admin/deposits/:id', requireAdmin, (req, res) => {
 app.delete('/api/admin/deposits/:id', requireAdmin, (req, res) => {
   const deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(req.params.id);
   if (!deposit) {
-    res.status(404).json({ message: 'Kh?ng t?m th?y giao d?ch.' });
+    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y giao d\u1ecbch.' });
     return;
   }
   if (deposit.status === 'success') {
-    res.status(400).json({ message: 'Kh?ng x?a giao d?ch ?? c?ng ti?n ?? tr?nh l?ch log s? d?.' });
+    res.status(400).json({ message: 'Kh\u00f4ng x\u00f3a giao d\u1ecbch \u0111\u00e3 c\u1ed9ng ti\u1ec1n \u0111\u1ec3 tr\u00e1nh l\u1ec7ch log s\u1ed1 d\u01b0.' });
     return;
   }
   db.prepare('DELETE FROM deposits WHERE id = ?').run(deposit.id);
