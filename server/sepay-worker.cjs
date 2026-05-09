@@ -1,9 +1,24 @@
+require('dotenv').config();
 const crypto = require('crypto');
 
 const DEFAULT_INTERVAL_MS = 10000;
 
 function parseBoolean(value) {
   return String(value || '').toLowerCase() === 'true';
+}
+
+function safeUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.searchParams.has('secret')) url.searchParams.set('secret', '***');
+    return url.toString();
+  } catch (_error) {
+    return String(value || '').replace(/secret=[^&]+/i, 'secret=***');
+  }
+}
+
+function debugEnabled() {
+  return parseBoolean(process.env.SEPAY_BOT_DEBUG);
 }
 
 function transactionListFromResponse(data) {
@@ -67,11 +82,15 @@ async function sendReport(report) {
   const url = reportUrl();
   if (!url) return;
   try {
-    await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: signedJsonHeaders(JSON.stringify(report)),
       body: JSON.stringify(report),
     });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      console.error(`Không gửi được report về web: HTTP ${response.status} ${data?.message || ''}`.trim());
+    }
   } catch (error) {
     console.error('Không gửi được report về web:', error.message);
   }
@@ -85,6 +104,13 @@ async function pollSepayOnce() {
   if (!targetWebhook) throw new Error('Thiếu SEPAY_WEBHOOK_URL hoặc API_BASE_URL + SEPAY_WEBHOOK_SECRET.');
   const pendingDeposits = await pendingDepositCodes();
   const pendingCodes = pendingDeposits.map((deposit) => normalizePaymentText(deposit.transfer_content || deposit.transaction_code)).filter(Boolean);
+  if (debugEnabled()) {
+    console.log(`[debug] API_BASE_URL=${String(process.env.API_BASE_URL || process.env.PUBLIC_API_BASE_URL || '').replace(/\/+$/, '')}`);
+    console.log(`[debug] pendingCodesUrl=${safeUrl(pendingCodesUrl())}`);
+    console.log(`[debug] webhookUrl=${safeUrl(targetWebhook)}`);
+    console.log(`[debug] pending_deposits=${pendingDeposits.length}`);
+    console.log(`[debug] pending_codes_sample=${pendingCodes.slice(0, 5).join(', ') || '-'}`);
+  }
 
   const response = await fetch(apiUrl, {
     headers: {
@@ -97,10 +123,19 @@ async function pollSepayOnce() {
   if (!response.ok) throw new Error(data?.message || `SePay API lỗi ${response.status}`);
 
   const transactions = transactionListFromResponse(data);
+  if (debugEnabled()) {
+    console.log(`[debug] sepay_transactions=${transactions.length}`);
+  }
   const matchedTransactions = transactions.filter((transaction) => {
     const content = normalizePaymentText(transactionContent(transaction));
     return pendingCodes.some((code) => content.includes(code));
   });
+  if (debugEnabled()) {
+    console.log(`[debug] matched_transactions=${matchedTransactions.length}`);
+    for (const transaction of matchedTransactions.slice(0, 5)) {
+      console.log(`[debug] matched content="${transactionContent(transaction).slice(0, 160)}" amount="${transaction.amount || transaction.paid_amount || transaction.transferAmount || transaction.transfer_amount || transaction.money || ''}"`);
+    }
+  }
   const deliveries = [];
   for (const transaction of matchedTransactions) {
     try {
@@ -111,8 +146,14 @@ async function pollSepayOnce() {
       });
       const result = await webhookResponse.json().catch(() => ({}));
       deliveries.push({ ok: webhookResponse.ok, status: webhookResponse.status, result });
+      if (debugEnabled()) {
+        console.log(`[debug] webhook_delivery status=${webhookResponse.status} success=${result?.success} ignored=${result?.ignored} message="${result?.message || ''}"`);
+      }
     } catch (error) {
       deliveries.push({ ok: false, error: error.message });
+      if (debugEnabled()) {
+        console.log(`[debug] webhook_delivery error="${error.message}"`);
+      }
     }
   }
 
@@ -134,6 +175,7 @@ async function pollSepayOnce() {
 async function loop() {
   const intervalMs = Math.max(5000, Number(process.env.SEPAY_BOT_INTERVAL_MS || DEFAULT_INTERVAL_MS) || DEFAULT_INTERVAL_MS);
   console.log(`SePay worker started. Interval: ${intervalMs}ms`);
+  console.log(`SePay worker API: ${String(process.env.API_BASE_URL || process.env.PUBLIC_API_BASE_URL || '').replace(/\/+$/, '') || '(missing)'}`);
   while (true) {
     const startedAt = new Date().toISOString();
     try {
@@ -153,7 +195,20 @@ if (!parseBoolean(process.env.SEPAY_BOT_ENABLED)) {
   process.exit(0);
 }
 
+if (process.argv.includes('--once')) {
+  pollSepayOnce()
+    .then(async (report) => {
+      console.log(`SePay worker once: total=${report.total} pending=${report.pending_codes} matched=${report.matched} delivered=${report.delivered} credited=${report.credited} ignored=${report.ignored} failed=${report.failed}`);
+      if (report.deliveries.length) console.log(JSON.stringify(report.deliveries, null, 2));
+      await sendReport(report);
+    })
+    .catch((error) => {
+      console.error('SePay worker once error:', error.message);
+      process.exitCode = 1;
+    });
+} else {
 loop().catch((error) => {
   console.error('SePay worker stopped:', error);
   process.exit(1);
 });
+}

@@ -8,6 +8,7 @@
     "server": "node server/index.cjs",
     "dev:api": "node server/index.cjs",
     "bot": "node server/sepay-worker.cjs",
+    "bot:once": "node server/sepay-worker.cjs --once",
     "seed": "node server/seed.cjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
@@ -15,11 +16,13 @@
     "start": "node server/index.cjs"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
     "@libsql/client": "^0.15.15",
+    "@vitejs/plugin-react": "^6.0.1",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.9.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.4.1",
     "helmet": "^8.1.0",
@@ -28,7 +31,6 @@
     "nodemailer": "^7.0.10",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "@vitejs/plugin-react": "^6.0.1",
     "typescript": "~6.0.2",
     "vite": "^8.0.10"
   },
