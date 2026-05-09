@@ -745,6 +745,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
   const [method, setMethod] = useState('bank_transfer')
   const [card, setCard] = useState({ provider: 'viettel_card', serial: '', code: '', declaredValue: 20000 })
   const [deposit, setDeposit] = useState<Deposit | null>(null)
+  const [confirmingDeposit, setConfirmingDeposit] = useState<Deposit | null>(null)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -771,7 +772,6 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
   const qrUrl = deposit && method === 'bank_transfer'
     ? bankQrUrl(settings, deposit)
     : ''
-  const waitingForBank = deposit?.method === 'bank_transfer' && deposit.status === 'pending'
 
   useEffect(() => {
     if (!deposit || deposit.status !== 'pending') return undefined
@@ -781,10 +781,12 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
         const current = data.deposits.find((item) => item.id === deposit.id)
         if (current) setDeposit(current)
         if (current?.status === 'success') {
+          setConfirmingDeposit(current)
           const me = await api<{ user: User }>('/auth/me')
           setUser(me.user)
           setNotice('Nạp tiền thành công, số dư đã được cộng vào ví.')
           window.clearInterval(timer)
+          window.setTimeout(() => window.location.reload(), 900)
         }
       } catch (_error) {
         window.clearInterval(timer)
@@ -856,7 +858,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
           </div>
         )}
       </div>
-      {waitingForBank && <DepositWaitingOverlay deposit={deposit} />}
+      {confirmingDeposit && <DepositWaitingOverlay deposit={confirmingDeposit} />}
     </section>
   )
 }
