@@ -746,6 +746,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
   const [card, setCard] = useState({ provider: 'viettel_card', serial: '', code: '', declaredValue: 20000 })
   const [deposit, setDeposit] = useState<Deposit | null>(null)
   const [confirmingDeposit, setConfirmingDeposit] = useState<Deposit | null>(null)
+  const [failedCardDeposit, setFailedCardDeposit] = useState<Deposit | null>(null)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -764,6 +765,13 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
     try {
       const data = await api<{ deposit: Deposit }>('/deposits', { method: 'POST', body: JSON.stringify(payload) })
       setDeposit(data.deposit)
+      if (method !== 'bank_transfer' && data.deposit.status === 'failed') setFailedCardDeposit(data.deposit)
+      if (method !== 'bank_transfer' && data.deposit.status === 'success') {
+        setConfirmingDeposit(data.deposit)
+        const me = await api<{ user: User }>('/auth/me')
+        setUser(me.user)
+        window.setTimeout(() => window.location.reload(), 900)
+      }
     } catch (error) {
       setNotice(messageFromError(error))
     }
@@ -773,6 +781,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
     ? bankQrUrl(settings, deposit)
     : ''
   const isBankDeposit = deposit?.method === 'bank_transfer'
+  const isCardDeposit = Boolean(deposit && deposit.method !== 'bank_transfer')
 
   useEffect(() => {
     if (!deposit || deposit.status !== 'pending') return undefined
@@ -788,6 +797,10 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
           setNotice('Nạp tiền thành công, số dư đã được cộng vào ví.')
           window.clearInterval(timer)
           window.setTimeout(() => window.location.reload(), 900)
+        }
+        if (current?.status === 'failed' && current.method !== 'bank_transfer') {
+          setFailedCardDeposit(current)
+          window.clearInterval(timer)
         }
       } catch (_error) {
         window.clearInterval(timer)
@@ -855,7 +868,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
                 <p className="warning-box">Lưu ý: QR đã tự điền sẵn số tiền và nội dung. Nếu chuyển khoản thủ công, bắt buộc nhập đúng nội dung <strong>{deposit.transfer_content}</strong> để SePay/bot tự cộng tiền.</p>
               </>
             ) : (
-              <p className="warning-box">Thẻ đã được gửi sang cổng GachTheFast. Vui lòng chờ hệ thống xử lý, số dư sẽ tự cập nhật khi thẻ hợp lệ.</p>
+              <p className="warning-box">Thẻ đã được gửi lên hệ thống. Vui lòng chờ xử lý, số dư sẽ tự cập nhật khi thẻ hợp lệ.</p>
             )}
             <p>Trạng thái: {depositStatus[deposit.status]}</p>
             {deposit.status === 'success' && (
@@ -869,8 +882,22 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
           </div>
         )}
       </div>
+      {isCardDeposit && deposit?.status === 'pending' && !failedCardDeposit && <DepositWaitingOverlay deposit={deposit} />}
       {confirmingDeposit && <DepositWaitingOverlay deposit={confirmingDeposit} />}
+      {failedCardDeposit && <CardFailedOverlay onClose={() => { setFailedCardDeposit(null); setDeposit(null) }} />}
     </section>
+  )
+}
+
+function CardFailedOverlay({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="deposit-waiting-overlay" role="alert" aria-live="assertive">
+      <div className="deposit-waiting-card deposit-error-card">
+        <h2>Thẻ không hợp lệ</h2>
+        <p>Mã thẻ sai, không tồn tại hoặc đã được sử dụng. Vui lòng kiểm tra lại serial, mã thẻ và mệnh giá.</p>
+        <button className="primary large" type="button" onClick={onClose}>Nhập lại thẻ</button>
+      </div>
+    </div>
   )
 }
 

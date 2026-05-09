@@ -2092,6 +2092,15 @@ main > section,
   margin: 1.2rem 0 0.55rem;
 }
 
+.deposit-error-card {
+  border-color: rgba(255, 89, 89, 0.45);
+  background: radial-gradient(circle at top, rgba(255, 89, 89, 0.2), transparent 42%), rgba(38, 17, 26, 0.96);
+}
+
+.deposit-error-card h2 {
+  color: #ff9b9b;
+}
+
 .loading-track {
   position: relative;
   height: 12px;
