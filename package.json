@@ -9,6 +9,8 @@
     "dev:api": "node server/index.cjs",
     "bot": "node server/sepay-worker.cjs",
     "bot:once": "node server/sepay-worker.cjs --once",
+    "card:bot": "node server/card-worker.cjs",
+    "card:bot:once": "node server/card-worker.cjs --once",
     "seed": "node server/seed.cjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

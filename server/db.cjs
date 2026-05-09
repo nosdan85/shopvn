@@ -126,6 +126,25 @@ const schemaSql = `
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS card_deposit_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      deposit_id INTEGER NOT NULL UNIQUE,
+      provider TEXT NOT NULL,
+      serial TEXT NOT NULL,
+      card_code TEXT NOT NULL,
+      declared_amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued',
+      worker_note TEXT,
+      provider_transaction_id TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      locked_until TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      submitted_at TEXT,
+      completed_at TEXT,
+      FOREIGN KEY (deposit_id) REFERENCES deposits(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS balance_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -238,6 +257,8 @@ const schemaSql = `
     CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status);
     CREATE INDEX IF NOT EXISTS idx_deposits_transaction_code ON deposits(transaction_code);
     CREATE INDEX IF NOT EXISTS idx_deposits_bank_transaction_id ON deposits(bank_transaction_id);
+    CREATE INDEX IF NOT EXISTS idx_card_deposit_jobs_status ON card_deposit_jobs(status);
+    CREATE INDEX IF NOT EXISTS idx_card_deposit_jobs_deposit_id ON card_deposit_jobs(deposit_id);
     CREATE INDEX IF NOT EXISTS idx_balance_logs_user_id ON balance_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
     CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON chat_messages(user_id);
@@ -255,6 +276,7 @@ const persistentTables = [
   'order_items',
   'order_status_logs',
   'deposits',
+  'card_deposit_jobs',
   'balance_logs',
   'reviews',
   'notifications',

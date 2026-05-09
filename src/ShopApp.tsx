@@ -884,17 +884,22 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
       </div>
       {isCardDeposit && deposit?.status === 'pending' && !failedCardDeposit && <DepositWaitingOverlay deposit={deposit} />}
       {confirmingDeposit && <DepositWaitingOverlay deposit={confirmingDeposit} />}
-      {failedCardDeposit && <CardFailedOverlay onClose={() => { setFailedCardDeposit(null); setDeposit(null) }} />}
+      {failedCardDeposit && <CardFailedOverlay deposit={failedCardDeposit} onClose={() => { setFailedCardDeposit(null); setDeposit(null) }} />}
     </section>
   )
 }
 
-function CardFailedOverlay({ onClose }: { onClose: () => void }) {
+function cardFailureMessage(deposit: Deposit) {
+  return String(deposit.admin_note || 'Mã thẻ sai, không tồn tại hoặc đã được sử dụng. Vui lòng kiểm tra lại serial, mã thẻ và mệnh giá.')
+    .replace(/gachthefast/gi, 'hệ thống')
+}
+
+function CardFailedOverlay({ deposit, onClose }: { deposit: Deposit; onClose: () => void }) {
   return (
     <div className="deposit-waiting-overlay" role="alert" aria-live="assertive">
       <div className="deposit-waiting-card deposit-error-card">
         <h2>Thẻ không hợp lệ</h2>
-        <p>Mã thẻ sai, không tồn tại hoặc đã được sử dụng. Vui lòng kiểm tra lại serial, mã thẻ và mệnh giá.</p>
+        <p>{cardFailureMessage(deposit)}</p>
         <button className="primary large" type="button" onClick={onClose}>Nhập lại thẻ</button>
       </div>
     </div>

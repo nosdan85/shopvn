@@ -565,6 +565,80 @@ function processGachTheFastCallback(payload) {
   return { ignored: true, message: 'GachTheFast callback chưa hoàn tất.', deposit: current };
 }
 
+function cardWorkerSecretOk(req) {
+  const allowedSecrets = [
+    setting('card_worker_secret'),
+    process.env.CARD_WORKER_SECRET,
+    setting('card_webhook_secret'),
+    process.env.CARD_WEBHOOK_SECRET,
+    setting('gachthefast_webhook_secret'),
+    process.env.GACHTHEFAST_WEBHOOK_SECRET,
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+  if (!allowedSecrets.length) return false;
+  return extractWebhookSecret(req).some((secret) => allowedSecrets.some((allowed) => timingSafeEqualText(secret, allowed)));
+}
+
+function processCardWorkerResult(raw) {
+  const depositCode = clampText(cardWebhookValue(raw, ['transaction_code', 'transactionCode', 'request_id', 'requestId']), 160);
+  const providerTransactionId = clampText(cardWebhookValue(raw, ['provider_transaction_id', 'providerTransactionId', 'trans_id', 'transaction_id']), 160);
+  const status = normalizeCardWebhookStatus(cardWebhookValue(raw, ['status', 'card_status', 'result', 'state']));
+  const note = clampText(cardWebhookValue(raw, ['message', 'msg', 'note', 'reason', 'description']), 300);
+  const callbackAmount = parseAmount(cardWebhookValue(raw, ['real_amount', 'receive_amount', 'value_receive', 'amount_receive', 'amount', 'value', 'declared_amount']));
+  if (!depositCode) return { ignored: true, message: 'Thiếu mã giao dịch thẻ.' };
+  return db.transaction(() => {
+    const current = db.prepare(`
+      SELECT deposits.*, card_deposit_jobs.id AS job_id
+      FROM deposits
+      JOIN card_deposit_jobs ON card_deposit_jobs.deposit_id = deposits.id
+      WHERE deposits.transaction_code = ? AND deposits.method IN ('viettel_card','mobifone_card','vinaphone_card')
+      LIMIT 1
+    `).get(depositCode);
+    if (!current) return { ignored: true, message: 'Không tìm thấy giao dịch thẻ tương ứng.' };
+    if (current.status !== 'pending') return { ignored: true, message: 'Giao dịch thẻ đã được xử lý trước đó.', deposit: current };
+    if (status === 'retry') {
+      db.prepare(`
+        UPDATE card_deposit_jobs SET status = 'retry', worker_note = ?, locked_until = NULL, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(note || 'Worker lỗi tạm thời, sẽ thử lại.', current.job_id);
+      return { ignored: true, message: note || 'Worker lỗi tạm thời, sẽ thử lại.', deposit: current };
+    }
+    if (status === 'success') {
+      if (Number.isFinite(callbackAmount) && callbackAmount > 0 && callbackAmount < current.amount) {
+        db.prepare(`
+          UPDATE card_deposit_jobs SET status = 'failed', worker_note = ?, provider_transaction_id = ?, completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(`Mệnh giá nhận ${callbackAmount} nhỏ hơn mệnh giá khai báo ${current.amount}.`, providerTransactionId || null, current.job_id);
+        db.prepare(`
+          UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(`Mệnh giá nhận ${callbackAmount} nhỏ hơn mệnh giá khai báo ${current.amount}.`, providerTransactionId || null, current.id);
+        return { ignored: true, message: 'Mệnh giá thẻ không khớp.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
+      }
+      db.prepare(`
+        UPDATE card_deposit_jobs SET status = 'success', worker_note = ?, provider_transaction_id = ?, completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(note || 'Worker báo thẻ thành công.', providerTransactionId || null, current.job_id);
+      return completeDeposit(current, { transactionId: providerTransactionId || `CARD-${current.transaction_code}`, adminNote: note || 'Worker xác nhận thẻ thành công.', note: `Worker xác nhận thẻ ${current.transaction_code}` });
+    }
+    if (status === 'failed') {
+      db.prepare(`
+        UPDATE card_deposit_jobs SET status = 'failed', worker_note = ?, provider_transaction_id = ?, completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(note || 'Worker báo thẻ thất bại.', providerTransactionId || null, current.job_id);
+      db.prepare(`
+        UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(note || 'Thẻ không hợp lệ hoặc đã được sử dụng.', providerTransactionId || null, current.id);
+      return { ignored: true, message: note || 'Thẻ không hợp lệ hoặc đã được sử dụng.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
+    }
+    db.prepare(`
+      UPDATE card_deposit_jobs SET status = 'processing', worker_note = ?, provider_transaction_id = ?, submitted_at = COALESCE(submitted_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(note || 'Worker đã gửi thẻ, đang chờ xử lý.', providerTransactionId || null, current.job_id);
+    return { ignored: true, message: 'Thẻ đang chờ xử lý.', deposit: current };
+  })();
+}
+
 function createOrderChatSummary({ order, items }) {
   const lines = [
     `Mã đơn: ${order.order_code}`,
@@ -851,7 +925,7 @@ app.get('/api/deposits', requireAuth, (req, res) => {
   res.json({ deposits });
 });
 
-app.post('/api/deposits', requireAuth, depositLimiter, async (req, res) => {
+app.post('/api/deposits', requireAuth, depositLimiter, (req, res) => {
   if (setting('deposit_enabled', 'true') !== 'true') {
     res.status(403).json({ message: 'Website đang tắt nạp tiền.' });
     return;
@@ -884,36 +958,70 @@ app.post('/api/deposits', requireAuth, depositLimiter, async (req, res) => {
     }
     transferContent = `CARD-${method.toUpperCase()}-${cardSerial.slice(-6)}-${code}`;
   }
-  const result = db.prepare(`
-    INSERT INTO deposits (transaction_code, user_id, method, amount, transfer_content, status)
-    VALUES (?, ?, ?, ?, ?, 'pending')
-  `).run(code, req.user.id, method, amount, transferContent);
-  let deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(result.lastInsertRowid);
-  if (cardMethods.includes(method)) {
-    try {
-      const cardResult = await submitGachTheFastCard({ deposit, method, serial: cardSerial, cardCode, amount });
-      if (cardResult.status === 'success') {
-        deposit = completeDeposit(deposit, { transactionId: `GTF-${deposit.transaction_code}`, adminNote: `GachTheFast trả thành công ngay: ${cardResult.message}`, note: `GachTheFast xác nhận ${deposit.transaction_code}` });
-      } else if (cardResult.status === 'failed') {
-        db.prepare(`
-          UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `).run(cardResult.message || 'GachTheFast từ chối thẻ.', `GTF-${deposit.transaction_code}`, deposit.id);
-        deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(deposit.id);
-      } else {
-        db.prepare('UPDATE deposits SET admin_note = ? WHERE id = ?').run(cardResult.message || 'Đã gửi thẻ sang GachTheFast, đang chờ xử lý.', deposit.id);
-        deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(deposit.id);
-      }
-    } catch (error) {
+  const result = db.transaction(() => {
+    const depositResult = db.prepare(`
+      INSERT INTO deposits (transaction_code, user_id, method, amount, transfer_content, status)
+      VALUES (?, ?, ?, ?, ?, 'pending')
+    `).run(code, req.user.id, method, amount, transferContent);
+    if (cardMethods.includes(method)) {
       db.prepare(`
-        UPDATE deposits SET status = 'failed', admin_note = ?, completed_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(`Không gửi được thẻ sang GachTheFast: ${error.message}`, deposit.id);
-      res.status(400).json({ message: `Không gửi được thẻ sang GachTheFast: ${error.message}` });
+        INSERT INTO card_deposit_jobs (deposit_id, provider, serial, card_code, declared_amount, status)
+        VALUES (?, ?, ?, ?, ?, 'queued')
+      `).run(depositResult.lastInsertRowid, method, cardSerial, cardCode, amount);
+    }
+    return depositResult;
+  })();
+  const deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(result.lastInsertRowid);
+  res.json({ deposit, bank: publicSettings() });
+});
+
+app.get('/api/webhooks/card-worker/jobs', webhookLimiter, (req, res) => {
+  if (!cardWorkerSecretOk(req)) {
+    logSecurity({ eventType: 'card_worker_secret_denied', severity: 'high', message: 'Invalid card worker secret.', req });
+    res.status(401).json({ success: false, message: 'Worker secret không hợp lệ.' });
+    return;
+  }
+  const limit = Math.min(20, Math.max(1, Number(req.query.limit || 5)));
+  const jobs = db.transaction(() => {
+    const rows = db.prepare(`
+      SELECT card_deposit_jobs.*, deposits.transaction_code, deposits.method, deposits.amount, deposits.status AS deposit_status
+      FROM card_deposit_jobs
+      JOIN deposits ON deposits.id = card_deposit_jobs.deposit_id
+      WHERE deposits.status = 'pending'
+        AND card_deposit_jobs.status IN ('queued','retry','processing')
+        AND (card_deposit_jobs.locked_until IS NULL OR datetime(card_deposit_jobs.locked_until) <= datetime('now'))
+      ORDER BY card_deposit_jobs.created_at ASC
+      LIMIT ?
+    `).all(limit);
+    const lockUntil = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+    for (const job of rows) {
+      db.prepare(`
+        UPDATE card_deposit_jobs
+        SET status = 'processing', attempts = attempts + 1, locked_until = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND status IN ('queued','retry','processing')
+      `).run(lockUntil, job.id);
+    }
+    return rows;
+  })();
+  res.json({ success: true, jobs });
+});
+
+app.post('/api/webhooks/card-worker/result', webhookLimiter, (req, res) => {
+  if (!cardWorkerSecretOk(req)) {
+    logSecurity({ eventType: 'card_worker_secret_denied', severity: 'high', message: 'Invalid card worker secret.', req });
+    res.status(401).json({ success: false, ignored: true, message: 'Worker secret không hợp lệ.' });
+    return;
+  }
+  try {
+    const result = processCardWorkerResult(req.body || {});
+    if (result?.ignored) {
+      res.json({ success: false, ignored: true, message: result.message, deposit: result.deposit || null });
       return;
     }
+    res.json({ success: true, ignored: false, message: 'Đã xử lý kết quả thẻ.', deposit: result });
+  } catch (error) {
+    res.status(400).json({ success: false, ignored: true, message: error.message });
   }
-  res.json({ deposit, bank: publicSettings() });
 });
 
 app.post('/api/webhooks/deposits', webhookLimiter, (req, res) => {
