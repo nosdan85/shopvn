@@ -446,10 +446,65 @@ function cardWebhookValue(payload, keys) {
 
 function normalizeCardWebhookStatus(value) {
   const text = String(value || '').trim().toLowerCase();
-  if (['1', 'success', 'successful', 'done', 'completed', 'approved', 'thanhcong', 'thanh_cong', 'đúng', 'dung'].includes(text)) return 'success';
-  if (['2', 'pending', 'processing', 'wait', 'waiting', 'cho_xu_ly', 'chờ xử lý'].includes(text)) return 'pending';
-  if (['3', 'fail', 'failed', 'error', 'cancel', 'cancelled', 'rejected', 'sai', 'thatbai', 'that_bai'].includes(text)) return 'failed';
+  if (['1', 'success', 'successful', 'done', 'completed', 'approved', 'thanhcong', 'thanh_cong', 'đúng', 'dung', 'the_dung', 'card_correct'].includes(text)) return 'success';
+  if (['2', '99', 'pending', 'processing', 'wait', 'waiting', 'cho_xu_ly', 'chờ xử lý'].includes(text)) return 'pending';
+  if (['3', '4', '30', 'fail', 'failed', 'error', 'cancel', 'cancelled', 'rejected', 'sai', 'thatbai', 'that_bai', 'the_sai', 'card_wrong'].includes(text)) return 'failed';
   return text;
+}
+
+function cardProviderCode(method) {
+  return {
+    viettel_card: 'VIETTEL',
+    mobifone_card: 'MOBIFONE',
+    vinaphone_card: 'VINAPHONE',
+  }[method] || String(method || '').replace(/_card$/i, '').toUpperCase();
+}
+
+function gachTheFastConfig() {
+  return {
+    apiUrl: String(setting('gachthefast_api_url') || process.env.GACHTHEFAST_API_URL || '').trim(),
+    partnerId: String(setting('gachthefast_partner_id') || process.env.GACHTHEFAST_PARTNER_ID || '').trim(),
+    partnerKey: String(setting('gachthefast_partner_key') || process.env.GACHTHEFAST_PARTNER_KEY || '').trim(),
+    submitMethod: String(setting('gachthefast_submit_method') || process.env.GACHTHEFAST_SUBMIT_METHOD || 'GET').trim().toUpperCase(),
+  };
+}
+
+function gachTheFastSign({ partnerKey, cardCode, serial }) {
+  return crypto.createHash('md5').update(`${partnerKey}${cardCode}${serial}`).digest('hex');
+}
+
+function normalizeGachTheFastResponse(data) {
+  const status = normalizeCardWebhookStatus(cardWebhookValue(data, ['status', 'card_status', 'result', 'state', 'code']));
+  const message = clampText(cardWebhookValue(data, ['message', 'msg', 'note', 'reason', 'description']) || JSON.stringify(data).slice(0, 250), 300);
+  return { status, message };
+}
+
+async function submitGachTheFastCard({ deposit, method, serial, cardCode, amount }) {
+  const config = gachTheFastConfig();
+  if (!config.apiUrl || !config.partnerId || !config.partnerKey) {
+    throw new Error('Chưa cấu hình GachTheFast API URL, Partner ID hoặc Partner Key.');
+  }
+  const params = new URLSearchParams({
+    partner_id: config.partnerId,
+    telco: cardProviderCode(method),
+    code: cardCode,
+    serial,
+    amount: String(amount),
+    request_id: deposit.transaction_code,
+    command: 'charging',
+    sign: gachTheFastSign({ partnerKey: config.partnerKey, cardCode, serial }),
+  });
+  const response = config.submitMethod === 'POST'
+    ? await fetch(config.apiUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+      body: params.toString(),
+    })
+    : await fetch(`${config.apiUrl}${config.apiUrl.includes('?') ? '&' : '?'}${params.toString()}`, { headers: { accept: 'application/json' } });
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json') ? await response.json() : { message: await response.text() };
+  if (!response.ok) throw new Error(data?.message || `GachTheFast API lỗi ${response.status}`);
+  return { raw: data, ...normalizeGachTheFastResponse(data) };
 }
 
 function cardCallbackSecretOk(req, payload) {
@@ -796,7 +851,7 @@ app.get('/api/deposits', requireAuth, (req, res) => {
   res.json({ deposits });
 });
 
-app.post('/api/deposits', requireAuth, depositLimiter, (req, res) => {
+app.post('/api/deposits', requireAuth, depositLimiter, async (req, res) => {
   if (setting('deposit_enabled', 'true') !== 'true') {
     res.status(403).json({ message: 'Website đang tắt nạp tiền.' });
     return;
@@ -818,20 +873,46 @@ app.post('/api/deposits', requireAuth, depositLimiter, (req, res) => {
   }
   const code = `NAP${nanoid()}`;
   let transferContent = code;
+  let cardSerial = '';
+  let cardCode = '';
   if (cardMethods.includes(method)) {
-    const serial = clampText(req.body.serial, 80);
-    const cardCode = clampText(req.body.code, 80);
-    if (!serial || !cardCode) {
+    cardSerial = clampText(req.body.serial, 80);
+    cardCode = clampText(req.body.code, 80);
+    if (!cardSerial || !cardCode) {
       res.status(400).json({ message: 'Vui lòng nhập serial và mã thẻ.' });
       return;
     }
-    transferContent = `CARD-${method.toUpperCase()}-${serial.slice(-6)}-${code}`;
+    transferContent = `CARD-${method.toUpperCase()}-${cardSerial.slice(-6)}-${code}`;
   }
   const result = db.prepare(`
     INSERT INTO deposits (transaction_code, user_id, method, amount, transfer_content, status)
     VALUES (?, ?, ?, ?, ?, 'pending')
   `).run(code, req.user.id, method, amount, transferContent);
-  const deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(result.lastInsertRowid);
+  let deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(result.lastInsertRowid);
+  if (cardMethods.includes(method)) {
+    try {
+      const cardResult = await submitGachTheFastCard({ deposit, method, serial: cardSerial, cardCode, amount });
+      if (cardResult.status === 'success') {
+        deposit = completeDeposit(deposit, { transactionId: `GTF-${deposit.transaction_code}`, adminNote: `GachTheFast trả thành công ngay: ${cardResult.message}`, note: `GachTheFast xác nhận ${deposit.transaction_code}` });
+      } else if (cardResult.status === 'failed') {
+        db.prepare(`
+          UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(cardResult.message || 'GachTheFast từ chối thẻ.', `GTF-${deposit.transaction_code}`, deposit.id);
+        deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(deposit.id);
+      } else {
+        db.prepare('UPDATE deposits SET admin_note = ? WHERE id = ?').run(cardResult.message || 'Đã gửi thẻ sang GachTheFast, đang chờ xử lý.', deposit.id);
+        deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(deposit.id);
+      }
+    } catch (error) {
+      db.prepare(`
+        UPDATE deposits SET status = 'failed', admin_note = ?, completed_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(`Không gửi được thẻ sang GachTheFast: ${error.message}`, deposit.id);
+      res.status(400).json({ message: `Không gửi được thẻ sang GachTheFast: ${error.message}` });
+      return;
+    }
+  }
   res.json({ deposit, bank: publicSettings() });
 });
 

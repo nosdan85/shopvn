@@ -772,6 +772,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
   const qrUrl = deposit && method === 'bank_transfer'
     ? bankQrUrl(settings, deposit)
     : ''
+  const isBankDeposit = deposit?.method === 'bank_transfer'
 
   useEffect(() => {
     if (!deposit || deposit.status !== 'pending') return undefined
@@ -826,26 +827,36 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
       </form>
       <div className="panel deposit-guide">
         <h2>Thông tin thanh toán</h2>
-        <p>Ngân hàng: <strong>{settings.bank_name || 'MB Bank'}</strong></p>
-        <p>Chủ tài khoản: <strong>{settings.bank_account_name}</strong></p>
-        <p>Số tài khoản: <strong>{settings.bank_account_number}</strong></p>
+        {(!deposit || isBankDeposit) && (
+          <>
+            <p>Ngân hàng: <strong>{settings.bank_name || 'MB Bank'}</strong></p>
+            <p>Chủ tài khoản: <strong>{settings.bank_account_name}</strong></p>
+            <p>Số tài khoản: <strong>{settings.bank_account_number}</strong></p>
+          </>
+        )}
         {deposit && (
           <div className="bank-box">
             <h3>Giao dịch vừa tạo</h3>
             <p>Mã: <strong>{deposit.transaction_code}</strong></p>
             <p>Phương thức: <strong>{depositMethod[deposit.method] || deposit.method}</strong></p>
             <p>Số tiền: <strong>{money(deposit.amount)}</strong></p>
-            <div className="copy-box">
-              <span>Nội dung chuyển khoản bắt buộc</span>
-              <strong>{deposit.transfer_content}</strong>
-              <button type="button" onClick={() => copyText(deposit.transfer_content, setNotice)}>Sao chép mã</button>
-            </div>
-            <div className="copy-box">
-              <span>Số tài khoản</span>
-              <strong>{settings.bank_account_number}</strong>
-              <button type="button" onClick={() => copyText(settings.bank_account_number || '', setNotice)}>Sao chép STK</button>
-            </div>
-            <p className="warning-box">Lưu ý: QR đã tự điền sẵn số tiền và nội dung. Nếu chuyển khoản thủ công, bắt buộc nhập đúng nội dung <strong>{deposit.transfer_content}</strong> để SePay/bot tự cộng tiền.</p>
+            {isBankDeposit ? (
+              <>
+                <div className="copy-box">
+                  <span>Nội dung chuyển khoản bắt buộc</span>
+                  <strong>{deposit.transfer_content}</strong>
+                  <button type="button" onClick={() => copyText(deposit.transfer_content, setNotice)}>Sao chép mã</button>
+                </div>
+                <div className="copy-box">
+                  <span>Số tài khoản</span>
+                  <strong>{settings.bank_account_number}</strong>
+                  <button type="button" onClick={() => copyText(settings.bank_account_number || '', setNotice)}>Sao chép STK</button>
+                </div>
+                <p className="warning-box">Lưu ý: QR đã tự điền sẵn số tiền và nội dung. Nếu chuyển khoản thủ công, bắt buộc nhập đúng nội dung <strong>{deposit.transfer_content}</strong> để SePay/bot tự cộng tiền.</p>
+              </>
+            ) : (
+              <p className="warning-box">Thẻ đã được gửi sang cổng GachTheFast. Vui lòng chờ hệ thống xử lý, số dư sẽ tự cập nhật khi thẻ hợp lệ.</p>
+            )}
             <p>Trạng thái: {depositStatus[deposit.status]}</p>
             {deposit.status === 'success' && (
               <div className="success-box">
