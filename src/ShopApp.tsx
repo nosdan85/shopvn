@@ -805,7 +805,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
       } catch (_error) {
         window.clearInterval(timer)
       }
-    }, 5000)
+    }, isCardDeposit ? 2000 : 5000)
     return () => window.clearInterval(timer)
   }, [deposit, setNotice, setUser])
 

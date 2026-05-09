@@ -57,7 +57,7 @@ function normalizeCardStatus(value) {
   const text = String(value || '').trim().toLowerCase();
   if (['1', 'success', 'successful', 'done', 'completed', 'approved', 'thanhcong', 'thanh_cong', 'đúng', 'dung', 'the_dung', 'card_correct'].includes(text)) return 'success';
   if (['2', '99', 'pending', 'processing', 'wait', 'waiting', 'cho_xu_ly', 'chờ xử lý'].includes(text)) return 'pending';
-  if (['3', '4', '30', 'fail', 'failed', 'error', 'cancel', 'cancelled', 'rejected', 'sai', 'thatbai', 'that_bai', 'the_sai', 'card_wrong'].includes(text)) return 'failed';
+  if (['3', '4', '30', '100', 'fail', 'failed', 'error', 'cancel', 'cancelled', 'rejected', 'sai', 'thatbai', 'that_bai', 'the_sai', 'card_wrong'].includes(text)) return 'failed';
   return text || 'pending';
 }
 
