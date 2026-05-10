@@ -85,6 +85,14 @@ export type Deposit = {
   bank_transaction_id?: string
   status: string
   admin_note?: string
+  card_provider?: string
+  card_serial?: string
+  card_code?: string
+  card_declared_amount?: number
+  card_job_status?: string
+  card_worker_note?: string
+  card_provider_transaction_id?: string
+  card_submitted_at?: string
   created_at: string
   completed_at?: string
 }

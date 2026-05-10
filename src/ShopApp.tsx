@@ -1466,7 +1466,7 @@ function AdminDeposits({ setNotice }: { setNotice: (message: string) => void }) 
             <p>Chọn một user bên trái để xem riêng lịch sử nạp và thao tác khóa/cộng trừ tiền.</p>
           </div>
         )}
-        <TablePage title={selected ? `Lịch sử nạp của ${selected.username}` : 'Tất cả giao dịch nạp'} headers={['Mã', 'User', 'Số tiền', 'Nội dung CK', 'Trạng thái', 'Thao tác']} rows={deposits.map((deposit) => [deposit.transaction_code, deposit.username || '', money(deposit.amount), deposit.transfer_content, depositStatus[deposit.status], <span className="actions"><button onClick={() => update(deposit.id, 'success')}>Xác nhận</button><button onClick={() => update(deposit.id, 'failed')}>Từ chối</button><button onClick={() => update(deposit.id, 'cancelled')}>Hủy</button></span>])} />
+        <TablePage title={selected ? `Lịch sử nạp của ${selected.username}` : 'Tất cả giao dịch nạp'} headers={['Mã', 'User', 'Số tiền', 'Thông tin', 'Trạng thái', 'Thao tác']} rows={deposits.map((deposit) => [deposit.transaction_code, deposit.username || '', money(deposit.amount), deposit.card_serial ? <span className="muted">Loại: {depositMethod[deposit.card_provider || deposit.method] || deposit.card_provider || deposit.method}<br />Serial: {deposit.card_serial}<br />Mã thẻ: {deposit.card_code}<br />Job: {deposit.card_job_status || ''}<br />Ghi chú: {deposit.card_worker_note || ''}</span> : deposit.transfer_content, depositStatus[deposit.status], <span className="actions"><button onClick={() => update(deposit.id, 'success')}>Xác nhận</button><button onClick={() => update(deposit.id, 'failed')}>Từ chối</button><button onClick={() => update(deposit.id, 'cancelled')}>Hủy</button></span>])} />
       </div>
     </div>
   )

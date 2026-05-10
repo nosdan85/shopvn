@@ -131,7 +131,14 @@ async function pollCardOnce() {
   if (debugEnabled()) console.log(`[debug] card_jobs=${jobs.length}`);
   for (const job of jobs) {
     try {
-      const cardResult = await submitGachTheFastCard(job);
+      const cardResult = job.submitted_at || job.provider_transaction_id
+        ? {
+          status: 'pending',
+          message: 'Thẻ đã được hệ thống nhận, cộng tiền theo trạng thái chờ kết quả.',
+          providerTransactionId: job.provider_transaction_id || '',
+          amount: job.amount,
+        }
+        : await submitGachTheFastCard(job);
       const report = await reportResult({
         transaction_code: job.transaction_code,
         status: cardResult.status,

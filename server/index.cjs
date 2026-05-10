@@ -613,7 +613,7 @@ function processCardWorkerResult(raw) {
   if (!depositCode) return { ignored: true, message: 'Thiếu mã giao dịch thẻ.' };
   return db.transaction(() => {
     const current = db.prepare(`
-      SELECT deposits.*, card_deposit_jobs.id AS job_id
+      SELECT deposits.*, card_deposit_jobs.id AS job_id, card_deposit_jobs.submitted_at AS job_submitted_at
       FROM deposits
       JOIN card_deposit_jobs ON card_deposit_jobs.deposit_id = deposits.id
       WHERE deposits.transaction_code = ? AND deposits.method IN ('viettel_card','mobifone_card','vinaphone_card')
@@ -658,10 +658,10 @@ function processCardWorkerResult(raw) {
       return { ignored: true, message: note || 'Thẻ không hợp lệ hoặc đã được sử dụng.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
     }
     db.prepare(`
-      UPDATE card_deposit_jobs SET status = 'processing', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), submitted_at = COALESCE(submitted_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+      UPDATE card_deposit_jobs SET status = 'success', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), submitted_at = COALESCE(submitted_at, CURRENT_TIMESTAMP), completed_at = CURRENT_TIMESTAMP, locked_until = NULL, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(note || 'Worker đã gửi thẻ, đang chờ xử lý.', providerTransactionId || null, current.job_id);
-    return { ignored: true, message: 'Thẻ đang chờ xử lý.', deposit: current };
+    `).run(note || 'Worker báo thẻ đã được hệ thống nhận, cộng tiền ngay.', providerTransactionId || null, current.job_id);
+    return completeDeposit(current, { transactionId: providerTransactionId || `CARD-${current.transaction_code}`, adminNote: note || 'Thẻ đã được hệ thống nhận, cộng tiền ngay.', note: `Worker xác nhận thẻ đã được nhận ${current.transaction_code}` });
   })();
 }
 
@@ -1816,9 +1816,18 @@ app.get('/api/admin/deposits', requireAdmin, (req, res) => {
   }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const deposits = db.prepare(`
-    SELECT deposits.*, users.username, users.email
+    SELECT deposits.*, users.username, users.email,
+      card_deposit_jobs.provider AS card_provider,
+      card_deposit_jobs.serial AS card_serial,
+      card_deposit_jobs.card_code AS card_code,
+      card_deposit_jobs.declared_amount AS card_declared_amount,
+      card_deposit_jobs.status AS card_job_status,
+      card_deposit_jobs.worker_note AS card_worker_note,
+      card_deposit_jobs.provider_transaction_id AS card_provider_transaction_id,
+      card_deposit_jobs.submitted_at AS card_submitted_at
     FROM deposits
     JOIN users ON users.id = deposits.user_id
+    LEFT JOIN card_deposit_jobs ON card_deposit_jobs.deposit_id = deposits.id
     ${clause}
     ORDER BY deposits.created_at DESC
   `).all(...params);
