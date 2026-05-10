@@ -814,25 +814,16 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
     res.status(401).json({ message: 'Sai tài khoản hoặc mật khẩu.' });
     return;
   }
-  if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
-    res.status(429).json({ message: 'Tài khoản tạm khóa do đăng nhập sai nhiều lần.' });
-    return;
-  }
   if (user.status !== 'active') {
     res.status(403).json({ message: 'Tài khoản đang bị khóa.' });
     return;
   }
   const ok = bcrypt.compareSync(password, user.password_hash);
   if (!ok) {
-    const failed = user.failed_login_count + 1;
-    const lockedUntil = failed >= 5 ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null;
-    db.prepare('UPDATE users SET failed_login_count = ?, locked_until = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .run(failed, lockedUntil, user.id);
-    logSecurity({ eventType: 'login_failed', userId: user.id, severity: failed >= 5 ? 'high' : 'medium', message: 'Invalid password.', req, metadata: { failed } });
+    logSecurity({ eventType: 'login_failed', userId: user.id, severity: 'medium', message: 'Invalid password.', req });
     res.status(401).json({ message: 'Sai tài khoản hoặc mật khẩu.' });
     return;
   }
-  db.prepare('UPDATE users SET failed_login_count = 0, locked_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
   if (['admin', 'super_admin'].includes(user.role)) logAdmin(user.id, 'admin_login', 'user', user.id, req);
   res.cookie('token', signToken(user), authCookieOptions()).json({ user: sanitizeUser(user) });
 });

@@ -134,6 +134,7 @@ function ShopApp() {
   const [booting, setBooting] = useState(true)
   const [settings, setSettings] = useState<Settings>({})
   const [notice, setNotice] = useState('')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>(loadSavedCart)
   const lastNotificationId = useRef<number | null>(null)
   const lastAdminUnread = useRef({ support: 0, order: 0 })
@@ -215,6 +216,7 @@ function ShopApp() {
     setPage(nextPage)
     setRouteId(id)
     setNotice('')
+    setMobileMenuOpen(false)
     window.scrollTo({ top: 0 })
   }
 
@@ -281,12 +283,21 @@ function ShopApp() {
           )}
         </div>
       </header>
-      <nav className="mobile-bottom-nav">
-        {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><span>{item.icon}</span><small>{item.label}</small></button>)}
-        {user && <button className="mobile-logout" onClick={logout}><span>↩</span><small>Đăng xuất</small></button>}
-      </nav>
+      <div className="mobile-nav-shell">
+        <button className="mobile-menu-toggle" type="button" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}>
+          <span />
+          <span />
+          <span />
+        </button>
+        {mobileMenuOpen && (
+          <nav className="mobile-side-nav" aria-label="Menu điện thoại">
+            {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><span>{item.icon}</span><small>{item.label}</small></button>)}
+            {user && <button className="mobile-logout" onClick={logout}><span>↩</span><small>Đăng xuất</small></button>}
+          </nav>
+        )}
+      </div>
 
-      {notice && <div className="toast">{notice}</div>}
+      {notice && <div className="toast-backdrop" role="alertdialog" aria-live="assertive" aria-modal="true"><div className="toast"><p>{notice}</p><button className="ghost" type="button" onClick={() => setNotice('')}>Tắt</button></div></div>}
 
       <main>
         {page === 'home' && <Home {...context} />}
@@ -916,7 +927,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
           </div>
         )}
       </div>
-      {isCardDeposit && deposit?.status === 'pending' && !failedCardDeposit && <DepositWaitingOverlay deposit={deposit} />}
+      {isCardDeposit && deposit?.status === 'pending' && !failedCardDeposit && <DepositWaitingOverlay deposit={deposit} onCancel={() => setDeposit(null)} />}
       {confirmingDeposit && <DepositWaitingOverlay deposit={confirmingDeposit} />}
       {failedCardDeposit && <CardFailedOverlay deposit={failedCardDeposit} onClose={() => { setFailedCardDeposit(null); setDeposit(null) }} />}
     </section>
@@ -940,7 +951,7 @@ function CardFailedOverlay({ deposit, onClose }: { deposit: Deposit; onClose: ()
   )
 }
 
-function DepositWaitingOverlay({ deposit }: { deposit: Deposit }) {
+function DepositWaitingOverlay({ deposit, onCancel }: { deposit: Deposit; onCancel?: () => void }) {
   return (
     <div className="deposit-waiting-overlay" role="status" aria-live="polite">
       <div className="deposit-waiting-card">
@@ -948,7 +959,9 @@ function DepositWaitingOverlay({ deposit }: { deposit: Deposit }) {
         <div className="loading-track"><span /></div>
         <h2>{'\u0110ang ch\u1edd c\u1ed9ng ti\u1ec1n'}</h2>
         <p>{'Vui l\u00f2ng ch\u1edd v\u00e0i gi\u00e2y \u0111\u1ec3 h\u1ec7 th\u1ed1ng x\u00e1c nh\u1eadn giao d\u1ecbch '}<strong>{deposit.transaction_code}</strong>.</p>
+        {deposit.status === 'pending' && <p className="warning-box">Nếu bạn nhập sai mã thẻ, sai serial hoặc nhập lại thẻ đã sử dụng, tài khoản sẽ không được cộng tiền.</p>}
         <p className="muted">{'B\u1ea1n kh\u00f4ng c\u1ea7n t\u1ea1o th\u00eam giao d\u1ecbch m\u1edbi. Khi ti\u1ec1n \u0111\u01b0\u1ee3c c\u1ed9ng, web s\u1ebd t\u1ef1 t\u1ea3i l\u1ea1i.'}</p>
+        {onCancel && <button className="ghost large" type="button" onClick={onCancel}>Cancel</button>}
       </div>
     </div>
   )
