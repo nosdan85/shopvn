@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { api, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
+import { api, assetUrl, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
 import type { AdminChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, Review, Settings, User } from './types'
 
 type Page =
@@ -68,13 +68,14 @@ function safeQuantity(value: number | '') {
   return Math.max(1, Number(value || 1))
 }
 
-function safeExternalUrl(value?: string) {
-  const url = String(value || '').trim()
-  return /^https?:\/\//i.test(url) ? url : ''
-}
-
 function shortText(value: string, length = 70) {
   return value.length > length ? `${value.slice(0, length - 1)}…` : value
+}
+
+function maskUsername(username?: string) {
+  const value = String(username || 'Khách').trim()
+  if (value.length <= 2) return `${value[0] || 'K'}##`
+  return `${value.slice(0, 2)}##`
 }
 
 function loadSavedCart() {
@@ -368,16 +369,6 @@ function ShopApp() {
           <strong>{shopName}</strong>
           <p>{settings.slogan || 'Shop Roblox dễ mua, dễ nhắn, dễ theo dõi đơn.'}</p>
         </div>
-        <div>
-          <p>Hỗ trợ: {settings.support_phone || '0900 000 000'} · {settings.support_email || 'support@sailorpiece.local'}</p>
-          <p className="social-links">
-            <a href={safeExternalUrl(settings.facebook_url) || undefined} target="_blank" rel="noreferrer" aria-disabled={!safeExternalUrl(settings.facebook_url)}>Facebook</a>
-            <span>·</span>
-            <a href={safeExternalUrl(settings.discord_url) || undefined} target="_blank" rel="noreferrer" aria-disabled={!safeExternalUrl(settings.discord_url)}>Discord</a>
-            <span>·</span>
-            <a href={safeExternalUrl(settings.tiktok_url) || undefined} target="_blank" rel="noreferrer" aria-disabled={!safeExternalUrl(settings.tiktok_url)}>TikTok</a>
-          </p>
-        </div>
       </footer>
     </div>
   )
@@ -464,7 +455,7 @@ function PurchaseTicker({ orders }: { orders: RecentOrder[] }) {
     <div className="purchase-ticker" aria-label="Đơn mua gần đây">
       <div>
         {items.map((order, index) => (
-          <span key={`${order.order_code}-${index}`}>{shortText(`${order.username || 'Khách'} vừa mua ${order.item_names || 'item Roblox'}`, 82)}</span>
+          <span key={`${order.order_code}-${index}`}>{shortText(`${maskUsername(order.username)} vừa mua ${order.item_names || 'item Roblox'}`, 82)}</span>
         ))}
       </div>
     </div>
@@ -490,7 +481,7 @@ function ItemCard({ item, go }: { item: Item; go: (page: Page, id?: string) => v
   return (
     <article className="item-card">
       <button className="image-button" onClick={() => go('item', item.slug)}>
-        <img src={item.image || placeholderImage} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
         {item.discount_percent > 0 && <span className="sale-badge">-{item.discount_percent}%</span>}
         <span className={item.stock > 0 ? 'stock-badge' : 'stock-badge out'}>{item.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</span>
       </button>
@@ -627,8 +618,8 @@ function ItemDetail({
   return (
     <section className="page-section detail-layout">
       <div className="gallery">
-        <img src={item.image || placeholderImage} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
-        <div className="thumbs">{item.gallery.map((image) => <img key={image} src={image || placeholderImage} alt={`${item.name} gallery`} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
+        <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        <div className="thumbs">{item.gallery.map((image) => <img key={image} src={assetUrl(image) || placeholderImage} alt={`${item.name} gallery`} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
       </div>
       <div className="detail-card">
         <button className="ghost" onClick={() => go('items')}>Quay lại danh sách item</button>
@@ -712,7 +703,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
         {!cart.length && <p className="muted">Giỏ hàng đang trống.</p>}
         {cart.map((entry) => (
           <div className="cart-row" key={entry.item.id}>
-            <img src={entry.item.image || placeholderImage} alt={entry.item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
+            <img src={assetUrl(entry.item.image) || placeholderImage} alt={entry.item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
             <div>
               <strong>{entry.item.name}</strong>
               <p>{money(entry.item.current_price)} · Còn {entry.item.stock}</p>
@@ -1134,7 +1125,7 @@ function ChatBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
       </div>
     )
   }
-  return <div className={`chat-message ${mine ? 'mine' : 'staff'}`}><strong>{mine ? 'Bạn' : item.sender_username || 'Admin'}</strong>{text && <p>{text}</p>}{imageMatch && <img className="chat-image" src={imageMatch[1]} alt="Ảnh chat" />}<small>{dateTime(item.created_at)}</small></div>
+  return <div className={`chat-message ${mine ? 'mine' : 'staff'}`}><strong>{mine ? 'Bạn' : item.sender_username || 'Admin'}</strong>{text && <p>{text}</p>}{imageMatch && <img className="chat-image" src={assetUrl(imageMatch[1])} alt="Ảnh chat" />}<small>{dateTime(item.created_at)}</small></div>
 }
 
 function ChatPage({ user, go, setNotice, locationId = '' }: { user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void; locationId?: string }) {
@@ -1188,7 +1179,7 @@ function ChatPage({ user, go, setNotice, locationId = '' }: { user: User | null;
           <label className="upload-button">Ảnh<input type="file" accept="image/*" onChange={uploadChatImage} /></label>
           <button className="primary" disabled={!message && !imageUrl}>Gửi</button>
         </form>
-        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt="Ảnh chuẩn bị gửi" />}
+        {imageUrl && <img className="chat-image-preview" src={assetUrl(imageUrl)} alt="Ảnh chuẩn bị gửi" />}
       </div>
     </section>
   )
@@ -1322,8 +1313,8 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
         <label>Ảnh đại diện URL<input placeholder="Dán link ảnh hoặc upload bên dưới" value={String(editing.image || '')} onChange={(event) => setEditing({ ...editing, image: event.target.value })} /></label>
         <label className="upload-field"><span>Upload ảnh đại diện</span><span className="upload-button">Chọn ảnh từ máy</span><input type="file" accept="image/*" onChange={uploadMainImage} /></label>
         <label className="upload-field"><span>Thêm ảnh gallery</span><span className="upload-button">Chọn ảnh gallery</span><input type="file" accept="image/*" onChange={uploadGalleryImage} /></label>
-        {Boolean(editing.image) && <img className="admin-image-preview" src={String(editing.image)} alt="Ảnh item" />}
-        {Array.isArray(editing.gallery) && editing.gallery.length > 0 && <div className="gallery-editor">{editing.gallery.map((image) => <span key={String(image)}><img src={String(image)} alt="Gallery" /><button type="button" onClick={() => setEditing({ ...editing, gallery: (editing.gallery as unknown[]).filter((item) => item !== image) })}>Xóa</button></span>)}</div>}
+        {Boolean(editing.image) && <img className="admin-image-preview" src={assetUrl(String(editing.image))} alt="Ảnh item" />}
+        {Array.isArray(editing.gallery) && editing.gallery.length > 0 && <div className="gallery-editor">{editing.gallery.map((image) => <span key={String(image)}><img src={assetUrl(String(image))} alt="Gallery" /><button type="button" onClick={() => setEditing({ ...editing, gallery: (editing.gallery as unknown[]).filter((item) => item !== image) })}>Xóa</button></span>)}</div>}
         <label>Giá bán<input type="number" placeholder="Ví dụ: 50000" value={numberInputValue(editing.price)} onChange={(event) => setEditing({ ...editing, price: numberInputNext(event.target.value) })} /></label>
         <label>Giá gốc<input type="number" placeholder="Ví dụ: 70000" value={numberInputValue(editing.original_price)} onChange={(event) => setEditing({ ...editing, original_price: numberInputNext(event.target.value) })} /></label>
         <label>Giá khuyến mãi<input type="number" placeholder="Không giảm thì bỏ trống" value={numberInputValue(editing.sale_price)} onChange={(event) => setEditing({ ...editing, sale_price: numberInputNext(event.target.value) })} /></label>
@@ -1549,7 +1540,7 @@ function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
           <label className="upload-button">{'Ảnh'}<input disabled={!selected} type="file" accept="image/*" onChange={uploadChatImage} /></label>
           <button className="primary" disabled={!selected || (!message && !imageUrl)}>{'Gửi'}</button>
         </form>
-        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt={'Ảnh chuẩn bị gửi'} />}
+        {imageUrl && <img className="chat-image-preview" src={assetUrl(imageUrl)} alt={'Ảnh chuẩn bị gửi'} />}
       </div>
     </div>
   )

@@ -25,6 +25,34 @@ const allowedOrigins = [
 const jwtSecret = process.env.JWT_SECRET || 'change-this-secret-before-production';
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 const idAlphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const imageMimeTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+  'image/bmp',
+  'image/x-icon',
+  'image/vnd.microsoft.icon',
+  'image/tiff',
+  'image/avif',
+  'image/heic',
+  'image/heif',
+]);
+const imageExtensions = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'image/svg+xml': '.svg',
+  'image/bmp': '.bmp',
+  'image/x-icon': '.ico',
+  'image/vnd.microsoft.icon': '.ico',
+  'image/tiff': '.tiff',
+  'image/avif': '.avif',
+  'image/heic': '.heic',
+  'image/heif': '.heif',
+};
 
 if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change-this-secret-before-production')) {
   throw new Error('Missing secure JWT_SECRET for production.');
@@ -49,7 +77,14 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(cookieParser());
-app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: true }));
+app.use('/uploads', express.static(uploadDir, {
+  maxAge: '7d',
+  immutable: true,
+  setHeaders: (res, filePath) => {
+    const mimeType = detectImageMime(fs.readFileSync(filePath));
+    if (mimeType) res.type(mimeType);
+  },
+}));
 
 function publicCache(_req, res, next) {
   res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
@@ -61,12 +96,16 @@ const adminLimiter = rateLimit({ windowMs: 60 * 1000, max: 90, standardHeaders: 
 const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false });
 const depositLimiter = rateLimit({ windowMs: 60 * 1000, max: 12, standardHeaders: true, legacyHeaders: false });
 const purchaseLimiter = rateLimit({ windowMs: 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${nanoid(10)}${imageExtensions[file.mimetype] || path.extname(file.originalname) || ''}`),
+});
 const upload = multer({
-  dest: uploadDir,
-  limits: { fileSize: 2 * 1024 * 1024 },
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype)) {
-      cb(new Error('Chỉ cho phép upload ảnh JPG, PNG, WEBP hoặc GIF.'));
+    if (!String(file.mimetype || '').startsWith('image/')) {
+      cb(new Error('Chỉ cho phép upload file ảnh.'));
       return;
     }
     cb(null, true);
@@ -129,12 +168,33 @@ function authCookieOptions() {
 }
 
 function isSupportedImage(buffer) {
-  if (!buffer || buffer.length < 12) return false;
+  return Boolean(detectImageMime(buffer));
+}
+
+function detectImageMime(buffer) {
+  if (!buffer || buffer.length < 12) return '';
   const png = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
   const jpg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
   const gif = buffer.toString('ascii', 0, 6) === 'GIF87a' || buffer.toString('ascii', 0, 6) === 'GIF89a';
   const webp = buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
-  return png || jpg || gif || webp;
+  const bmp = buffer[0] === 0x42 && buffer[1] === 0x4d;
+  const ico = buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0x01 && buffer[3] === 0x00;
+  const tiff = (buffer[0] === 0x49 && buffer[1] === 0x49 && buffer[2] === 0x2a && buffer[3] === 0x00) || (buffer[0] === 0x4d && buffer[1] === 0x4d && buffer[2] === 0x00 && buffer[3] === 0x2a);
+  const avif = buffer.toString('ascii', 4, 12) === 'ftypavif' || buffer.toString('ascii', 4, 12) === 'ftypavis';
+  const heif = ['ftypheic', 'ftypheix', 'ftyphevc', 'ftyphevx', 'ftypmif1', 'ftypmsf1'].includes(buffer.toString('ascii', 4, 12));
+  const svgText = buffer.toString('utf8', 0, Math.min(buffer.length, 500)).trimStart();
+  const svg = svgText.startsWith('<svg') || svgText.startsWith('<?xml');
+  if (png) return 'image/png';
+  if (jpg) return 'image/jpeg';
+  if (gif) return 'image/gif';
+  if (webp) return 'image/webp';
+  if (bmp) return 'image/bmp';
+  if (ico) return 'image/x-icon';
+  if (tiff) return 'image/tiff';
+  if (avif) return 'image/avif';
+  if (heif) return 'image/heif';
+  if (svg) return 'image/svg+xml';
+  return '';
 }
 
 function validateUploadedImage(file) {

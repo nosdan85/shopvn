@@ -50,6 +50,14 @@ export async function uploadImage(file: File, path = '/uploads/image'): Promise<
   return data
 }
 
+export function assetUrl(url?: string) {
+  const value = String(url || '').trim()
+  if (!value) return ''
+  if (/^(https?:|data:|blob:)/i.test(value)) return value
+  if (value.startsWith('/uploads/')) return `${apiBaseUrl}${value}`
+  return value
+}
+
 export function money(value: number) {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
