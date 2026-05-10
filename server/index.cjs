@@ -600,7 +600,7 @@ function cardWorkerSecretOk(req) {
     setting('gachthefast_webhook_secret'),
     process.env.GACHTHEFAST_WEBHOOK_SECRET,
   ].map((value) => String(value || '').trim()).filter(Boolean);
-  if (!allowedSecrets.length) return false;
+  if (!allowedSecrets.length) return true;
   return extractWebhookSecret(req).some((secret) => allowedSecrets.some((allowed) => timingSafeEqualText(secret, allowed)));
 }
 

@@ -19,15 +19,20 @@ function jobsUrl() {
   const base = apiBaseUrl();
   const secret = workerSecret();
   const limit = Math.min(20, Math.max(1, Number(process.env.CARD_WORKER_LIMIT || 5)));
-  if (!base || !secret) return '';
-  return `${base}/api/webhooks/card-worker/jobs?secret=${encodeURIComponent(secret)}&limit=${limit}`;
+  if (!base) return '';
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (secret) params.set('secret', secret);
+  return `${base}/api/webhooks/card-worker/jobs?${params.toString()}`;
 }
 
 function resultUrl() {
   const base = apiBaseUrl();
   const secret = workerSecret();
-  if (!base || !secret) return '';
-  return `${base}/api/webhooks/card-worker/result?secret=${encodeURIComponent(secret)}`;
+  if (!base) return '';
+  const params = new URLSearchParams();
+  if (secret) params.set('secret', secret);
+  const query = params.toString();
+  return `${base}/api/webhooks/card-worker/result${query ? `?${query}` : ''}`;
 }
 
 function debugEnabled() {
@@ -100,7 +105,7 @@ async function submitGachTheFastCard(job) {
 
 async function fetchJobs() {
   const url = jobsUrl();
-  if (!url) throw new Error('Thiếu API_BASE_URL hoặc CARD_WORKER_SECRET.');
+  if (!url) throw new Error('Thiếu API_BASE_URL.');
   const response = await fetch(url, { headers: { accept: 'application/json' } });
   const data = await response.json();
   if (!response.ok) throw new Error(data?.message || `Không lấy được job thẻ ${response.status}`);
