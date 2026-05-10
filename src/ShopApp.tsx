@@ -153,7 +153,7 @@ function ShopApp() {
   const [cart, setCart] = useState<CartItem[]>(loadSavedCart)
   const lastNotificationId = useRef<number | null>(null)
   const lastChatNotificationId = useRef<number | null>(null)
-  const lastAdminUnread = useRef(0)
+  const lastAdminUnread = useRef<number | null>(null)
 
   useEffect(() => {
     let active = true
@@ -218,15 +218,19 @@ function ShopApp() {
             lastChatNotificationId.current = latestAdminMessage.id
             return
           }
-          if (latestAdminMessage.id > lastChatNotificationId.current && page !== 'chat') {
+          if (latestAdminMessage.id > lastChatNotificationId.current) {
             lastChatNotificationId.current = latestAdminMessage.id
-            showNotice('Admin vừa gửi tin nhắn cho bạn.')
+            if (page !== 'chat') showNotice('Admin vừa gửi tin nhắn cho bạn.')
           }
         }).catch(() => undefined)
       }
       if (user.role !== 'user') {
         api<{ chats: AdminChat[] }>('/admin/chats').then((data) => {
           const unread = data.chats.reduce((sum, chat) => sum + Number(chat.unread_count || 0), 0)
+          if (lastAdminUnread.current === null) {
+            lastAdminUnread.current = unread
+            return
+          }
           if (unread > lastAdminUnread.current) showNotice('Chat có tin nhắn mới.')
           lastAdminUnread.current = unread
         }).catch(() => undefined)

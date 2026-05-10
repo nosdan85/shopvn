@@ -2901,4 +2901,29 @@ td {
   .toast {
     backdrop-filter: blur(10px);
   }
+
+  button,
+  .upload-button {
+    touch-action: manipulation;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, filter 0.16s ease;
+  }
+
+  button:active,
+  .upload-button:active {
+    transform: scale(0.96);
+    filter: brightness(0.98);
+  }
+
+  .primary:active,
+  .secondary:active,
+  .wallet:active,
+  .mobile-menu-toggle:active,
+  .mobile-side-nav button:active {
+    box-shadow: 0 8px 20px rgba(88, 101, 242, 0.18);
+  }
+
+  .mobile-side-nav button:active {
+    color: var(--primary);
+    background: rgba(88, 101, 242, 0.16);
+  }
 }
