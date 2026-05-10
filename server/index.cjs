@@ -667,6 +667,7 @@ function processCardWorkerResult(raw) {
 
 function createOrderChatSummary({ order, items }) {
   const lines = [
+    'ORDER_EMBED',
     `Mã đơn: ${order.order_code}`,
     `Tài khoản web: ${order.username || ''}`,
     `Tên Roblox: ${order.roblox_username}`,
@@ -686,9 +687,9 @@ function chatMessageWithImage(message, imageUrl) {
   return [text, `Ảnh: ${image}`].filter(Boolean).join('\n');
 }
 
-function createInitialOrderChat({ orderId, userId, message }) {
-  db.prepare('INSERT INTO order_chat_messages (order_id, user_id, sender_id, message) VALUES (?, ?, ?, ?)')
-    .run(orderId, userId, userId, message.slice(0, 2000));
+function createInitialOrderChat({ userId, message }) {
+  db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)')
+    .run(userId, userId, message.slice(0, 2500));
 }
 
 let sepayBotRunning = false;
@@ -1274,7 +1275,6 @@ app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
         referenceType: 'order',
         note: `Mua ${orderItems.length} loại item`,
       });
-      notifyUser(user.id, 'Mua item thành công', `Đơn ${orderCode} đang chờ xử lý.`, 'order');
       const order = db.prepare('SELECT orders.*, users.username FROM orders JOIN users ON users.id = orders.user_id WHERE orders.id = ?').get(orderResult.lastInsertRowid);
       const savedItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderResult.lastInsertRowid);
       createInitialOrderChat({ orderId: order.id, userId: user.id, message: createOrderChatSummary({ order, items: savedItems }) });
@@ -1318,7 +1318,6 @@ app.post('/api/chat', requireAuth, (req, res) => {
       return;
     }
     db.prepare('INSERT INTO chat_messages (user_id, sender_id, message) VALUES (?, ?, ?)').run(req.user.id, req.user.id, message.slice(0, 2500));
-    notifyUser(req.user.id, '\u0110\u00e3 g\u1eedi tin nh\u1eafn', 'Admin s\u1ebd ph\u1ea3n h\u1ed3i trong th\u1eddi gian s\u1edbm nh\u1ea5t.', 'chat');
     res.json({ ok: true });
   } catch (error) {
     res.status(400).json({ message: error.message });

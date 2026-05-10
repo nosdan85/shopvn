@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { api, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
-import type { AdminChat, AdminOrderChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, OrderItem, Review, Settings, User } from './types'
+import type { AdminChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, Review, Settings, User } from './types'
 
 type Page =
   | 'home'
@@ -142,7 +142,8 @@ function ShopApp() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>(loadSavedCart)
   const lastNotificationId = useRef<number | null>(null)
-  const lastAdminUnread = useRef({ support: 0, order: 0 })
+  const lastChatNotificationId = useRef<number | null>(null)
+  const lastAdminUnread = useRef(0)
 
   useEffect(() => {
     let active = true
@@ -199,23 +200,32 @@ function ShopApp() {
           showNotice(`${latest.title}: ${latest.content}`)
         }
       }).catch(() => undefined)
+      if (user.role === 'user') {
+        api<{ messages: ChatMessage[] }>('/chat').then((data) => {
+          const latestAdminMessage = [...data.messages].reverse().find((message) => message.sender_id !== user.id)
+          if (!latestAdminMessage) return
+          if (lastChatNotificationId.current === null) {
+            lastChatNotificationId.current = latestAdminMessage.id
+            return
+          }
+          if (latestAdminMessage.id > lastChatNotificationId.current && page !== 'chat') {
+            lastChatNotificationId.current = latestAdminMessage.id
+            showNotice('Admin vừa gửi tin nhắn cho bạn.')
+          }
+        }).catch(() => undefined)
+      }
       if (user.role !== 'user') {
-        Promise.all([
-          api<{ chats: AdminChat[] }>('/admin/chats'),
-          api<{ chats: AdminOrderChat[] }>('/admin/order-chats'),
-        ]).then(([support, order]) => {
-          const supportUnread = support.chats.reduce((sum, chat) => sum + Number(chat.unread_count || 0), 0)
-          const orderUnread = order.chats.reduce((sum, chat) => sum + Number(chat.unread_count || 0), 0)
-          if (supportUnread > lastAdminUnread.current.support) showNotice('Hỗ trợ có tin nhắn mới.')
-          if (orderUnread > lastAdminUnread.current.order) showNotice('Có tin nhắn mới về đơn hàng.')
-          lastAdminUnread.current = { support: supportUnread, order: orderUnread }
+        api<{ chats: AdminChat[] }>('/admin/chats').then((data) => {
+          const unread = data.chats.reduce((sum, chat) => sum + Number(chat.unread_count || 0), 0)
+          if (unread > lastAdminUnread.current) showNotice('Chat có tin nhắn mới.')
+          lastAdminUnread.current = unread
         }).catch(() => undefined)
       }
     }
     checkNotifications()
     const timer = window.setInterval(checkNotifications, 12000)
     return () => window.clearInterval(timer)
-  }, [user?.id, user?.role])
+  }, [page, user?.id, user?.role])
 
   function go(nextPage: Page, id = '') {
     setPage(nextPage)
@@ -271,8 +281,7 @@ function ShopApp() {
     { page: 'home' as Page, label: 'Trang chủ', icon: '⌂', show: true },
     { page: 'cart' as Page, label: `Giỏ hàng (${cartCount})`, icon: '🛒', show: true },
     { page: 'deposit' as Page, label: 'Nạp', icon: '₫', show: true },
-    { page: 'orders' as Page, label: 'Nhắn admin về đơn', icon: '☰', show: Boolean(user) },
-    { page: 'chat' as Page, label: 'Hỗ trợ', icon: '✉', show: Boolean(user) },
+    { page: 'chat' as Page, label: 'Chat', icon: '💬', show: Boolean(user) },
     { page: 'admin' as Page, label: 'Admin', icon: '⚙', show: Boolean(user && user.role !== 'user') },
   ].filter((item) => item.show)
   const mobileNavItems = user
@@ -308,7 +317,7 @@ function ShopApp() {
           )}
         </div>
       </header>
-      <div className="mobile-nav-shell">
+      <div className={`mobile-nav-shell ${mobileMenuOpen ? 'open' : ''}`}>
         <button className="mobile-menu-toggle" type="button" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}>
           <span />
           <span />
@@ -335,11 +344,11 @@ function ShopApp() {
         {page === 'deposit' && <DepositPage {...context} />}
         {page === 'deposits' && <DepositsPage />}
         {page === 'cart' && <CartPage user={user} cart={cart} setCart={setCart} go={go} setUser={setUser} setNotice={showNotice} />}
-        {page === 'orders' && <OrdersPage go={go} />}
-        {page === 'order' && <OrderDetail id={routeId} />}
+        {page === 'orders' && <ChatPage user={user} go={go} setNotice={showNotice} locationId={routeId} />}
+        {page === 'order' && <ChatPage user={user} go={go} setNotice={showNotice} locationId={routeId} />}
         {page === 'profile' && <Profile {...context} />}
         {page === 'review' && <ReviewPage setNotice={showNotice} />}
-        {page === 'chat' && <ChatPage user={user} go={go} setNotice={showNotice} />}
+        {page === 'chat' && <ChatPage user={user} go={go} setNotice={showNotice} locationId={routeId} />}
         {page === 'admin' && <AdminPanel {...context} />}
       </main>
 
@@ -590,7 +599,7 @@ function ItemDetail({
       })
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
-      go('order', String(data.order.id))
+      go('chat', String(data.order.id))
     } catch (error) {
       setNotice(messageFromError(error))
     }
@@ -672,7 +681,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
       setCart([])
-      go('order', String(data.order.id))
+      go('chat', String(data.order.id))
     } catch (error) {
       setNotice(messageFromError(error))
     } finally {
@@ -1014,81 +1023,6 @@ function DepositsPage() {
   return <TablePage title="Lịch sử nạp tiền" headers={['Mã GD', 'Phương thức', 'Số tiền', 'Trạng thái', 'Tạo lúc', 'Hoàn thành']} rows={deposits.map((deposit) => [deposit.transaction_code, depositMethod[deposit.method] || deposit.method, money(deposit.amount), depositStatus[deposit.status], dateTime(deposit.created_at), dateTime(deposit.completed_at)])} />
 }
 
-function OrdersPage({ go }: { go: (page: Page, id?: string) => void }) {
-  const [orders, setOrders] = useState<Order[]>([])
-  useEffect(() => {
-    api<{ orders: Order[] }>('/orders').then((data) => setOrders(data.orders))
-  }, [])
-  return (
-    <section className="page-section">
-      <h1>Lịch sử mua hàng</h1>
-      <div className="table-card">
-        <table>
-          <thead><tr><th>Mã đơn</th><th>Item</th><th>Tổng tiền</th><th>Roblox Username</th><th>Trạng thái</th><th>Thời gian</th><th></th></tr></thead>
-          <tbody>{orders.map((order) => <tr key={order.id}><td>{order.order_code}</td><td>{order.item_names}</td><td>{money(order.total_amount)}</td><td>{order.roblox_username}</td><td>{orderStatus[order.status]}</td><td>{dateTime(order.created_at)}</td><td><button onClick={() => go('order', String(order.id))}>Chi tiết</button></td></tr>)}</tbody>
-        </table>
-      </div>
-    </section>
-  )
-}
-
-function OrderDetail({ id }: { id: string }) {
-  const [data, setData] = useState<{ order: Order; items: Array<{ item_name: string; quantity: number; price: number; total_price: number }>; logs: Array<{ old_status?: string; new_status: string; note?: string; created_at: string }>; messages: ChatMessage[] } | null>(null)
-  const [message, setMessage] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const load = () => api<typeof data>(`/orders/${id}`).then(setData)
-  useEffect(() => {
-    load()
-  }, [id])
-  useEffect(() => {
-    if (!data) return
-    window.setTimeout(() => document.getElementById('order-chat')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
-  }, [data?.order.id])
-  async function uploadChatImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const data = await uploadImage(file, '/uploads/chat-image')
-    setImageUrl(data.url)
-  }
-  async function send(event: FormEvent) {
-    event.preventDefault()
-    await api(`/orders/${id}/chat`, { method: 'POST', body: JSON.stringify({ message, image_url: imageUrl }) })
-    setMessage('')
-    setImageUrl('')
-    load()
-  }
-  if (!data) return <section className="page-section">{'Đang tải đơn hàng...'}</section>
-  return (
-    <section className="page-section detail-layout">
-      <div className="panel">
-        <h1>{'Đơn'} {data.order.order_code}</h1>
-        <p>{'Trạng thái:'} <strong>{orderStatus[data.order.status]}</strong></p>
-        <p>Roblox Username: <strong>{data.order.roblox_username}</strong></p>
-        <p>{'Ghi chú khách:'} {data.order.customer_note || '-'}</p>
-        <p>{'Ghi chú admin:'} {data.order.admin_note || '-'}</p>
-        <p>{'Tổng tiền:'} <strong>{money(data.order.total_amount)}</strong></p>
-        <h2>{'Item trong đơn'}</h2>
-        {data.items.map((item) => <p key={item.item_name}>{item.quantity} x {item.item_name} · {money(item.total_price)}</p>)}
-      </div>
-      <div className="panel chat-panel" id="order-chat">
-        <h2>{'Chat đơn hàng'}</h2>
-        <div className="chat-box">
-          {data.messages.length === 0 && <p className="muted">{'Chưa có tin nhắn đơn hàng.'}</p>}
-          {data.messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_role === 'user'} />)}
-        </div>
-        <form className="chat-form" onSubmit={send}>
-          <input placeholder={'Nhắn cho shop về đơn này'} value={message} onChange={(event) => setMessage(event.target.value)} />
-          <label className="upload-button">{'Ảnh'}<input type="file" accept="image/*" onChange={uploadChatImage} /></label>
-          <button className="primary" disabled={!message && !imageUrl}>{'Gửi'}</button>
-        </form>
-        {imageUrl && <img className="chat-image-preview" src={imageUrl} alt={'Ảnh chuẩn bị gửi'} />}
-        <h2>{'Lịch sử trạng thái'}</h2>
-        {data.logs.map((log, index) => <p key={index}>{dateTime(log.created_at)} · {orderStatus[log.new_status] || log.new_status} · {log.note}</p>)}
-      </div>
-    </section>
-  )
-}
-
 function Profile({ user, go, setNotice }: { user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
   const [summary, setSummary] = useState<{ user: User; total_deposited: number; total_spent: number } | null>(null)
   const [logs, setLogs] = useState<BalanceLog[]>([])
@@ -1173,10 +1107,20 @@ function ReviewPage({ setNotice }: { setNotice: (message: string) => void }) {
 function ChatBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
   const imageMatch = item.message.match(/(?:^|\n)Ảnh: (\S+)/)
   const text = item.message.replace(/(?:^|\n)Ảnh: \S+/, '').trim()
+  if (text.startsWith('ORDER_EMBED')) {
+    const lines = text.split('\n').slice(1)
+    return (
+      <div className="chat-message order-embed">
+        <strong>Đơn hàng mới</strong>
+        {lines.map((line) => <p key={line}>{line}</p>)}
+        <small>{dateTime(item.created_at)}</small>
+      </div>
+    )
+  }
   return <div className={`chat-message ${mine ? 'mine' : 'staff'}`}><strong>{mine ? 'Bạn' : item.sender_username || 'Admin'}</strong>{text && <p>{text}</p>}{imageMatch && <img className="chat-image" src={imageMatch[1]} alt="Ảnh chat" />}<small>{dateTime(item.created_at)}</small></div>
 }
 
-function ChatPage({ user, go, setNotice }: { user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
+function ChatPage({ user, go, setNotice, locationId = '' }: { user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void; locationId?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [message, setMessage] = useState('')
   const [imageUrl, setImageUrl] = useState('')
@@ -1184,9 +1128,10 @@ function ChatPage({ user, go, setNotice }: { user: User | null; go: (page: Page,
   useEffect(() => {
     if (!user) return
     load()
+    if (locationId) window.setTimeout(() => document.querySelector('.chat-box')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
     const timer = window.setInterval(load, 5000)
     return () => window.clearInterval(timer)
-  }, [user])
+  }, [locationId, user])
   async function uploadChatImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
@@ -1216,7 +1161,7 @@ function ChatPage({ user, go, setNotice }: { user: User | null; go: (page: Page,
   return (
     <section className="page-section">
       <div className="panel chat-panel">
-        <h1>Chat với admin</h1>
+        <h1>Chat</h1>
         <div className="chat-box">
           {messages.length === 0 && <p className="muted">Chưa có tin nhắn nào.</p>}
           {messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_id === user.id} />)}
@@ -1246,8 +1191,7 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
           ['deposits', 'Giao dịch nạp'],
           ['sepay-bot', 'SePay Bot'],
           ['balance', 'Log số dư'],
-          ['chats', 'Support chat'],
-          ['order-chats', 'Order chat'],
+          ['chats', 'Chat'],
           ['reviews', 'Đánh giá'],
           ['settings', 'Cấu hình'],
         ].map(([key, label]) => <button className={tab === key ? 'active' : ''} key={key} onClick={() => setTab(key)}>{label}</button>)}
@@ -1261,7 +1205,6 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
         {tab === 'sepay-bot' && <AdminSepayBot setNotice={setNotice} />}
         {tab === 'balance' && <AdminBalanceLogs />}
         {tab === 'chats' && <AdminChats setNotice={setNotice} />}
-        {tab === 'order-chats' && <AdminOrderChats setNotice={setNotice} />}
         {tab === 'reviews' && <AdminReviews setNotice={setNotice} />}
         {tab === 'settings' && <AdminSettings initial={settings} setNotice={setNotice} />}
       </div>
@@ -1573,7 +1516,7 @@ function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
   return (
     <div className="admin-chat-grid">
       <div className="panel">
-        <h1>Support chat</h1>
+        <h1>Chat</h1>
         {chats.length === 0 && <p className="muted">Chưa có cuộc chat nào.</p>}
         <div className="chat-list">
           {chats.map((chat) => <button key={chat.user_id} className={selected?.user_id === chat.user_id ? 'active' : ''} onClick={() => loadThread(chat)}><strong>{chat.username}</strong><span>{chat.last_message || 'Chưa có nội dung'}</span>{chat.unread_count > 0 && <small>{chat.unread_count} mới</small>}</button>)}
@@ -1590,67 +1533,6 @@ function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
           <button className="primary" disabled={!selected || (!message && !imageUrl)}>{'Gửi'}</button>
         </form>
         {imageUrl && <img className="chat-image-preview" src={imageUrl} alt={'Ảnh chuẩn bị gửi'} />}
-      </div>
-    </div>
-  )
-}
-
-function AdminOrderChats({ setNotice }: { setNotice: (message: string) => void }) {
-  const [chats, setChats] = useState<AdminOrderChat[]>([])
-  const [selected, setSelected] = useState<AdminOrderChat | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [items, setItems] = useState<OrderItem[]>([])
-  const [message, setMessage] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const loadChats = () => api<{ chats: AdminOrderChat[] }>('/admin/order-chats').then((data) => setChats(data.chats))
-  async function loadThread(chat: AdminOrderChat) {
-    setSelected(chat)
-    const data = await api<{ messages: ChatMessage[]; items: OrderItem[] }>(`/admin/order-chats/${chat.order_id}`)
-    setMessages(data.messages)
-    setItems(data.items)
-    loadChats()
-  }
-  useEffect(() => {
-    loadChats()
-  }, [])
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    if (!selected) return
-    try {
-      await api(`/admin/order-chats/${selected.order_id}`, { method: 'POST', body: JSON.stringify({ message, image_url: imageUrl }) })
-      setMessage('')
-      setImageUrl('')
-      loadThread(selected)
-    } catch (error) {
-      setNotice(messageFromError(error))
-    }
-  }
-  async function uploadChatImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const data = await uploadImage(file, '/uploads/chat-image')
-    setImageUrl(data.url)
-  }
-  return (
-    <div className="admin-chat-grid">
-      <div className="panel">
-        <h1>Order chat</h1>
-        {chats.length === 0 && <p className="muted">Chưa có chat đơn hàng nào.</p>}
-        <div className="chat-list">
-          {chats.map((chat) => <button key={chat.order_id} className={selected?.order_id === chat.order_id ? 'active' : ''} onClick={() => loadThread(chat)}><strong>{chat.order_code}</strong><span>{chat.username} · {money(chat.total_amount)}</span>{chat.unread_count > 0 && <small>{chat.unread_count} mới</small>}</button>)}
-        </div>
-      </div>
-      <div className="panel chat-panel">
-        <h2>{selected ? `Đơn ${selected.order_code}` : 'Chọn đơn để trả lời'}</h2>
-        {selected && <div className="info-box"><p>User: <strong>{selected.username}</strong></p><p>Roblox: <strong>{selected.roblox_username}</strong></p><p>Item: {items.map((item) => `${item.item_name} x${item.quantity}`).join(', ')}</p></div>}
-        <div className="chat-box">
-          {messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_role !== 'user'} />)}
-        </div>
-        <form className="chat-form" onSubmit={submit}>
-          <input disabled={!selected} placeholder={'Nhập phản hồi cho đơn hàng'} value={message} onChange={(event) => setMessage(event.target.value)} />
-          <label className="upload-button">{'Ảnh'}<input disabled={!selected} type="file" accept="image/*" onChange={uploadChatImage} /></label>
-          <button className="primary" disabled={!selected || (!message && !imageUrl)}>{'Gửi'}</button>
-        </form>
       </div>
     </div>
   )
