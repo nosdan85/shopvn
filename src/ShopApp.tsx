@@ -335,12 +335,10 @@ function ShopApp() {
           <span />
           <span />
         </button>
-        {mobileMenuOpen && (
-          <nav className="mobile-side-nav" aria-label="Menu điện thoại">
-            {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><small>{item.label}</small></button>)}
-            {user && <button className="mobile-logout" onClick={logout}><small>Đăng xuất</small></button>}
-          </nav>
-        )}
+        <nav className="mobile-side-nav" aria-label="Menu điện thoại">
+          {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><small>{item.label}</small></button>)}
+          {user && <button className="mobile-logout" onClick={logout}><small>Đăng xuất</small></button>}
+        </nav>
       </div>
 
       {noticeState && <div className="toast-backdrop" role="alertdialog" aria-live="assertive" aria-modal="true"><div className="toast"><p>{noticeState.message}</p><button className="primary" type="button" onClick={closeNotice}>OK</button></div></div>}
