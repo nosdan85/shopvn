@@ -118,6 +118,15 @@ function BootScreen() {
   )
 }
 
+function LoadingButton({ loading, children, className = '', disabled = false, type = 'submit', onClick }: { loading: boolean; children: React.ReactNode; className?: string; disabled?: boolean; type?: 'button' | 'submit'; onClick?: () => void }) {
+  return (
+    <button className={`loading-button ${className}`.trim()} disabled={disabled || loading} type={type} onClick={onClick}>
+      <span>{children}</span>
+      {loading && <i className="button-spinner" aria-hidden="true" />}
+    </button>
+  )
+}
+
 function ShopApp() {
   const [page, setPage] = useState<Page>('home')
   const [routeId, setRouteId] = useState<string>('')
@@ -274,6 +283,7 @@ function ShopApp() {
       </header>
       <nav className="mobile-bottom-nav">
         {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><span>{item.icon}</span><small>{item.label}</small></button>)}
+        {user && <button className="mobile-logout" onClick={logout}><span>↩</span><small>Đăng xuất</small></button>}
       </nav>
 
       {notice && <div className="toast">{notice}</div>}
@@ -582,6 +592,7 @@ function ItemDetail({
 
 function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User | null; cart: CartItem[]; setCart: (cart: CartItem[]) => void; go: (page: Page, id?: string) => void; setUser: (user: User | null) => void; setNotice: (message: string) => void }) {
   const [form, setForm] = useState({ robloxUsername: '', customerNote: '' })
+  const [submitting, setSubmitting] = useState(false)
   const total = cart.reduce((sum, entry) => sum + entry.item.current_price * safeQuantity(entry.quantity), 0)
   function updateQuantity(itemId: number, quantity: number | '') {
     setCart(cart.map((entry) => entry.item.id === itemId ? { ...entry, quantity: quantity === '' ? '' : Math.max(1, Math.min(entry.item.stock, quantity)) } : entry))
@@ -597,6 +608,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
       setNotice('Giỏ hàng đang trống.')
       return
     }
+    setSubmitting(true)
     try {
       const data = await api<{ order: Order }>('/orders/buy', {
         method: 'POST',
@@ -613,6 +625,8 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
       go('order', String(data.order.id))
     } catch (error) {
       setNotice(messageFromError(error))
+    } finally {
+      setSubmitting(false)
     }
   }
   return (
@@ -637,7 +651,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
         <h2>Thanh toán giỏ hàng</h2>
         <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
         <textarea placeholder="Ghi chú cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
-        <button className="primary large" disabled={!cart.length}>Mua tất cả bằng số dư</button>
+        <LoadingButton className="primary large" loading={submitting} disabled={!cart.length}>Mua tất cả bằng số dư</LoadingButton>
         <button type="button" onClick={() => go('items')}>Tiếp tục chọn item</button>
       </form>
     </section>
@@ -646,8 +660,10 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
 
 function Login({ setUser, go, setNotice }: { setUser: (user: User | null) => void; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
   const [form, setForm] = useState({ account: '', password: '' })
+  const [submitting, setSubmitting] = useState(false)
   async function submit(event: FormEvent) {
     event.preventDefault()
+    setSubmitting(true)
     try {
       const data = await api<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(form) })
       setUser(data.user)
@@ -655,13 +671,15 @@ function Login({ setUser, go, setNotice }: { setUser: (user: User | null) => voi
       go(data.user.role === 'user' ? 'profile' : 'admin')
     } catch (error) {
       setNotice(messageFromError(error))
+    } finally {
+      setSubmitting(false)
     }
   }
   return (
     <AuthCard title="Đăng nhập" onSubmit={submit}>
       <input required placeholder="Username hoặc email" value={form.account} onChange={(event) => setForm({ ...form, account: event.target.value })} />
       <input required type="password" placeholder="Mật khẩu" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
-      <button className="primary large">Đăng nhập</button>
+      <LoadingButton className="primary large" loading={submitting}>Đăng nhập</LoadingButton>
       <button type="button" className="ghost" onClick={() => go('forgot')}>Quên mật khẩu?</button>
     </AuthCard>
   )
@@ -669,8 +687,10 @@ function Login({ setUser, go, setNotice }: { setUser: (user: User | null) => voi
 
 function Register({ setUser, go, setNotice }: { setUser: (user: User | null) => void; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
   const [form, setForm] = useState({ username: '', email: '', password: '', confirmPassword: '' })
+  const [submitting, setSubmitting] = useState(false)
   async function submit(event: FormEvent) {
     event.preventDefault()
+    setSubmitting(true)
     try {
       const data = await api<{ user: User }>('/auth/register', { method: 'POST', body: JSON.stringify(form) })
       setUser(data.user)
@@ -678,6 +698,8 @@ function Register({ setUser, go, setNotice }: { setUser: (user: User | null) => 
       go('profile')
     } catch (error) {
       setNotice(messageFromError(error))
+    } finally {
+      setSubmitting(false)
     }
   }
   return (
@@ -686,7 +708,7 @@ function Register({ setUser, go, setNotice }: { setUser: (user: User | null) => 
       <input required type="email" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
       <input required type="password" placeholder="Mật khẩu" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
       <input required type="password" placeholder="Nhập lại mật khẩu" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} />
-      <button className="primary large">Tạo tài khoản</button>
+      <LoadingButton className="primary large" loading={submitting}>Tạo tài khoản</LoadingButton>
     </AuthCard>
   )
 }
@@ -705,28 +727,36 @@ function AuthCard({ title, onSubmit, children }: { title: string; onSubmit: (eve
 
 function ForgotPassword({ setNotice }: { setNotice: (message: string) => void }) {
   const [email, setEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   async function submit(event: FormEvent) {
     event.preventDefault()
+    setSubmitting(true)
     try {
       const data = await api<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) })
       setNotice(data.message)
     } catch (error) {
       setNotice(messageFromError(error))
+    } finally {
+      setSubmitting(false)
     }
   }
-  return <AuthCard title="Quên mật khẩu" onSubmit={submit}><input required type="email" placeholder="Email đã đăng ký" value={email} onChange={(event) => setEmail(event.target.value)} /><button className="primary large">Gửi mã về Gmail</button></AuthCard>
+  return <AuthCard title="Quên mật khẩu" onSubmit={submit}><input required type="email" placeholder="Email đã đăng ký" value={email} onChange={(event) => setEmail(event.target.value)} /><LoadingButton className="primary large" loading={submitting}>Gửi mã về Gmail</LoadingButton></AuthCard>
 }
 
 function ResetPassword({ setNotice }: { setNotice: (message: string) => void }) {
   const params = new URLSearchParams(window.location.search)
   const [form, setForm] = useState({ email: params.get('email') || '', token: params.get('token') || '', password: '', confirmPassword: '' })
+  const [submitting, setSubmitting] = useState(false)
   async function submit(event: FormEvent) {
     event.preventDefault()
+    setSubmitting(true)
     try {
       const data = await api<{ message: string }>('/auth/reset-password', { method: 'POST', body: JSON.stringify(form) })
       setNotice(data.message)
     } catch (error) {
       setNotice(messageFromError(error))
+    } finally {
+      setSubmitting(false)
     }
   }
   return (
@@ -735,7 +765,7 @@ function ResetPassword({ setNotice }: { setNotice: (message: string) => void }) 
       <input required inputMode="numeric" placeholder="Mã xác nhận trong Gmail" value={form.token} onChange={(event) => setForm({ ...form, token: event.target.value })} />
       <input required type="password" placeholder="Mật khẩu mới" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
       <input required type="password" placeholder="Nhập lại mật khẩu" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} />
-      <button className="primary large">Cập nhật mật khẩu</button>
+      <LoadingButton className="primary large" loading={submitting}>Cập nhật mật khẩu</LoadingButton>
     </AuthCard>
   )
 }
@@ -747,6 +777,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
   const [deposit, setDeposit] = useState<Deposit | null>(null)
   const [confirmingDeposit, setConfirmingDeposit] = useState<Deposit | null>(null)
   const [failedCardDeposit, setFailedCardDeposit] = useState<Deposit | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -762,6 +793,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
       setNotice('Số tiền nạp tối thiểu là 10.000đ.')
       return
     }
+    setSubmitting(true)
     try {
       const data = await api<{ deposit: Deposit }>('/deposits', { method: 'POST', body: JSON.stringify(payload) })
       setDeposit(data.deposit)
@@ -774,6 +806,8 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
       }
     } catch (error) {
       setNotice(messageFromError(error))
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -835,7 +869,7 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
             <label>Mã thẻ/PIN<input required placeholder="Nhập mã thẻ/PIN" value={card.code} onChange={(event) => setCard({ ...card, code: event.target.value })} /></label>
           </>
         )}
-        <button className="primary large">Tạo giao dịch nạp</button>
+        <LoadingButton className="primary large" loading={submitting}>Tạo giao dịch nạp</LoadingButton>
         <button type="button" onClick={() => go('deposits')}>Xem lịch sử nạp</button>
       </form>
       <div className="panel deposit-guide">
@@ -999,44 +1033,33 @@ function OrderDetail({ id }: { id: string }) {
   )
 }
 
-function Profile({ setUser, user, go, setNotice }: { setUser: (user: User | null) => void; user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
+function Profile({ user, go, setNotice }: { user: User | null; go: (page: Page, id?: string) => void; setNotice: (message: string) => void }) {
   const [summary, setSummary] = useState<{ user: User; total_deposited: number; total_spent: number } | null>(null)
   const [logs, setLogs] = useState<BalanceLog[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [profile, setProfile] = useState({ full_name: '', phone: '' })
   const [password, setPassword] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [changingPassword, setChangingPassword] = useState(false)
 
   useEffect(() => {
     if (!user) {
       go('login')
       return
     }
-    api<typeof summary>('/profile/summary').then((data) => {
-      setSummary(data)
-      setProfile({ full_name: data?.user.full_name || '', phone: data?.user.phone || '' })
-    })
+    api<typeof summary>('/profile/summary').then((data) => setSummary(data))
     api<{ logs: BalanceLog[] }>('/balance-logs').then((data) => setLogs(data.logs))
     api<{ notifications: Notification[] }>('/notifications').then((data) => setNotifications(data.notifications))
   }, [go, user])
 
-  async function saveProfile(event: FormEvent) {
-    event.preventDefault()
-    try {
-      const data = await api<{ user: User }>('/profile', { method: 'PATCH', body: JSON.stringify(profile) })
-      setUser(data.user)
-      setNotice('Đã cập nhật hồ sơ.')
-    } catch (error) {
-      setNotice(messageFromError(error))
-    }
-  }
-
   async function changePassword(event: FormEvent) {
     event.preventDefault()
+    setChangingPassword(true)
     try {
       const data = await api<{ message: string }>('/profile/change-password', { method: 'POST', body: JSON.stringify(password) })
       setNotice(data.message)
     } catch (error) {
       setNotice(messageFromError(error))
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -1054,19 +1077,13 @@ function Profile({ setUser, user, go, setNotice }: { setUser: (user: User | null
         <Stat label="Tổng đã mua" value={money(summary.total_spent)} />
         <Stat label="Ngày tạo" value={dateTime(summary.user.created_at)} />
       </div>
-      <section className="two-col">
-        <form className="panel" onSubmit={saveProfile}>
-          <h2>Cập nhật thông tin</h2>
-          <input value={profile.full_name} placeholder="Họ tên" onChange={(event) => setProfile({ ...profile, full_name: event.target.value })} />
-          <input value={profile.phone} placeholder="Số điện thoại/Zalo" onChange={(event) => setProfile({ ...profile, phone: event.target.value })} />
-          <button className="primary">Lưu hồ sơ</button>
-        </form>
+      <section className="profile-actions">
         <form className="panel" onSubmit={changePassword}>
           <h2>Đổi mật khẩu</h2>
           <input type="password" placeholder="Mật khẩu hiện tại" value={password.currentPassword} onChange={(event) => setPassword({ ...password, currentPassword: event.target.value })} />
           <input type="password" placeholder="Mật khẩu mới" value={password.newPassword} onChange={(event) => setPassword({ ...password, newPassword: event.target.value })} />
           <input type="password" placeholder="Nhập lại mật khẩu mới" value={password.confirmPassword} onChange={(event) => setPassword({ ...password, confirmPassword: event.target.value })} />
-          <button className="primary">Đổi mật khẩu</button>
+          <LoadingButton className="primary" loading={changingPassword}>Đổi mật khẩu</LoadingButton>
         </form>
       </section>
       <TablePage title="Biến động số dư" headers={['Loại', 'Số tiền', 'Trước', 'Sau', 'Ghi chú', 'Thời gian']} rows={logs.map((log) => [log.type, money(log.amount), money(log.balance_before), money(log.balance_after), log.note || '', dateTime(log.created_at)])} />
