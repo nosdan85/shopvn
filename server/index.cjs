@@ -927,6 +927,16 @@ app.get('/api/home', publicCache, (_req, res) => {
   const featured = db.prepare("SELECT * FROM items WHERE status = 'active' AND is_featured = 1 ORDER BY sort_order ASC LIMIT 6").all().map(parseItem);
   const bestSellers = db.prepare("SELECT * FROM items WHERE status = 'active' ORDER BY sold_count DESC LIMIT 6").all().map(parseItem);
   const sales = db.prepare("SELECT * FROM items WHERE status = 'active' AND is_sale = 1 ORDER BY sort_order ASC LIMIT 6").all().map(parseItem);
+  const recentOrders = db.prepare(`
+    SELECT orders.order_code, orders.created_at, users.username, GROUP_CONCAT(order_items.item_name, ', ') AS item_names
+    FROM orders
+    JOIN users ON users.id = orders.user_id
+    LEFT JOIN order_items ON order_items.order_id = orders.id
+    WHERE orders.status IN ('pending','processing','completed')
+    GROUP BY orders.id
+    ORDER BY orders.created_at DESC
+    LIMIT 12
+  `).all();
   const reviews = db.prepare(`
     SELECT reviews.*, users.username, items.name as item_name FROM reviews
     JOIN users ON users.id = reviews.user_id
@@ -934,7 +944,7 @@ app.get('/api/home', publicCache, (_req, res) => {
     WHERE reviews.status = 'approved'
     ORDER BY reviews.created_at DESC LIMIT 6
   `).all();
-  res.json({ settings: publicSettings(), featured, bestSellers, sales, reviews });
+  res.json({ settings: publicSettings(), featured, bestSellers, sales, reviews, recentOrders });
 });
 
 app.get('/api/deposits', requireAuth, (req, res) => {

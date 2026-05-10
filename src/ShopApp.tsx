@@ -45,7 +45,12 @@ const emptyItem = {
 const placeholderImage = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="540" viewBox="0 0 720 540"%3E%3Crect width="720" height="540" fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%236b7280" font-family="Arial" font-size="28"%3ESailor Piece Item%3C/text%3E%3C/svg%3E'
 
 type CartItem = { item: Item; quantity: number | '' }
+type NoticeAction = 'deposit' | 'login' | 'cart' | 'home'
+type NoticeState = { message: string; action?: NoticeAction } | null
+type RecentOrder = { order_code: string; username: string; item_names?: string; created_at: string }
 const cartStorageKey = 'sailor_piece_cart'
+const shopName = 'Nos Roblox Shop'
+const shopLogo = '/favicon.svg'
 
 function messageFromError(error: unknown) {
   return error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại.'
@@ -133,7 +138,7 @@ function ShopApp() {
   const [user, setUser] = useState<User | null>(null)
   const [booting, setBooting] = useState(true)
   const [settings, setSettings] = useState<Settings>({})
-  const [notice, setNotice] = useState('')
+  const [noticeState, setNoticeState] = useState<NoticeState>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>(loadSavedCart)
   const lastNotificationId = useRef<number | null>(null)
@@ -171,7 +176,7 @@ function ShopApp() {
     if (!user) return undefined
     const refreshUser = () => api<{ user: User }>('/auth/me').then((data) => {
       setUser((current) => {
-        if (current && data.user.balance > current.balance) setNotice(`Số dư đã được cộng: ${money(data.user.balance - current.balance)}.`)
+        if (current && data.user.balance > current.balance) showNotice(`Số dư đã được cộng: ${money(data.user.balance - current.balance)}.`)
         return data.user
       })
     }).catch(() => undefined)
@@ -191,7 +196,7 @@ function ShopApp() {
         }
         if (latest.id > lastNotificationId.current) {
           lastNotificationId.current = latest.id
-          setNotice(`${latest.title}: ${latest.content}`)
+          showNotice(`${latest.title}: ${latest.content}`)
         }
       }).catch(() => undefined)
       if (user.role !== 'user') {
@@ -201,8 +206,8 @@ function ShopApp() {
         ]).then(([support, order]) => {
           const supportUnread = support.chats.reduce((sum, chat) => sum + Number(chat.unread_count || 0), 0)
           const orderUnread = order.chats.reduce((sum, chat) => sum + Number(chat.unread_count || 0), 0)
-          if (supportUnread > lastAdminUnread.current.support) setNotice('Support chat có tin nhắn mới.')
-          if (orderUnread > lastAdminUnread.current.order) setNotice('Order chat có tin nhắn mới.')
+          if (supportUnread > lastAdminUnread.current.support) showNotice('Hỗ trợ có tin nhắn mới.')
+          if (orderUnread > lastAdminUnread.current.order) showNotice('Có tin nhắn mới về đơn hàng.')
           lastAdminUnread.current = { support: supportUnread, order: orderUnread }
         }).catch(() => undefined)
       }
@@ -215,9 +220,30 @@ function ShopApp() {
   function go(nextPage: Page, id = '') {
     setPage(nextPage)
     setRouteId(id)
-    setNotice('')
+    setNoticeState(null)
     setMobileMenuOpen(false)
     window.scrollTo({ top: 0 })
+  }
+
+  function noticeAction(message: string): NoticeAction | undefined {
+    const normalized = message.toLowerCase()
+    if (normalized.includes('số dư không đủ') || normalized.includes('nạp thêm')) return 'deposit'
+    if (normalized.includes('đăng nhập')) return 'login'
+    if (normalized.includes('giỏ hàng')) return 'cart'
+    return undefined
+  }
+
+  function showNotice(message: string) {
+    setNoticeState({ message, action: noticeAction(message) })
+  }
+
+  function closeNotice() {
+    const action = noticeState?.action
+    setNoticeState(null)
+    if (action === 'deposit') go('deposit')
+    if (action === 'login') go('login')
+    if (action === 'cart') go('cart')
+    if (action === 'home') go('home')
   }
 
   async function logout() {
@@ -226,7 +252,7 @@ function ShopApp() {
       setUser(null)
       go('home')
     } catch (error) {
-      setNotice(messageFromError(error))
+      showNotice(messageFromError(error))
     }
   }
 
@@ -236,18 +262,17 @@ function ShopApp() {
       if (existing) return current.map((entry) => entry.item.id === item.id ? { ...entry, quantity: Math.min(item.stock, safeQuantity(entry.quantity) + quantity) } : entry)
       return [...current, { item, quantity: Math.min(item.stock, quantity) }]
     })
-    setNotice('Đã thêm vào giỏ hàng.')
+    showNotice('Đã thêm vào giỏ hàng.')
   }
 
-  const context = { user, setUser, go, settings, setNotice, addToCart }
+  const context = { user, setUser, go, settings, setNotice: showNotice, addToCart }
   const cartCount = cart.reduce((sum, entry) => sum + safeQuantity(entry.quantity), 0)
   const navItems = [
     { page: 'home' as Page, label: 'Trang chủ', icon: '⌂', show: true },
-    { page: 'items' as Page, label: 'Item', icon: '◆', show: true },
-    { page: 'cart' as Page, label: `Giỏ (${cartCount})`, icon: '🛒', show: true },
+    { page: 'cart' as Page, label: `Giỏ hàng (${cartCount})`, icon: '🛒', show: true },
     { page: 'deposit' as Page, label: 'Nạp', icon: '₫', show: true },
-    { page: 'orders' as Page, label: 'Đơn', icon: '☰', show: Boolean(user) },
-    { page: 'chat' as Page, label: 'Chat', icon: '✉', show: Boolean(user) },
+    { page: 'orders' as Page, label: 'Nhắn admin về đơn', icon: '☰', show: Boolean(user) },
+    { page: 'chat' as Page, label: 'Hỗ trợ', icon: '✉', show: Boolean(user) },
     { page: 'admin' as Page, label: 'Admin', icon: '⚙', show: Boolean(user && user.role !== 'user') },
   ].filter((item) => item.show)
   const mobileNavItems = user
@@ -260,10 +285,10 @@ function ShopApp() {
     <div className="app-shell">
       <header className="site-header">
         <button className="brand" onClick={() => go('home')}>
-          <span className="brand-mark">SP</span>
+          <span className="brand-mark"><img src={shopLogo} alt={shopName} /></span>
           <span>
-            <strong>{settings.site_name || 'Sailor Piece Shop'}</strong>
-            <small>Roblox item store</small>
+            <strong>{shopName}</strong>
+            <small>Roblox shop</small>
           </span>
         </button>
         <nav className="desktop-nav">
@@ -297,7 +322,7 @@ function ShopApp() {
         )}
       </div>
 
-      {notice && <div className="toast-backdrop" role="alertdialog" aria-live="assertive" aria-modal="true"><div className="toast"><p>{notice}</p><button className="ghost" type="button" onClick={() => setNotice('')}>Tắt</button></div></div>}
+      {noticeState && <div className="toast-backdrop" role="alertdialog" aria-live="assertive" aria-modal="true"><div className="toast"><p>{noticeState.message}</p><button className="primary" type="button" onClick={closeNotice}>OK</button></div></div>}
 
       <main>
         {page === 'home' && <Home {...context} />}
@@ -305,23 +330,23 @@ function ShopApp() {
         {page === 'item' && <ItemDetail {...context} slug={routeId} />}
         {page === 'login' && <Login {...context} />}
         {page === 'register' && <Register {...context} />}
-        {page === 'forgot' && <ForgotPassword setNotice={setNotice} />}
-        {page === 'reset' && <ResetPassword setNotice={setNotice} />}
+        {page === 'forgot' && <ForgotPassword setNotice={showNotice} />}
+        {page === 'reset' && <ResetPassword setNotice={showNotice} />}
         {page === 'deposit' && <DepositPage {...context} />}
         {page === 'deposits' && <DepositsPage />}
-        {page === 'cart' && <CartPage user={user} cart={cart} setCart={setCart} go={go} setUser={setUser} setNotice={setNotice} />}
+        {page === 'cart' && <CartPage user={user} cart={cart} setCart={setCart} go={go} setUser={setUser} setNotice={showNotice} />}
         {page === 'orders' && <OrdersPage go={go} />}
         {page === 'order' && <OrderDetail id={routeId} />}
         {page === 'profile' && <Profile {...context} />}
-        {page === 'review' && <ReviewPage setNotice={setNotice} />}
-        {page === 'chat' && <ChatPage user={user} go={go} setNotice={setNotice} />}
+        {page === 'review' && <ReviewPage setNotice={showNotice} />}
+        {page === 'chat' && <ChatPage user={user} go={go} setNotice={showNotice} />}
         {page === 'admin' && <AdminPanel {...context} />}
       </main>
 
       <footer className="footer">
         <div>
-          <strong>{settings.site_name || 'Sailor Piece Shop'}</strong>
-          <p>{settings.slogan || 'Shop item Sailor Piece Roblox uy tín, giao nhanh, hỗ trợ tận tâm.'}</p>
+          <strong>{shopName}</strong>
+          <p>{settings.slogan || 'Shop Roblox dễ mua, dễ nhắn, dễ theo dõi đơn.'}</p>
         </div>
         <div>
           <p>Hỗ trợ: {settings.support_phone || '0900 000 000'} · {settings.support_email || 'support@sailorpiece.local'}</p>
@@ -338,7 +363,8 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
     bestSellers: Item[]
     sales: Item[]
     reviews: Review[]
-  }>({ featured: [], bestSellers: [], sales: [], reviews: [] })
+    recentOrders: RecentOrder[]
+  }>({ featured: [], bestSellers: [], sales: [], reviews: [], recentOrders: [] })
 
   useEffect(() => {
     api<typeof data & { settings: Settings }>('/home').then(setData)
@@ -346,30 +372,31 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
 
   return (
     <>
+      <PurchaseTicker orders={data.recentOrders} />
       <section className="hero-section">
         <div className="hero-copy">
-          <span className="eyebrow">Roblox Sailor Piece Store</span>
-          <h1>{settings.hero_banner || 'Săn item Sailor Piece Roblox chỉ trong vài phút.'}</h1>
-          <p>{settings.slogan || 'Mua item Sailor Piece dễ dàng, an toàn, nhanh chóng.'}</p>
+          <span className="eyebrow">Nos Roblox Shop</span>
+          <h1>{settings.hero_banner || 'Mua item Roblox thật dễ.'}</h1>
+          <p>{settings.slogan || 'Chọn item, nhập tên Roblox, mua xong nhắn admin ngay trong đơn.'}</p>
           <div className="hero-buttons">
-            <button className="primary large" onClick={() => go('items')}>Mua item ngay</button>
+            <button className="primary large" onClick={() => go('home')}>Xem item bên dưới</button>
             <button className="secondary large" onClick={() => go('deposit')}>Nạp tiền</button>
           </div>
           <div className="trust-grid">
-            {['Giao item nhanh', 'Uy tín minh bạch', 'Hỗ trợ sau mua', 'Bảo mật thông tin'].map((text) => <span key={text}>{text}</span>)}
+            {['1. Chọn item', '2. Nhập tên Roblox', '3. Bấm mua', '4. Nhắn admin'].map((text) => <span key={text}>{text}</span>)}
           </div>
         </div>
         <div className="hero-card">
-          <div className="ship">⛵</div>
-          <h3>Hot deal hôm nay</h3>
-          <p>Item hiếm, số lượng giới hạn, xử lý đơn thủ công an toàn.</p>
+          <div className="ship">💬</div>
+          <h3>Mua xong nhắn luôn</h3>
+          <p>Web sẽ tự mở chat đơn hàng để bạn hỏi admin.</p>
         </div>
       </section>
 
-      <NoticeCard text={settings.homepage_notice || 'Tin mới: shop đang cập nhật thêm item Sailor Piece hiếm.'} />
-      <ItemSection title="Item nổi bật" items={data.featured} go={go} />
-      <ItemSection title="Item bán chạy" items={data.bestSellers} go={go} />
-      <ItemSection title="Item đang giảm giá" items={data.sales} go={go} />
+      <NoticeCard text={settings.homepage_notice || 'Tin mới: shop đang cập nhật thêm item Roblox.'} />
+      <ItemSection title="Mua item" items={data.featured} go={go} />
+      <ItemSection title="Đang bán chạy" items={data.bestSellers} go={go} />
+      <ItemSection title="Đang giảm giá" items={data.sales} go={go} />
 
       <section className="section two-col">
         <div className="panel">
@@ -377,9 +404,9 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
           <ol className="steps">
             <li>Đăng ký hoặc đăng nhập tài khoản.</li>
             <li>Nạp tiền vào ví bằng chuyển khoản.</li>
-            <li>Chọn item Sailor Piece muốn mua.</li>
+            <li>Chọn item muốn mua.</li>
             <li>Nhập đúng Roblox Username.</li>
-            <li>Xác nhận mua và chờ admin giao item.</li>
+            <li>Mua xong web tự mở chat đơn hàng.</li>
           </ol>
         </div>
         <div className="panel">
@@ -402,6 +429,20 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
 
 function NoticeCard({ text }: { text: string }) {
   return <div className="notice-card"><strong>Thông báo:</strong> {text}</div>
+}
+
+function PurchaseTicker({ orders }: { orders: RecentOrder[] }) {
+  if (!orders.length) return null
+  const items = [...orders, ...orders]
+  return (
+    <div className="purchase-ticker" aria-label="Đơn mua gần đây">
+      <div>
+        {items.map((order, index) => (
+          <span key={`${order.order_code}-${index}`}>{order.username || 'Khách'} vừa mua {order.item_names || 'item Roblox'} lúc {dateTime(order.created_at)}</span>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function ItemSection({ title, items, go }: { title: string; items: Item[]; go: (page: Page, id?: string) => void }) {
@@ -549,7 +590,6 @@ function ItemDetail({
       })
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
-      setNotice(`Đã tạo đơn ${data.order.order_code}.`)
       go('order', String(data.order.id))
     } catch (error) {
       setNotice(messageFromError(error))
@@ -632,7 +672,6 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
       setCart([])
-      setNotice(`Đã tạo đơn ${data.order.order_code}.`)
       go('order', String(data.order.id))
     } catch (error) {
       setNotice(messageFromError(error))
@@ -1001,6 +1040,10 @@ function OrderDetail({ id }: { id: string }) {
   useEffect(() => {
     load()
   }, [id])
+  useEffect(() => {
+    if (!data) return
+    window.setTimeout(() => document.getElementById('order-chat')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
+  }, [data?.order.id])
   async function uploadChatImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
@@ -1027,7 +1070,7 @@ function OrderDetail({ id }: { id: string }) {
         <h2>{'Item trong đơn'}</h2>
         {data.items.map((item) => <p key={item.item_name}>{item.quantity} x {item.item_name} · {money(item.total_price)}</p>)}
       </div>
-      <div className="panel chat-panel">
+      <div className="panel chat-panel" id="order-chat">
         <h2>{'Chat đơn hàng'}</h2>
         <div className="chat-box">
           {data.messages.length === 0 && <p className="muted">{'Chưa có tin nhắn đơn hàng.'}</p>}
