@@ -50,7 +50,7 @@ type NoticeState = { message: string; action?: NoticeAction } | null
 type RecentOrder = { order_code: string; username: string; item_names?: string; created_at: string }
 const cartStorageKey = 'sailor_piece_cart'
 const shopName = 'Nos Roblox Shop'
-const shopLogo = '/favicon.svg'
+const shopLogo = '/favicon.png'
 
 function messageFromError(error: unknown) {
   return error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại.'
