@@ -2738,6 +2738,34 @@ td {
   backdrop-filter: blur(18px);
 }
 
+.boot-screen {
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(88, 101, 242, 0.14), transparent 24rem),
+    radial-gradient(circle at 18% 80%, rgba(139, 92, 246, 0.1), transparent 20rem),
+    linear-gradient(180deg, #f8faff 0%, #f4f7ff 100%);
+}
+
+.boot-card {
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(18px);
+}
+
+.boot-track {
+  background: rgba(88, 101, 242, 0.1);
+}
+
+.boot-track span {
+  background: linear-gradient(90deg, #5865f2, #8b5cf6, #7289ff);
+}
+
+.boot-dog {
+  filter: drop-shadow(0 10px 18px rgba(88, 101, 242, 0.18));
+}
+
 @media (max-width: 760px) {
   html,
   body {
@@ -2769,10 +2797,12 @@ td {
   .mobile-nav-shell {
     display: block !important;
     position: fixed;
+    top: auto;
     right: 0.75rem;
     bottom: calc(0.75rem + env(safe-area-inset-bottom));
     left: 0.75rem;
     z-index: 260;
+    pointer-events: none;
   }
 
   .mobile-menu-toggle {
@@ -2791,6 +2821,7 @@ td {
     background: rgba(255, 255, 255, 0.72);
     box-shadow: 0 12px 34px rgba(15, 23, 42, 0.12);
     backdrop-filter: blur(12px);
+    pointer-events: auto;
   }
 
   .mobile-side-nav button {
