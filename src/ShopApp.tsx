@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { ChangeEvent, FormEvent, SyntheticEvent } from 'react'
 import { api, assetUrl, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
 import type { AdminChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, Review, Settings, User } from './types'
 
@@ -76,6 +76,12 @@ function maskUsername(username?: string) {
   const value = String(username || 'Khách').trim()
   if (value.length <= 2) return `${value[0] || 'K'}**`
   return `${value.slice(0, 2)}**`
+}
+
+function applyNaturalImageRatio(event: SyntheticEvent<HTMLImageElement>) {
+  const image = event.currentTarget
+  if (!image.naturalWidth || !image.naturalHeight) return
+  image.style.setProperty('--natural-image-ratio', `${image.naturalWidth} / ${image.naturalHeight}`)
 }
 
 function loadSavedCart() {
@@ -491,7 +497,7 @@ function ItemCard({ item, go }: { item: Item; go: (page: Page, id?: string) => v
   return (
     <article className="item-card">
       <button className="image-button" onClick={() => go('item', item.slug)}>
-        <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />
         {item.discount_percent > 0 && <span className="sale-badge">-{item.discount_percent}%</span>}
         <span className={item.stock > 0 ? 'stock-badge' : 'stock-badge out'}>{item.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</span>
       </button>
@@ -628,8 +634,8 @@ function ItemDetail({
   return (
     <section className="page-section detail-layout">
       <div className="gallery">
-        <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
-        <div className="thumbs">{item.gallery.map((image) => <img key={image} src={assetUrl(image) || placeholderImage} alt={`${item.name} gallery`} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
+        <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        <div className="thumbs">{item.gallery.map((image) => <img key={image} src={assetUrl(image) || placeholderImage} alt={`${item.name} gallery`} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
       </div>
       <div className="detail-card">
         <button className="ghost" onClick={() => go('items')}>Quay lại danh sách item</button>

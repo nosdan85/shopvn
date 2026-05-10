@@ -517,8 +517,14 @@ p {
 .gallery > img {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: var(--natural-image-ratio, 4 / 3);
+  height: auto;
   object-fit: cover;
+}
+
+.gallery > img {
+  max-height: min(70vh, 680px);
+  object-fit: contain;
 }
 
 .sale-badge {
@@ -2384,10 +2390,22 @@ button:disabled {
 }
 
 .primary:hover:not(:disabled),
-.secondary:hover:not(:disabled) {
+.choice-group button.active:hover:not(:disabled),
+.admin-menu button.active:hover:not(:disabled) {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #4f5df0, #8b5cf6);
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 14px 30px rgba(88, 101, 242, 0.24);
   filter: brightness(1.04);
+}
+
+.secondary:hover:not(:disabled),
+.ghost:hover:not(:disabled),
+.wallet:hover:not(:disabled) {
+  color: var(--primary);
+  border-color: rgba(88, 101, 242, 0.28);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .secondary,
