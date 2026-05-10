@@ -528,21 +528,24 @@ function cardCallbackSecretOk(req, payload) {
 }
 
 function processGachTheFastCallback(payload) {
-  const requestId = clampText(cardWebhookValue(payload, ['request_id', 'requestId', 'trans_id', 'transId', 'transaction_id', 'transactionId', 'code', 'ref_id', 'refId']), 160);
+  const requestId = clampText(cardWebhookValue(payload, ['request_id', 'requestId', 'ref_id', 'refId']), 160);
+  const providerTransactionId = clampText(cardWebhookValue(payload, ['trans_id', 'transId', 'transaction_id', 'transactionId', 'id']), 160);
   const cardSerial = clampText(cardWebhookValue(payload, ['serial', 'card_serial', 'seri']), 80);
-  const status = normalizeCardWebhookStatus(cardWebhookValue(payload, ['status', 'card_status', 'result', 'state']));
+  const status = normalizeCardWebhookStatus(cardWebhookValue(payload, ['status', 'card_status', 'result', 'state', 'code']));
   const callbackAmount = parseAmount(cardWebhookValue(payload, ['real_amount', 'receive_amount', 'value_receive', 'amount_receive', 'amount', 'value', 'declared_value', 'menhgia']));
   const note = clampText(cardWebhookValue(payload, ['message', 'msg', 'note', 'reason', 'description']), 300);
-  const lookupValues = [requestId, cardSerial].filter(Boolean);
+  const lookupValues = [requestId, providerTransactionId, cardSerial].filter(Boolean);
   const current = lookupValues.length
     ? db.prepare(`
-      SELECT * FROM deposits
-      WHERE method IN ('viettel_card','mobifone_card','vinaphone_card')
-        AND status = 'pending'
-        AND (${lookupValues.map(() => '(transaction_code = ? OR transfer_content LIKE ?)').join(' OR ')})
-      ORDER BY created_at DESC
+      SELECT deposits.*, card_deposit_jobs.id AS job_id
+      FROM deposits
+      LEFT JOIN card_deposit_jobs ON card_deposit_jobs.deposit_id = deposits.id
+      WHERE deposits.method IN ('viettel_card','mobifone_card','vinaphone_card')
+        AND deposits.status = 'pending'
+        AND (${lookupValues.map(() => '(deposits.transaction_code = ? OR deposits.bank_transaction_id = ? OR deposits.transfer_content LIKE ? OR card_deposit_jobs.provider_transaction_id = ? OR card_deposit_jobs.serial = ?)').join(' OR ')})
+      ORDER BY deposits.created_at DESC
       LIMIT 1
-    `).get(...lookupValues.flatMap((value) => [value, `%${value}%`]))
+    `).get(...lookupValues.flatMap((value) => [value, value, `%${value}%`, value, value]))
     : null;
   if (!current) return { ignored: true, message: 'Không tìm thấy giao dịch thẻ pending tương ứng.' };
   if (status === 'success') {
@@ -552,15 +555,38 @@ function processGachTheFastCallback(payload) {
       if (Number.isFinite(callbackAmount) && callbackAmount > 0 && callbackAmount < fresh.amount) {
         return { ignored: true, message: `Mệnh giá callback ${callbackAmount} nhỏ hơn mệnh giá khai báo ${fresh.amount}.`, deposit: fresh };
       }
-      return completeDeposit(fresh, { transactionId: requestId || `GTF-${fresh.transaction_code}`, adminNote: `GachTheFast xác nhận${note ? `: ${note}` : ''}`, note: `GachTheFast xác nhận ${fresh.transaction_code}` });
+      if (current.job_id) {
+        db.prepare(`
+          UPDATE card_deposit_jobs
+          SET status = 'success', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(note || 'GachTheFast callback xác nhận thẻ thành công.', providerTransactionId || requestId || null, current.job_id);
+      }
+      return completeDeposit(fresh, { transactionId: providerTransactionId || requestId || `GTF-${fresh.transaction_code}`, adminNote: `GachTheFast xác nhận${note ? `: ${note}` : ''}`, note: `GachTheFast xác nhận ${fresh.transaction_code}` });
     })();
   }
   if (status === 'failed') {
-    db.prepare(`
-      UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND status = 'pending'
-    `).run(note || 'GachTheFast báo thẻ thất bại.', requestId || null, current.id);
+    db.transaction(() => {
+      if (current.job_id) {
+        db.prepare(`
+          UPDATE card_deposit_jobs
+          SET status = 'failed', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(note || 'GachTheFast báo thẻ thất bại.', providerTransactionId || requestId || null, current.job_id);
+      }
+      db.prepare(`
+        UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND status = 'pending'
+      `).run(note || 'GachTheFast báo thẻ thất bại.', providerTransactionId || requestId || null, current.id);
+    })();
     return { ignored: true, message: 'GachTheFast báo thẻ thất bại.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
+  }
+  if (current.job_id) {
+    db.prepare(`
+      UPDATE card_deposit_jobs
+      SET status = 'processing', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(note || 'GachTheFast callback báo thẻ đang chờ xử lý.', providerTransactionId || requestId || null, current.job_id);
   }
   return { ignored: true, message: 'GachTheFast callback chưa hoàn tất.', deposit: current };
 }
@@ -632,7 +658,7 @@ function processCardWorkerResult(raw) {
       return { ignored: true, message: note || 'Thẻ không hợp lệ hoặc đã được sử dụng.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
     }
     db.prepare(`
-      UPDATE card_deposit_jobs SET status = 'processing', worker_note = ?, provider_transaction_id = ?, submitted_at = COALESCE(submitted_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+      UPDATE card_deposit_jobs SET status = 'processing', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), submitted_at = COALESCE(submitted_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(note || 'Worker đã gửi thẻ, đang chờ xử lý.', providerTransactionId || null, current.job_id);
     return { ignored: true, message: 'Thẻ đang chờ xử lý.', deposit: current };
