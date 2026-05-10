@@ -523,8 +523,9 @@ p {
 }
 
 .gallery > img {
-  max-height: min(70vh, 680px);
-  object-fit: contain;
+  height: auto;
+  max-height: none;
+  object-fit: cover;
 }
 
 .sale-badge {
@@ -623,6 +624,7 @@ small {
 }
 
 .gallery {
+  align-self: start;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius);
