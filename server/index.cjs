@@ -726,6 +726,12 @@ function processCardWorkerResult(raw) {
 }
 
 function createOrderChatSummary({ order, items }) {
+  const itemDetailLines = items
+    .map((item) => {
+      const detail = clampText(item.item_detail || item.short_description || item.description || '', 220);
+      return detail ? `Chi tiết ${item.item_name}: ${detail}` : '';
+    })
+    .filter(Boolean);
   const lines = [
     'ORDER_EMBED',
     `Mã đơn: ${order.order_code}`,
@@ -733,7 +739,9 @@ function createOrderChatSummary({ order, items }) {
     `Tên Roblox: ${order.roblox_username}`,
     `Tổng tiền: ${order.total_amount} VND`,
     `Đồ mua: ${items.map((item) => `${item.item_name} x${item.quantity}`).join(', ')}`,
+    ...itemDetailLines,
   ];
+  if (order.customer_note) lines.push(`Ghi chú khách: ${order.customer_note}`);
   return lines.join('\n');
 }
 
@@ -1349,7 +1357,12 @@ app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
         note: `Mua ${orderItems.length} loại item`,
       });
       const order = db.prepare('SELECT orders.*, users.username FROM orders JOIN users ON users.id = orders.user_id WHERE orders.id = ?').get(orderResult.lastInsertRowid);
-      const savedItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderResult.lastInsertRowid);
+      const savedItems = db.prepare(`
+        SELECT order_items.*, items.short_description, items.description
+        FROM order_items
+        LEFT JOIN items ON items.id = order_items.item_id
+        WHERE order_items.order_id = ?
+      `).all(orderResult.lastInsertRowid);
       createInitialOrderChat({ orderId: order.id, userId: user.id, message: createOrderChatSummary({ order, items: savedItems }) });
       return db.prepare('SELECT * FROM orders WHERE id = ?').get(orderResult.lastInsertRowid);
     })();

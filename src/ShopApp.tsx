@@ -335,10 +335,12 @@ function ShopApp() {
           <span />
           <span />
         </button>
-        <nav className="mobile-side-nav" aria-label="Menu điện thoại">
-          {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><small>{item.label}</small></button>)}
-          {user && <button className="mobile-logout" onClick={logout}><small>Đăng xuất</small></button>}
-        </nav>
+        {mobileMenuOpen && (
+          <nav className="mobile-side-nav" aria-label="Menu điện thoại">
+            {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><small>{item.label}</small></button>)}
+            {user && <button className="mobile-logout" onClick={logout}><small>Đăng xuất</small></button>}
+          </nav>
+        )}
       </div>
 
       {noticeState && <div className="toast-backdrop" role="alertdialog" aria-live="assertive" aria-modal="true"><div className="toast"><p>{noticeState.message}</p><button className="primary" type="button" onClick={closeNotice}>OK</button></div></div>}
@@ -385,6 +387,10 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
     api<typeof data & { settings: Settings }>('/home').then(setData)
   }, [])
 
+  function scrollToItems() {
+    document.getElementById('item-sections')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <>
       <PurchaseTicker orders={data.recentOrders} />
@@ -394,7 +400,7 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
           <h1>{settings.hero_banner || 'Mua item Roblox thật dễ.'}</h1>
           <p>{settings.slogan || 'Chọn item, nhập tên Roblox, mua xong nhắn admin ngay trong đơn.'}</p>
           <div className="hero-buttons">
-            <button className="primary large" onClick={() => go('home')}>Xem item bên dưới</button>
+            <button className="primary large" type="button" onClick={scrollToItems}>Xem item bên dưới</button>
             <button className="secondary large" onClick={() => go('deposit')}>Nạp tiền</button>
           </div>
           <div className="trust-grid">
@@ -409,9 +415,11 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
       </section>
 
       <NoticeCard text={settings.homepage_notice || 'Tin mới: shop đang cập nhật thêm item Roblox.'} />
-      <ItemSection title="Mua item" items={data.featured} go={go} />
-      <ItemSection title="Đang bán chạy" items={data.bestSellers} go={go} />
-      <ItemSection title="Đang giảm giá" items={data.sales} go={go} />
+      <div id="item-sections" className="item-sections">
+        <ItemSection title="Mua item" items={data.featured} go={go} />
+        <ItemSection title="Đang bán chạy" items={data.bestSellers} go={go} />
+        <ItemSection title="Đang giảm giá" items={data.sales} go={go} />
+      </div>
 
       <section className="section two-col">
         <div className="panel">
