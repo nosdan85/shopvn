@@ -74,8 +74,8 @@ function shortText(value: string, length = 70) {
 
 function maskUsername(username?: string) {
   const value = String(username || 'Khách').trim()
-  if (value.length <= 2) return `${value[0] || 'K'}##`
-  return `${value.slice(0, 2)}##`
+  if (value.length <= 2) return `${value[0] || 'K'}**`
+  return `${value.slice(0, 2)}**`
 }
 
 function loadSavedCart() {
