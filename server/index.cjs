@@ -692,6 +692,19 @@ function createInitialOrderChat({ userId, message }) {
     .run(userId, userId, message.slice(0, 2500));
 }
 
+function createCompletedOrderReview(order) {
+  const orderItem = db.prepare('SELECT * FROM order_items WHERE order_id = ? LIMIT 1').get(order.id);
+  if (!orderItem) return;
+  db.prepare(`
+    INSERT OR IGNORE INTO reviews (user_id, item_id, order_id, rating, content, status)
+    VALUES (?, ?, ?, 5, ?, 'approved')
+  `).run(order.user_id, orderItem.item_id, order.id, 'Shop giao hàng nhanh, đơn đã hoàn thành tốt.');
+  db.prepare(`
+    UPDATE reviews SET rating = 5, content = ?, status = 'approved', updated_at = CURRENT_TIMESTAMP
+    WHERE order_id = ?
+  `).run('Shop giao hàng nhanh, đơn đã hoàn thành tốt.', order.id);
+}
+
 let sepayBotRunning = false;
 let sepayBotLastResult = null;
 let sepayBotLastRunAt = null;
@@ -1591,7 +1604,10 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
       db.prepare('INSERT INTO order_status_logs (order_id, old_status, new_status, note, created_by) VALUES (?, ?, ?, ?, ?)')
         .run(order.id, order.status, status, admin_note || orderStatusLabels[status], req.user.id);
       if (status === 'processing') notifyUser(order.user_id, 'Đơn đang xử lý', `Đơn ${order.order_code} đang được shop xử lý.`, 'order');
-      if (status === 'completed') notifyUser(order.user_id, '\u0110\u01a1n \u0111\u00e3 giao h\u00e0ng', `\u0110\u01a1n ${order.order_code} \u0111\u00e3 giao h\u00e0ng.`, 'order');
+      if (status === 'completed') {
+        createCompletedOrderReview(order);
+        notifyUser(order.user_id, '\u0110\u01a1n \u0111\u00e3 giao h\u00e0ng', `\u0110\u01a1n ${order.order_code} \u0111\u00e3 giao h\u00e0ng.`, 'order');
+      }
       if (status === 'cancelled') notifyUser(order.user_id, 'Đơn đã hủy', `Đơn ${order.order_code} đã bị hủy.`, 'order');
       logAdmin(req.user.id, 'update_order_status', 'order', order.id, req);
       return db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id);

@@ -45,7 +45,7 @@ const emptyItem = {
 const placeholderImage = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="540" viewBox="0 0 720 540"%3E%3Crect width="720" height="540" fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%236b7280" font-family="Arial" font-size="28"%3ESailor Piece Item%3C/text%3E%3C/svg%3E'
 
 type CartItem = { item: Item; quantity: number | '' }
-type NoticeAction = 'deposit' | 'login' | 'cart' | 'home'
+type NoticeAction = 'deposit' | 'login' | 'cart' | 'home' | 'chat'
 type NoticeState = { message: string; action?: NoticeAction } | null
 type RecentOrder = { order_code: string; username: string; item_names?: string; created_at: string }
 const cartStorageKey = 'sailor_piece_cart'
@@ -66,6 +66,15 @@ function numberInputNext(value: string): number | '' {
 
 function safeQuantity(value: number | '') {
   return Math.max(1, Number(value || 1))
+}
+
+function safeExternalUrl(value?: string) {
+  const url = String(value || '').trim()
+  return /^https?:\/\//i.test(url) ? url : ''
+}
+
+function shortText(value: string, length = 70) {
+  return value.length > length ? `${value.slice(0, length - 1)}…` : value
 }
 
 function loadSavedCart() {
@@ -240,6 +249,7 @@ function ShopApp() {
     if (normalized.includes('số dư không đủ') || normalized.includes('nạp thêm')) return 'deposit'
     if (normalized.includes('đăng nhập')) return 'login'
     if (normalized.includes('giỏ hàng')) return 'cart'
+    if (normalized.includes('chat') || normalized.includes('tin nhắn')) return 'chat'
     return undefined
   }
 
@@ -254,6 +264,7 @@ function ShopApp() {
     if (action === 'login') go('login')
     if (action === 'cart') go('cart')
     if (action === 'home') go('home')
+    if (action === 'chat') go('chat')
   }
 
   async function logout() {
@@ -325,8 +336,8 @@ function ShopApp() {
         </button>
         {mobileMenuOpen && (
           <nav className="mobile-side-nav" aria-label="Menu điện thoại">
-            {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><span>{item.icon}</span><small>{item.label}</small></button>)}
-            {user && <button className="mobile-logout" onClick={logout}><span>↩</span><small>Đăng xuất</small></button>}
+            {mobileNavItems.map((item) => <button className={page === item.page ? 'active' : ''} key={item.page} onClick={() => go(item.page)}><small>{item.label}</small></button>)}
+            {user && <button className="mobile-logout" onClick={logout}><small>Đăng xuất</small></button>}
           </nav>
         )}
       </div>
@@ -359,7 +370,13 @@ function ShopApp() {
         </div>
         <div>
           <p>Hỗ trợ: {settings.support_phone || '0900 000 000'} · {settings.support_email || 'support@sailorpiece.local'}</p>
-          <p>Facebook · Discord · Zalo</p>
+          <p className="social-links">
+            <a href={safeExternalUrl(settings.facebook_url) || undefined} target="_blank" rel="noreferrer" aria-disabled={!safeExternalUrl(settings.facebook_url)}>Facebook</a>
+            <span>·</span>
+            <a href={safeExternalUrl(settings.discord_url) || undefined} target="_blank" rel="noreferrer" aria-disabled={!safeExternalUrl(settings.discord_url)}>Discord</a>
+            <span>·</span>
+            <a href={safeExternalUrl(settings.tiktok_url) || undefined} target="_blank" rel="noreferrer" aria-disabled={!safeExternalUrl(settings.tiktok_url)}>TikTok</a>
+          </p>
         </div>
       </footer>
     </div>
@@ -447,7 +464,7 @@ function PurchaseTicker({ orders }: { orders: RecentOrder[] }) {
     <div className="purchase-ticker" aria-label="Đơn mua gần đây">
       <div>
         {items.map((order, index) => (
-          <span key={`${order.order_code}-${index}`}>{order.username || 'Khách'} vừa mua {order.item_names || 'item Roblox'} lúc {dateTime(order.created_at)}</span>
+          <span key={`${order.order_code}-${index}`}>{shortText(`${order.username || 'Khách'} vừa mua ${order.item_names || 'item Roblox'}`, 82)}</span>
         ))}
       </div>
     </div>
@@ -1571,7 +1588,7 @@ function AdminSettings({ initial, setNotice }: { initial: Settings; setNotice: (
       setNotice(messageFromError(error))
     }
   }
-  const keys = ['site_name', 'slogan', 'support_email', 'support_phone', 'zalo_url', 'discord_url', 'facebook_url', 'maintenance_mode', 'registration_enabled', 'deposit_enabled', 'purchase_enabled', 'bank_name', 'bank_account_name', 'bank_account_number', 'bank_qr_url', 'sepay_webhook_secret', 'card_gateway_name', 'card_webhook_secret', 'google_login_enabled', 'facebook_login_enabled', 'smtp_enabled', 'homepage_notice', 'hero_banner']
+  const keys = ['site_name', 'slogan', 'support_email', 'support_phone', 'facebook_url', 'discord_url', 'tiktok_url', 'maintenance_mode', 'registration_enabled', 'deposit_enabled', 'purchase_enabled', 'bank_name', 'bank_account_name', 'bank_account_number', 'bank_qr_url', 'sepay_webhook_secret', 'card_gateway_name', 'card_webhook_secret', 'google_login_enabled', 'facebook_login_enabled', 'smtp_enabled', 'homepage_notice', 'hero_banner']
   return (
     <form className="admin-form settings-form" onSubmit={save}>
       <h1>Cấu hình website</h1>
