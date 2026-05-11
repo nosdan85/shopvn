@@ -1313,16 +1313,22 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
   }
 
   function pasteItemImage(event: ClipboardEvent<HTMLElement>, target: 'main' | 'gallery') {
+    event.stopPropagation()
     const file = Array.from(event.clipboardData.files).find((entry) => entry.type.startsWith('image/'))
     if (!file) return
     event.preventDefault()
     uploadPastedItemImage(file, target)
   }
 
+  function pasteItemImageFromForm(event: ClipboardEvent<HTMLFormElement>) {
+    if ((event.target as HTMLElement).closest('.paste-upload-box')) return
+    pasteItemImage(event, editing.image ? 'gallery' : 'main')
+  }
+
   return (
     <>
       <h1>Quản lý item</h1>
-      <form className="admin-form" onSubmit={save} onPaste={(event) => pasteItemImage(event, editing.image ? 'gallery' : 'main')}>
+      <form className="admin-form" onSubmit={save} onPaste={pasteItemImageFromForm}>
         <p className="form-note">Nhập tên, giá, số lượng và upload ảnh. Có thể copy ảnh rồi Ctrl+V trong form: chưa có ảnh đại diện thì dán vào ảnh đại diện, có rồi thì thêm vào gallery.</p>
         <label>Tên item<input required placeholder="Ví dụ: Light Fruit" value={String(editing.name || '')} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
         <label>Slug URL<input placeholder="Tự nhập hoặc để trống" value={String(editing.slug || '')} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} /></label>
@@ -1340,7 +1346,6 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
         {Boolean(editing.image) && <img className="admin-image-preview" src={assetUrl(String(editing.image))} alt="Ảnh item" />}
         {Array.isArray(editing.gallery) && editing.gallery.length > 0 && <div className="gallery-editor">{editing.gallery.map((image) => <span key={String(image)}><img src={assetUrl(String(image))} alt="Gallery" /><button type="button" onClick={() => setEditing({ ...editing, gallery: (editing.gallery as unknown[]).filter((item) => item !== image) })}>Xóa</button></span>)}</div>}
         <label>Giá bán<input type="number" placeholder="Ví dụ: 50000" value={numberInputValue(editing.price)} onChange={(event) => setEditing({ ...editing, price: numberInputNext(event.target.value) })} /></label>
-        <label>Tồn kho<input type="number" placeholder="Ví dụ: 10" value={numberInputValue(editing.stock)} onChange={(event) => setEditing({ ...editing, stock: numberInputNext(event.target.value) })} /></label>
         <label>Mô tả ngắn<textarea placeholder="Mô tả ngắn hiển thị trên card" value={String(editing.short_description || '')} onChange={(event) => setEditing({ ...editing, short_description: event.target.value })} /></label>
         <label>Mô tả chi tiết<textarea placeholder="Thông tin chi tiết cho trang sản phẩm" value={String(editing.description || '')} onChange={(event) => setEditing({ ...editing, description: event.target.value })} /></label>
         <button className="primary">{isEditing ? 'Cập nhật item' : 'Thêm item'}</button>
