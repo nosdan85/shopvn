@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent, SyntheticEvent } from 'react'
+import type { ChangeEvent, ClipboardEvent, FormEvent, SyntheticEvent } from 'react'
 import { api, assetUrl, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
 import type { AdminChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, Review, Settings, User } from './types'
 
@@ -1269,6 +1269,7 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
   const [items, setItems] = useState<Item[]>([])
   const [editing, setEditing] = useState<Record<string, unknown>>(emptyItem)
   const [isEditing, setIsEditing] = useState(false)
+  const [pasteUploading, setPasteUploading] = useState<'main' | 'gallery' | null>(null)
   const load = () => api<{ items: Item[] }>('/admin/items').then((data) => setItems(data.items))
   useEffect(() => {
     load()
@@ -1319,16 +1320,52 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
     }
   }
 
+  async function uploadPastedItemImage(file: File, target: 'main' | 'gallery') {
+    try {
+      setPasteUploading(target)
+      const data = await uploadImage(file)
+      if (target === 'main') {
+        setEditing((current) => ({ ...current, image: data.url }))
+        setNotice('Đã dán và upload ảnh đại diện.')
+        return
+      }
+      setEditing((current) => {
+        const gallery = Array.isArray(current.gallery) ? current.gallery : []
+        return { ...current, gallery: [...gallery, data.url] }
+      })
+      setNotice('Đã dán và thêm ảnh vào gallery.')
+    } catch (error) {
+      setNotice(messageFromError(error))
+    } finally {
+      setPasteUploading(null)
+    }
+  }
+
+  function pasteItemImage(event: ClipboardEvent<HTMLElement>, target: 'main' | 'gallery') {
+    const file = Array.from(event.clipboardData.files).find((entry) => entry.type.startsWith('image/'))
+    if (!file) return
+    event.preventDefault()
+    uploadPastedItemImage(file, target)
+  }
+
   return (
     <>
       <h1>Quản lý item</h1>
-      <form className="admin-form" onSubmit={save}>
-        <p className="form-note">Nhập tên, giá, số lượng và upload ảnh. Các ô giá có thể để trống, khi lưu hệ thống sẽ tự chuyển về 0 nếu cần.</p>
+      <form className="admin-form" onSubmit={save} onPaste={(event) => pasteItemImage(event, editing.image ? 'gallery' : 'main')}>
+        <p className="form-note">Nhập tên, giá, số lượng và upload ảnh. Có thể copy ảnh rồi Ctrl+V trong form: chưa có ảnh đại diện thì dán vào ảnh đại diện, có rồi thì thêm vào gallery.</p>
         <label>Tên item<input required placeholder="Ví dụ: Light Fruit" value={String(editing.name || '')} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
         <label>Slug URL<input placeholder="Tự nhập hoặc để trống" value={String(editing.slug || '')} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} /></label>
         <label>Ảnh đại diện URL<input placeholder="Dán link ảnh hoặc upload bên dưới" value={String(editing.image || '')} onChange={(event) => setEditing({ ...editing, image: event.target.value })} /></label>
         <label className="upload-field"><span>Upload ảnh đại diện</span><span className="upload-button">Chọn ảnh từ máy</span><input type="file" accept="image/*" onChange={uploadMainImage} /></label>
+        <div className="paste-upload-box" tabIndex={0} role="button" onPaste={(event) => pasteItemImage(event, 'main')}>
+          <strong>Dán ảnh đại diện</strong>
+          <span>{pasteUploading === 'main' ? 'Đang upload ảnh...' : 'Copy ảnh rồi bấm vào đây và Ctrl+V'}</span>
+        </div>
         <label className="upload-field"><span>Thêm ảnh gallery</span><span className="upload-button">Chọn ảnh gallery</span><input type="file" accept="image/*" onChange={uploadGalleryImage} /></label>
+        <div className="paste-upload-box" tabIndex={0} role="button" onPaste={(event) => pasteItemImage(event, 'gallery')}>
+          <strong>Dán ảnh gallery</strong>
+          <span>{pasteUploading === 'gallery' ? 'Đang upload ảnh...' : 'Copy ảnh rồi bấm vào đây và Ctrl+V'}</span>
+        </div>
         {Boolean(editing.image) && <img className="admin-image-preview" src={assetUrl(String(editing.image))} alt="Ảnh item" />}
         {Array.isArray(editing.gallery) && editing.gallery.length > 0 && <div className="gallery-editor">{editing.gallery.map((image) => <span key={String(image)}><img src={assetUrl(String(image))} alt="Gallery" /><button type="button" onClick={() => setEditing({ ...editing, gallery: (editing.gallery as unknown[]).filter((item) => item !== image) })}>Xóa</button></span>)}</div>}
         <label>Giá bán<input type="number" placeholder="Ví dụ: 50000" value={numberInputValue(editing.price)} onChange={(event) => setEditing({ ...editing, price: numberInputNext(event.target.value) })} /></label>
