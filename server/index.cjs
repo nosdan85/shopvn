@@ -964,8 +964,6 @@ app.get('/api/items', publicCache, (req, res) => {
   const filter = String(req.query.filter || 'all');
   const search = String(req.query.search || '').trim();
   const sort = String(req.query.sort || '');
-  const page = Math.max(1, Number(req.query.page || 1));
-  const limit = Math.min(24, Math.max(1, Number(req.query.limit || 12)));
   const where = ['status = ?'];
   const params = ['active'];
   if (filter === 'featured') where.push('is_featured = 1');
@@ -985,9 +983,8 @@ app.get('/api/items', publicCache, (req, res) => {
   const rows = db.prepare(`
     SELECT * FROM items WHERE ${where.join(' AND ')}
     ORDER BY ${order}
-    LIMIT ? OFFSET ?
-  `).all(...params, limit, (page - 1) * limit);
-  res.json({ items: rows.map(parseItem), total, page, limit });
+  `).all(...params);
+  res.json({ items: rows.map(parseItem), total, page: 1, limit: total });
 });
 
 app.get('/api/items/:slug', publicCache, (req, res) => {
@@ -1006,9 +1003,7 @@ app.get('/api/items/:slug', publicCache, (req, res) => {
 });
 
 app.get('/api/home', publicCache, (_req, res) => {
-  const featured = db.prepare("SELECT * FROM items WHERE status = 'active' AND is_featured = 1 ORDER BY sort_order ASC LIMIT 6").all().map(parseItem);
-  const bestSellers = db.prepare("SELECT * FROM items WHERE status = 'active' ORDER BY sold_count DESC LIMIT 6").all().map(parseItem);
-  const sales = db.prepare("SELECT * FROM items WHERE status = 'active' AND is_sale = 1 ORDER BY sort_order ASC LIMIT 6").all().map(parseItem);
+  const featured = db.prepare("SELECT * FROM items WHERE status = 'active' ORDER BY sort_order ASC, sold_count DESC").all().map(parseItem);
   const recentOrders = db.prepare(`
     SELECT orders.order_code, orders.created_at, users.username, GROUP_CONCAT(order_items.item_name, ', ') AS item_names
     FROM orders
@@ -1026,7 +1021,7 @@ app.get('/api/home', publicCache, (_req, res) => {
     WHERE reviews.status = 'approved'
     ORDER BY reviews.created_at DESC LIMIT 6
   `).all();
-  res.json({ settings: publicSettings(), featured, bestSellers, sales, reviews, recentOrders });
+  res.json({ settings: publicSettings(), featured, bestSellers: [], sales: [], reviews, recentOrders });
 });
 
 app.get('/api/deposits', requireAuth, (req, res) => {

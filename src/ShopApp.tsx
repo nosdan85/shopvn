@@ -426,9 +426,7 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
 
       <NoticeCard text={settings.homepage_notice || 'Tin mới: shop đang cập nhật thêm item Roblox.'} />
       <div id="item-sections" className="item-sections">
-        <ItemSection title="Mua item" items={data.featured} go={go} />
-        <ItemSection title="Đang bán chạy" items={data.bestSellers} go={go} />
-        <ItemSection title="Đang giảm giá" items={data.sales} go={go} />
+        <ItemSection title="Danh sách item" items={data.featured} go={go} />
       </div>
 
       <section className="section two-col">
@@ -498,19 +496,12 @@ function ItemCard({ item, go }: { item: Item; go: (page: Page, id?: string) => v
     <article className="item-card">
       <button className="image-button" onClick={() => go('item', item.slug)}>
         <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />
-        {item.discount_percent > 0 && <span className="sale-badge">-{item.discount_percent}%</span>}
-        <span className={item.stock > 0 ? 'stock-badge' : 'stock-badge out'}>{item.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</span>
       </button>
       <div className="item-body">
         <h3>{item.name}</h3>
         <p>{item.short_description}</p>
         <div className="price-row">
           <strong>{money(item.current_price)}</strong>
-          {item.original_price && item.original_price > item.current_price && <del>{money(item.original_price)}</del>}
-        </div>
-        <div className="meta-row">
-          <span>{item.stock > 0 ? `Còn ${item.stock}` : 'Hết hàng'}</span>
-          <span>Đã bán {item.sold_count}</span>
         </div>
         <div className="card-actions">
           <button onClick={() => go('item', item.slug)}>Xem chi tiết</button>
@@ -523,7 +514,6 @@ function ItemCard({ item, go }: { item: Item; go: (page: Page, id?: string) => v
 
 function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
   const [items, setItems] = useState<Item[]>([])
-  const [filter, setFilter] = useState('all')
   const [sort, setSort] = useState('')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -536,14 +526,14 @@ function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
   }, [search])
 
   useEffect(() => {
-    const params = new URLSearchParams({ filter, sort, search: debouncedSearch })
+    const params = new URLSearchParams({ filter: 'all', sort, search: debouncedSearch })
     setLoading(true)
     setError('')
     api<{ items: Item[] }>(`/items?${params}`)
       .then((data) => setItems(data.items))
       .catch((err) => setError(messageFromError(err)))
       .finally(() => setLoading(false))
-  }, [filter, sort, debouncedSearch])
+  }, [sort, debouncedSearch])
 
   return (
     <section className="page-section">
@@ -557,15 +547,6 @@ function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
         <input placeholder="Tìm item gần đúng..." value={search} onChange={(event) => setSearch(event.target.value)} />
         <div className="choice-group">
           {[
-            ['all', 'Tất cả'],
-            ['featured', 'Nổi bật'],
-            ['best-seller', 'Bán chạy'],
-            ['sale', 'Giảm giá'],
-            ['in-stock', 'Còn hàng'],
-          ].map(([value, label]) => <button type="button" key={value} className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{label}</button>)}
-        </div>
-        <div className="choice-group">
-          {[
             ['', 'Mặc định'],
             ['price-asc', 'Giá thấp'],
             ['price-desc', 'Giá cao'],
@@ -573,7 +554,7 @@ function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
         </div>
       </div>
       {loading && <div className="skeleton-grid"><span /><span /><span /></div>}
-      {error && <div className="empty-state"><p>{error}</p><button onClick={() => { setSearch(''); setFilter('all'); setSort('') }}>Thử lại</button></div>}
+      {error && <div className="empty-state"><p>{error}</p><button onClick={() => { setSearch(''); setSort('') }}>Thử lại</button></div>}
       <div className="item-grid">
         {!loading && !error && items.map((item) => <ItemCard key={item.id} item={item} go={go} />)}
       </div>
@@ -643,13 +624,6 @@ function ItemDetail({
         <p>{item.description}</p>
         <div className="price-row big">
           <strong>{money(item.current_price)}</strong>
-          {item.original_price && item.original_price > item.current_price && <del>{money(item.original_price)}</del>}
-          {item.discount_percent > 0 && <span className="sale-badge inline">-{item.discount_percent}%</span>}
-        </div>
-        <div className="meta-grid">
-          <span>Số lượng còn: <strong>{item.stock}</strong></span>
-          <span>Đã bán: <strong>{item.sold_count}</strong></span>
-          <span>Trạng thái: <strong>{item.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</strong></span>
         </div>
         <div className="info-box">
           <h3>Hướng dẫn nhận item</h3>
@@ -722,7 +696,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User 
             <img src={assetUrl(entry.item.image) || placeholderImage} alt={entry.item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
             <div>
               <strong>{entry.item.name}</strong>
-              <p>{money(entry.item.current_price)} · Còn {entry.item.stock}</p>
+              <p>{money(entry.item.current_price)}</p>
               <input min={1} max={entry.item.stock} type="number" value={numberInputValue(entry.quantity)} onChange={(event) => updateQuantity(entry.item.id, numberInputNext(event.target.value))} />
             </div>
             <button onClick={() => setCart(cart.filter((item) => item.item.id !== entry.item.id))}>Xóa</button>
@@ -1282,7 +1256,6 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
       await api(path, { method: isEditing ? 'PATCH' : 'POST', body: JSON.stringify(itemPayload(editing)) })
       setEditing(emptyItem)
       setIsEditing(false)
-      setNotice('Đã lưu item.')
       load()
     } catch (error) {
       setNotice(messageFromError(error))
@@ -1326,14 +1299,12 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
       const data = await uploadImage(file)
       if (target === 'main') {
         setEditing((current) => ({ ...current, image: data.url }))
-        setNotice('Đã dán và upload ảnh đại diện.')
         return
       }
       setEditing((current) => {
         const gallery = Array.isArray(current.gallery) ? current.gallery : []
         return { ...current, gallery: [...gallery, data.url] }
       })
-      setNotice('Đã dán và thêm ảnh vào gallery.')
     } catch (error) {
       setNotice(messageFromError(error))
     } finally {
@@ -1369,19 +1340,12 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
         {Boolean(editing.image) && <img className="admin-image-preview" src={assetUrl(String(editing.image))} alt="Ảnh item" />}
         {Array.isArray(editing.gallery) && editing.gallery.length > 0 && <div className="gallery-editor">{editing.gallery.map((image) => <span key={String(image)}><img src={assetUrl(String(image))} alt="Gallery" /><button type="button" onClick={() => setEditing({ ...editing, gallery: (editing.gallery as unknown[]).filter((item) => item !== image) })}>Xóa</button></span>)}</div>}
         <label>Giá bán<input type="number" placeholder="Ví dụ: 50000" value={numberInputValue(editing.price)} onChange={(event) => setEditing({ ...editing, price: numberInputNext(event.target.value) })} /></label>
-        <label>Giá gốc<input type="number" placeholder="Ví dụ: 70000" value={numberInputValue(editing.original_price)} onChange={(event) => setEditing({ ...editing, original_price: numberInputNext(event.target.value) })} /></label>
-        <label>Giá khuyến mãi<input type="number" placeholder="Không giảm thì bỏ trống" value={numberInputValue(editing.sale_price)} onChange={(event) => setEditing({ ...editing, sale_price: numberInputNext(event.target.value) })} /></label>
         <label>Tồn kho<input type="number" placeholder="Ví dụ: 10" value={numberInputValue(editing.stock)} onChange={(event) => setEditing({ ...editing, stock: numberInputNext(event.target.value) })} /></label>
         <label>Mô tả ngắn<textarea placeholder="Mô tả ngắn hiển thị trên card" value={String(editing.short_description || '')} onChange={(event) => setEditing({ ...editing, short_description: event.target.value })} /></label>
         <label>Mô tả chi tiết<textarea placeholder="Thông tin chi tiết cho trang sản phẩm" value={String(editing.description || '')} onChange={(event) => setEditing({ ...editing, description: event.target.value })} /></label>
-        <div className="choice-group admin-flags">
-          <button type="button" className={editing.is_featured ? 'active' : ''} onClick={() => setEditing({ ...editing, is_featured: editing.is_featured ? 0 : 1 })}>Nổi bật</button>
-          <button type="button" className={editing.is_best_seller ? 'active' : ''} onClick={() => setEditing({ ...editing, is_best_seller: editing.is_best_seller ? 0 : 1 })}>Bán chạy</button>
-          <button type="button" className={editing.is_sale ? 'active' : ''} onClick={() => setEditing({ ...editing, is_sale: editing.is_sale ? 0 : 1 })}>Giảm giá</button>
-        </div>
         <button className="primary">{isEditing ? 'Cập nhật item' : 'Thêm item'}</button>
       </form>
-      <TablePage title="Danh sách item" headers={['Tên', 'Giá', 'Kho', 'Trạng thái', 'Thao tác']} rows={items.map((item) => [item.name, money(item.current_price), item.stock, item.status, <span className="actions"><button onClick={() => { setEditing(item); setIsEditing(true) }}>Sửa</button><button onClick={() => hide(item.id)}>Ẩn</button></span>])} />
+      <TablePage title="Danh sách item" headers={['Tên', 'Giá', 'Trạng thái', 'Thao tác']} rows={items.map((item) => [item.name, money(item.current_price), item.status, <span className="actions"><button onClick={() => { setEditing(item); setIsEditing(true) }}>Sửa</button><button onClick={() => hide(item.id)}>Ẩn</button></span>])} />
     </>
   )
 }
