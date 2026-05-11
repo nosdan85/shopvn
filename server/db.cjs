@@ -308,6 +308,10 @@ function columnsFor(table) {
   return originalPrepare(`PRAGMA table_info(${table})`).all().map((column) => column.name);
 }
 
+function quoteIdentifier(value) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
 async function remoteTableCount() {
   let total = 0;
   for (const table of persistentTables) {
@@ -348,9 +352,10 @@ async function restoreRemoteToLocal() {
   });
   deleteLocal();
   for (const table of persistentTables) {
-    const result = await remoteClient.execute(`SELECT * FROM ${table}`);
-    const rows = result.rows || [];
     const columns = columnsFor(table);
+    const selectColumns = columns.map((column) => `CAST(${quoteIdentifier(column)} AS TEXT) AS ${quoteIdentifier(column)}`).join(', ');
+    const result = await remoteClient.execute(`SELECT ${selectColumns} FROM ${quoteIdentifier(table)}`);
+    const rows = result.rows || [];
     if (!rows.length) continue;
     const placeholders = columns.map(() => '?').join(', ');
     const statement = originalPrepare(`INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`);
