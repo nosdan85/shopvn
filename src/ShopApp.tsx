@@ -406,7 +406,16 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
   const [selectedGame, setSelectedGame] = useState('')
 
   useEffect(() => {
-    api<typeof data & { settings: Settings }>('/home').then(setData)
+    api<Partial<typeof data> & { settings?: Settings }>('/home').then((nextData) => {
+      setData({
+        featured: nextData.featured || [],
+        bestSellers: nextData.bestSellers || [],
+        sales: nextData.sales || [],
+        categories: nextData.categories || [],
+        reviews: nextData.reviews || [],
+        recentOrders: nextData.recentOrders || [],
+      })
+    })
   }, [])
 
   function scrollToItems() {
