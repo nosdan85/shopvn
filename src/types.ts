@@ -19,9 +19,7 @@ export type GameCategory = {
   name: string
   slug: string
   icon: string
-  description?: string
   status: string
-  sort_order: number
   created_at: string
   updated_at: string
 }

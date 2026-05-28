@@ -287,8 +287,6 @@ function parseGameCategory(row) {
   return {
     ...row,
     icon: row.icon || '',
-    description: row.description || '',
-    sort_order: Number(row.sort_order || 0),
   };
 }
 
@@ -305,7 +303,7 @@ function itemSelect() {
 
 function gameCategoryRows({ activeOnly = false } = {}) {
   const where = activeOnly ? "WHERE status = 'active'" : '';
-  return db.prepare(`SELECT * FROM game_categories ${where} ORDER BY sort_order ASC, id DESC`).all().map(parseGameCategory);
+  return db.prepare(`SELECT * FROM game_categories ${where} ORDER BY id DESC`).all().map(parseGameCategory);
 }
 
 function settingsData({ includeSecrets = false } = {}) {
@@ -357,10 +355,10 @@ function normalizedCategoryPayload(body) {
   return {
     name,
     slug,
-    icon: clampText(body.icon, 120),
-    description: clampText(body.description, 500),
+    icon: clampText(body.icon, 500),
+    description: '',
     status: ['active', 'hidden'].includes(body.status) ? body.status : 'active',
-    sort_order: Number(body.sort_order || 0),
+    sort_order: 0,
   };
 }
 
@@ -1050,7 +1048,7 @@ app.get('/api/home', publicCache, (_req, res) => {
     WHERE orders.status IN ('pending','processing','completed')
     GROUP BY orders.id
     ORDER BY orders.created_at DESC
-    LIMIT 12
+    LIMIT 5
   `).all();
   const reviews = db.prepare(`
     SELECT reviews.*, users.username, items.name as item_name FROM reviews

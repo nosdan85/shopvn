@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, ClipboardEvent, FormEvent, SyntheticEvent } from 'react'
 import { api, assetUrl, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
-import type { AdminChat, BalanceLog, ChatMessage, Deposit, GameCategory, Item, Notification, Order, Review, Settings, User } from './types'
+import type { AdminChat, AdminOrderChat, BalanceLog, ChatMessage, Deposit, GameCategory, Item, Notification, Order, Review, Settings, User } from './types'
 
 type Page =
   | 'home'
@@ -79,10 +79,13 @@ function maskUsername(username?: string) {
   return `${value.slice(0, 2)}**`
 }
 
-function categoryIcon(category?: Pick<GameCategory, 'icon' | 'name'> | null) {
+function CategoryIcon({ category, fallbackLogo = false }: { category?: Pick<GameCategory, 'icon' | 'name'> | null; fallbackLogo?: boolean }) {
   const icon = String(category?.icon || '').trim()
-  if (icon) return icon
-  return String(category?.name || 'G').trim().slice(0, 1).toUpperCase()
+  const label = String(category?.name || 'Game')
+  if (icon || fallbackLogo) {
+    return <img className="category-icon-img" src={assetUrl(icon || shopLogo)} alt={label} />
+  }
+  return <span>{label.slice(0, 1).toUpperCase()}</span>
 }
 
 function applyNaturalImageRatio(event: SyntheticEvent<HTMLImageElement>) {
@@ -406,7 +409,9 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
   const [selectedGame, setSelectedGame] = useState('')
 
   useEffect(() => {
-    api<Partial<typeof data> & { settings?: Settings }>('/home').then((nextData) => {
+    let active = true
+    const loadHome = (fresh = false) => api<Partial<typeof data> & { settings?: Settings }>(fresh ? `/home?t=${Date.now()}` : '/home').then((nextData) => {
+      if (!active) return
       setData({
         featured: nextData.featured || [],
         bestSellers: nextData.bestSellers || [],
@@ -416,6 +421,12 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
         recentOrders: nextData.recentOrders || [],
       })
     })
+    loadHome()
+    const timer = window.setInterval(() => loadHome(true).catch(() => undefined), 15000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
   }, [])
 
   function scrollToItems() {
@@ -447,7 +458,6 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
         </div>
       </section>
 
-      <NoticeCard text={settings.homepage_notice || 'Tin mới: shop đang cập nhật thêm item Roblox.'} />
       <div id="item-sections" className="item-sections">
         <GameTabs categories={data.categories} selected={selectedGame} onSelect={setSelectedGame} />
         <ItemSection title={selectedGame ? `Item ${data.categories.find((category) => category.slug === selectedGame)?.name || ''}` : 'Danh sách item'} items={visibleItems} go={go} />
@@ -482,21 +492,17 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
   )
 }
 
-function NoticeCard({ text }: { text: string }) {
-  return <div className="notice-card"><strong>Thông báo:</strong> {text}</div>
-}
-
 function GameTabs({ categories, selected, onSelect }: { categories: GameCategory[]; selected: string; onSelect: (slug: string) => void }) {
   if (!categories.length) return null
   return (
     <div className="game-tabs" aria-label="Lọc theo game">
       <button type="button" className={selected === '' ? 'active' : ''} onClick={() => onSelect('')}>
-        <span>T</span>
+        <CategoryIcon fallbackLogo />
         Tất cả
       </button>
       {categories.map((category) => (
         <button type="button" key={category.id} className={selected === category.slug ? 'active' : ''} onClick={() => onSelect(category.slug)}>
-          <span>{categoryIcon(category)}</span>
+          <CategoryIcon category={category} />
           {category.name}
         </button>
       ))}
@@ -541,7 +547,7 @@ function ItemCard({ item, go }: { item: Item; go: (page: Page, id?: string) => v
       </button>
       <div className="item-body">
         <h3>{item.name}</h3>
-        {item.game_category_name && <span className="category-pill"><i>{item.game_category_icon || item.game_category_name.slice(0, 1)}</i>{item.game_category_name}</span>}
+        {item.game_category_name && <span className="category-pill"><CategoryIcon category={{ icon: item.game_category_icon || '', name: item.game_category_name }} />{item.game_category_name}</span>}
         <p>{item.short_description}</p>
         <div className="price-row">
           <strong>{money(item.current_price)}</strong>
@@ -1242,13 +1248,13 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
           ['deposits', 'Giao dịch nạp'],
           ['sepay-bot', 'SePay Bot'],
           ['balance', 'Log số dư'],
-          ['chats', 'Chat'],
+          ['chats', 'Order'],
           ['reviews', 'Đánh giá'],
           ['settings', 'Cấu hình'],
         ].map(([key, label]) => <button className={tab === key ? 'active' : ''} key={key} onClick={() => setTab(key)}>{label}</button>)}
       </aside>
       <div className="admin-content">
-        {tab === 'dashboard' && <AdminDashboard />}
+        {tab === 'dashboard' && <AdminDashboard goAdmin={setTab} />}
         {tab === 'games' && <AdminGameCategories setNotice={setNotice} />}
         {tab === 'items' && <AdminItems setNotice={setNotice} />}
         {tab === 'orders' && <AdminOrders setNotice={setNotice} />}
@@ -1256,7 +1262,7 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
         {tab === 'deposits' && <AdminDeposits setNotice={setNotice} />}
         {tab === 'sepay-bot' && <AdminSepayBot setNotice={setNotice} />}
         {tab === 'balance' && <AdminBalanceLogs />}
-        {tab === 'chats' && <AdminChats setNotice={setNotice} />}
+        {tab === 'chats' && <AdminOrderChats setNotice={setNotice} />}
         {tab === 'reviews' && <AdminReviews setNotice={setNotice} />}
         {tab === 'settings' && <AdminSettings initial={settings} setNotice={setNotice} />}
       </div>
@@ -1264,7 +1270,7 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
   )
 }
 
-function AdminDashboard() {
+function AdminDashboard({ goAdmin }: { goAdmin: (tab: string) => void }) {
   const [data, setData] = useState<{
     stats: Record<string, number>
     topItems: Item[]
@@ -1279,22 +1285,23 @@ function AdminDashboard() {
     <>
       <h1>Dashboard admin</h1>
       <div className="stats-grid">
-        <Stat label="Tổng user" value={data.stats.totalUsers} />
-        <Stat label="Tổng số dư user" value={money(data.stats.totalUserBalance)} />
-        <Stat label="Tổng doanh thu" value={money(data.stats.totalRevenue)} />
-        <Stat label="Doanh thu hôm nay" value={money(data.stats.revenueToday)} />
-        <Stat label="Doanh thu tháng này" value={money(data.stats.revenueMonth)} />
-        <Stat label="Đơn chờ xử lý" value={data.stats.pendingOrders} />
+        <Stat label="Tổng user" value={data.stats.totalUsers} onClick={() => goAdmin('users')} />
+        <Stat label="Tổng số dư user" value={money(data.stats.totalUserBalance)} onClick={() => goAdmin('balance')} />
+        <Stat label="Tổng doanh thu" value={money(data.stats.totalRevenue)} onClick={() => goAdmin('orders')} />
+        <Stat label="Doanh thu hôm nay" value={money(data.stats.revenueToday)} onClick={() => goAdmin('orders')} />
+        <Stat label="Doanh thu tháng này" value={money(data.stats.revenueMonth)} onClick={() => goAdmin('orders')} />
+        <Stat label="Đơn chờ xử lý" value={data.stats.pendingOrders} onClick={() => goAdmin('orders')} />
       </div>
-      <ItemSection title="Item bán chạy" items={data.topItems} go={() => undefined} />
-      <TablePage title="Nạp tiền gần đây" headers={['Mã', 'User', 'Số tiền', 'Trạng thái', 'Thời gian']} rows={data.deposits.map((deposit) => [deposit.transaction_code, deposit.username || '', money(deposit.amount), depositStatus[deposit.status], dateTime(deposit.created_at)])} />
-      <TablePage title="Đơn mới nhất" headers={['Mã', 'User', 'Tổng', 'Trạng thái', 'Thời gian']} rows={data.orders.map((order) => [order.order_code, order.username || '', money(order.total_amount), orderStatus[order.status], dateTime(order.created_at)])} />
+      <div className="section-head"><h2>Item bán chạy</h2><button onClick={() => goAdmin('items')}>Quản lý item</button></div>
+      <ItemSection title="" items={data.topItems} go={() => goAdmin('items')} />
+      <TablePage title="Nạp tiền gần đây" headers={['Mã', 'User', 'Số tiền', 'Trạng thái', 'Thời gian', 'Mở']} rows={data.deposits.map((deposit) => [deposit.transaction_code, deposit.username || '', money(deposit.amount), depositStatus[deposit.status], dateTime(deposit.created_at), <button onClick={() => goAdmin('deposits')}>Xem</button>])} />
+      <TablePage title="Đơn mới nhất" headers={['Mã', 'User', 'Tổng', 'Trạng thái', 'Thời gian', 'Mở']} rows={data.orders.map((order) => [order.order_code, order.username || '', money(order.total_amount), orderStatus[order.status], dateTime(order.created_at), <button onClick={() => goAdmin('orders')}>Xử lý</button>])} />
     </>
   )
 }
 
 function AdminGameCategories({ setNotice }: { setNotice: (message: string) => void }) {
-  const emptyCategory = { name: '', slug: '', icon: '', description: '', status: 'active', sort_order: '' }
+  const emptyCategory = { name: '', slug: '', icon: '', status: 'active' }
   const [categories, setCategories] = useState<GameCategory[]>([])
   const [editing, setEditing] = useState<Record<string, unknown>>(emptyCategory)
   const [isEditing, setIsEditing] = useState(false)
@@ -1308,7 +1315,7 @@ function AdminGameCategories({ setNotice }: { setNotice: (message: string) => vo
     event.preventDefault()
     const path = isEditing ? `/admin/game-categories/${editing.id}` : '/admin/game-categories'
     try {
-      await api(path, { method: isEditing ? 'PATCH' : 'POST', body: JSON.stringify({ ...editing, sort_order: Number(editing.sort_order || 0) }) })
+      await api(path, { method: isEditing ? 'PATCH' : 'POST', body: JSON.stringify(editing) })
       setEditing(emptyCategory)
       setIsEditing(false)
       setNotice(isEditing ? 'Đã cập nhật game category.' : 'Đã thêm game category.')
@@ -1334,14 +1341,13 @@ function AdminGameCategories({ setNotice }: { setNotice: (message: string) => vo
       <form className="admin-form" onSubmit={save}>
         <label>Tên game<input required placeholder="Ví dụ: Sailor Piece" value={String(editing.name || '')} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
         <label>Slug<input placeholder="Tự tạo nếu để trống" value={String(editing.slug || '')} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} /></label>
-        <label>Icon<input placeholder="Emoji, ký tự hoặc tên icon" value={String(editing.icon || '')} onChange={(event) => setEditing({ ...editing, icon: event.target.value })} /></label>
-        <label>Mô tả<textarea value={String(editing.description || '')} onChange={(event) => setEditing({ ...editing, description: event.target.value })} /></label>
+        <label>Link ảnh icon<input placeholder="Dán URL ảnh icon game" value={String(editing.icon || '')} onChange={(event) => setEditing({ ...editing, icon: event.target.value })} /></label>
+        {Boolean(editing.icon) && <img className="admin-image-preview category-admin-preview" src={assetUrl(String(editing.icon))} alt="Icon game" />}
         <label>Trạng thái<select value={String(editing.status || 'active')} onChange={(event) => setEditing({ ...editing, status: event.target.value })}><option value="active">Hiện</option><option value="hidden">Ẩn</option></select></label>
-        <label>Thứ tự<input type="number" value={numberInputValue(editing.sort_order)} onChange={(event) => setEditing({ ...editing, sort_order: numberInputNext(event.target.value) })} /></label>
         <button className="primary">{isEditing ? 'Cập nhật game' : 'Thêm game'}</button>
         {isEditing && <button type="button" onClick={() => { setEditing(emptyCategory); setIsEditing(false) }}>Hủy sửa</button>}
       </form>
-      <TablePage title="Danh sách game" headers={['Icon', 'Tên', 'Slug', 'Trạng thái', 'Thao tác']} rows={categories.map((category) => [categoryIcon(category), category.name, category.slug, category.status, <span className="actions"><button onClick={() => { setEditing(category); setIsEditing(true) }}>Sửa</button><button onClick={() => remove(category)}>Xóa/ẩn</button></span>])} />
+      <TablePage title="Danh sách game" headers={['Icon', 'Tên', 'Slug', 'Trạng thái', 'Thao tác']} rows={categories.map((category) => [<CategoryIcon category={category} />, category.name, category.slug, category.status, <span className="actions"><button onClick={() => { setEditing(category); setIsEditing(true) }}>Sửa</button><button onClick={() => remove(category)}>Xóa/ẩn</button></span>])} />
     </>
   )
 }
@@ -1372,10 +1378,15 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
     }
   }
 
-  async function hide(id: number) {
-    await api(`/admin/items/${id}`, { method: 'DELETE' })
-    setNotice('Đã ẩn item.')
-    load()
+  async function hide(item: Item) {
+    if (!window.confirm(`Xóa hoặc ẩn item "${item.name}"? Item đã có trong đơn sẽ được ẩn để giữ lịch sử mua hàng.`)) return
+    try {
+      const result = await api<{ softDeleted?: boolean }>(`/admin/items/${item.id}`, { method: 'DELETE' })
+      setNotice(result.softDeleted ? 'Item đã có trong đơn nên đã được ẩn.' : 'Đã xóa item.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
   }
 
   async function uploadMainImage(event: ChangeEvent<HTMLInputElement>) {
@@ -1461,7 +1472,7 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
         <label>Mô tả chi tiết<textarea placeholder="Thông tin chi tiết cho trang sản phẩm" value={String(editing.description || '')} onChange={(event) => setEditing({ ...editing, description: event.target.value })} /></label>
         <button className="primary">{isEditing ? 'Cập nhật item' : 'Thêm item'}</button>
       </form>
-      <TablePage title="Danh sách item" headers={['Tên', 'Game', 'Giá', 'Trạng thái', 'Thao tác']} rows={items.map((item) => [item.name, item.game_category_name || 'Chưa phân loại', money(item.current_price), item.status, <span className="actions"><button onClick={() => { setEditing(item); setIsEditing(true) }}>Sửa</button><button onClick={() => hide(item.id)}>Ẩn</button></span>])} />
+      <TablePage title="Danh sách item" headers={['Tên', 'Game', 'Giá', 'Trạng thái', 'Thao tác']} rows={items.map((item) => [item.name, item.game_category_name || 'Chưa phân loại', money(item.current_price), item.status, <span className="actions"><button onClick={() => { setEditing(item); setIsEditing(true) }}>Sửa</button><button onClick={() => hide(item)}>Xóa/ẩn</button></span>])} />
     </>
   )
 }
@@ -1483,10 +1494,20 @@ function AdminOrders({ setNotice }: { setNotice: (message: string) => void }) {
       setNotice(messageFromError(error))
     }
   }
+  async function remove(order: Order) {
+    if (!window.confirm(`Xóa đơn ${order.order_code}? Thao tác này xóa cả item trong đơn, log trạng thái, review và chat đơn.`)) return
+    try {
+      await api(`/admin/orders/${order.id}`, { method: 'DELETE' })
+      setNotice('Đã xóa đơn hàng.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
   return (
     <>
       <h1>Quản lý đơn hàng</h1>
-      <TablePage title="Danh sách đơn" headers={['Mã', 'User', 'Roblox', 'Tổng', 'Trạng thái', 'Thao tác']} rows={orders.map((order) => [order.order_code, order.username || '', order.roblox_username, money(order.total_amount), orderStatus[order.status], <span className="actions"><button onClick={() => update(order.id, 'processing')}>Đang xử lý</button><button onClick={() => update(order.id, 'completed')}>Đã giao</button><button onClick={() => update(order.id, 'cancelled')}>Hủy</button><button onClick={() => update(order.id, 'refunded')}>Hoàn tiền</button></span>])} />
+      <TablePage title="Danh sách đơn" headers={['Mã', 'User', 'Roblox', 'Tổng', 'Trạng thái', 'Thao tác']} rows={orders.map((order) => [order.order_code, order.username || '', order.roblox_username, money(order.total_amount), orderStatus[order.status], <span className="actions"><button onClick={() => update(order.id, 'processing')}>Đang xử lý</button><button onClick={() => update(order.id, 'completed')}>Đã giao</button><button onClick={() => update(order.id, 'cancelled')}>Hủy</button><button onClick={() => update(order.id, 'refunded')}>Hoàn tiền</button><button onClick={() => remove(order)}>Xóa</button></span>])} />
     </>
   )
 }
@@ -1620,16 +1641,16 @@ function AdminBalanceLogs() {
   return <TablePage title="Log biến động số dư" headers={['User', 'Loại', 'Số tiền', 'Trước', 'Sau', 'Ref', 'Ghi chú', 'Thời gian']} rows={logs.map((log) => [log.username || '', log.type, money(log.amount), money(log.balance_before), money(log.balance_after), `${log.reference_type || ''}#${log.reference_id || ''}`, log.note || '', dateTime(log.created_at)])} />
 }
 
-function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
-  const [chats, setChats] = useState<AdminChat[]>([])
-  const [selected, setSelected] = useState<AdminChat | null>(null)
+function AdminOrderChats({ setNotice }: { setNotice: (message: string) => void }) {
+  const [chats, setChats] = useState<AdminOrderChat[]>([])
+  const [selected, setSelected] = useState<AdminOrderChat | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [message, setMessage] = useState('')
   const [imageUrl, setImageUrl] = useState('')
-  const loadChats = () => api<{ chats: AdminChat[] }>('/admin/chats').then((data) => setChats(data.chats))
-  async function loadThread(chat: AdminChat) {
+  const loadChats = () => api<{ chats: AdminOrderChat[] }>('/admin/order-chats').then((data) => setChats(data.chats))
+  async function loadThread(chat: AdminOrderChat) {
     setSelected(chat)
-    const data = await api<{ messages: ChatMessage[] }>(`/admin/chats/${chat.user_id}`)
+    const data = await api<{ messages: ChatMessage[] }>(`/admin/order-chats/${chat.order_id}`)
     setMessages(data.messages)
     loadChats()
   }
@@ -1640,7 +1661,7 @@ function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
     event.preventDefault()
     if (!selected) return
     try {
-      await api(`/admin/chats/${selected.user_id}`, { method: 'POST', body: JSON.stringify({ message, image_url: imageUrl }) })
+      await api(`/admin/order-chats/${selected.order_id}`, { method: 'POST', body: JSON.stringify({ message, image_url: imageUrl }) })
       setMessage('')
       setImageUrl('')
       loadThread(selected)
@@ -1651,29 +1672,33 @@ function AdminChats({ setNotice }: { setNotice: (message: string) => void }) {
   async function uploadChatImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-    const data = await uploadImage(file, '/uploads/chat-image')
-    setImageUrl(data.url)
+    try {
+      const data = await uploadImage(file, '/uploads/chat-image')
+      setImageUrl(data.url)
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
   }
   return (
     <div className="admin-chat-grid">
       <div className="panel">
-        <h1>Chat</h1>
-        {chats.length === 0 && <p className="muted">Chưa có cuộc chat nào.</p>}
+        <h1>Order</h1>
+        {chats.length === 0 && <p className="muted">Chưa có chat đơn hàng nào.</p>}
         <div className="chat-list">
-          {chats.map((chat) => <button key={chat.user_id} className={selected?.user_id === chat.user_id ? 'active' : ''} onClick={() => loadThread(chat)}><strong>{chat.username}</strong><span>{chat.last_message || 'Chưa có nội dung'}</span>{chat.unread_count > 0 && <small>{chat.unread_count} mới</small>}</button>)}
+          {chats.map((chat) => <button key={chat.order_id} className={selected?.order_id === chat.order_id ? 'active' : ''} onClick={() => loadThread(chat)}><strong>{chat.order_code}</strong><span>{chat.username} · {money(chat.total_amount)}</span><small>{chat.unread_count > 0 ? `${chat.unread_count} mới` : chat.last_message || 'Mở đơn'}</small></button>)}
         </div>
       </div>
       <div className="panel chat-panel">
-        <h2>{selected ? `Đang chat với ${selected.username}` : 'Chọn user để trả lời'}</h2>
+        <h2>{selected ? `Đơn ${selected.order_code}` : 'Chọn đơn để trả lời'}</h2>
         <div className="chat-box">
           {messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_role !== 'user'} />)}
         </div>
         <form className="chat-form" onSubmit={submit}>
-          <input disabled={!selected} placeholder={'Nhập phản hồi cho user'} value={message} onChange={(event) => setMessage(event.target.value)} />
-          <label className="upload-button">{'Ảnh'}<input disabled={!selected} type="file" accept="image/*" onChange={uploadChatImage} /></label>
-          <button className="primary" disabled={!selected || (!message && !imageUrl)}>{'Gửi'}</button>
+          <input disabled={!selected} placeholder="Nhập phản hồi cho đơn hàng" value={message} onChange={(event) => setMessage(event.target.value)} />
+          <label className="upload-button">Ảnh<input disabled={!selected} type="file" accept="image/*" onChange={uploadChatImage} /></label>
+          <button className="primary" disabled={!selected || (!message && !imageUrl)}>Gửi</button>
         </form>
-        {imageUrl && <img className="chat-image-preview" src={assetUrl(imageUrl)} alt={'Ảnh chuẩn bị gửi'} />}
+        {imageUrl && <img className="chat-image-preview" src={assetUrl(imageUrl)} alt="Ảnh chuẩn bị gửi" />}
       </div>
     </div>
   )
@@ -1846,7 +1871,8 @@ function AdminSepayBot({ setNotice }: { setNotice: (message: string) => void }) 
   )
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function Stat({ label, value, onClick }: { label: string; value: string | number; onClick?: () => void }) {
+  if (onClick) return <button className="stat-card stat-button" type="button" onClick={onClick}><span>{label}</span><strong>{value}</strong></button>
   return <div className="stat-card"><span>{label}</span><strong>{value}</strong></div>
 }
 

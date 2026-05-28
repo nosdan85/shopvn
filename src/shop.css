@@ -650,8 +650,7 @@ small {
   background: rgba(57, 217, 255, 0.14);
 }
 
-.game-tabs span,
-.category-pill i {
+.game-tabs span {
   display: inline-grid;
   width: 1.6rem;
   height: 1.6rem;
@@ -660,6 +659,14 @@ small {
   background: rgba(255, 255, 255, 0.12);
   font-style: normal;
   font-size: 0.78rem;
+}
+
+.category-icon-img {
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .category-pill {
@@ -719,6 +726,16 @@ small {
 
 .stat-card {
   padding: 1.2rem;
+}
+
+.stat-button {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+
+.stat-button:hover {
+  border-color: rgba(57, 217, 255, 0.8);
 }
 
 .stat-card span {
