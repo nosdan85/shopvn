@@ -14,10 +14,26 @@ export type User = {
   created_at: string
 }
 
+export type GameCategory = {
+  id: number
+  name: string
+  slug: string
+  icon: string
+  description?: string
+  status: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 export type Item = {
   id: number
   name: string
   slug: string
+  game_category_id?: number | null
+  game_category_name?: string
+  game_category_slug?: string
+  game_category_icon?: string
   item_code?: string
   image: string
   gallery: string[]

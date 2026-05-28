@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, ClipboardEvent, FormEvent, SyntheticEvent } from 'react'
 import { api, assetUrl, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
-import type { AdminChat, BalanceLog, ChatMessage, Deposit, Item, Notification, Order, Review, Settings, User } from './types'
+import type { AdminChat, BalanceLog, ChatMessage, Deposit, GameCategory, Item, Notification, Order, Review, Settings, User } from './types'
 
 type Page =
   | 'home'
@@ -24,6 +24,7 @@ type Page =
 const emptyItem = {
   name: '',
   slug: '',
+  game_category_id: '',
   item_code: '',
   image: '',
   gallery: [],
@@ -78,6 +79,12 @@ function maskUsername(username?: string) {
   return `${value.slice(0, 2)}**`
 }
 
+function categoryIcon(category?: Pick<GameCategory, 'icon' | 'name'> | null) {
+  const icon = String(category?.icon || '').trim()
+  if (icon) return icon
+  return String(category?.name || 'G').trim().slice(0, 1).toUpperCase()
+}
+
 function applyNaturalImageRatio(event: SyntheticEvent<HTMLImageElement>) {
   const image = event.currentTarget
   if (!image.naturalWidth || !image.naturalHeight) return
@@ -88,7 +95,7 @@ function loadSavedCart() {
   try {
     const parsed = JSON.parse(localStorage.getItem(cartStorageKey) || '[]')
     return Array.isArray(parsed) ? parsed.filter((entry) => entry?.item?.id).map((entry) => ({ item: entry.item, quantity: safeQuantity(entry.quantity) })) : []
-  } catch (_error) {
+  } catch {
     return []
   }
 }
@@ -97,6 +104,7 @@ function itemPayload(item: Record<string, unknown>) {
   return {
     ...item,
     price: Number(item.price || 0),
+    game_category_id: item.game_category_id === '' || item.game_category_id === null || item.game_category_id === undefined ? null : Number(item.game_category_id),
     original_price: Number(item.original_price || 0),
     sale_price: item.sale_price === '' || item.sale_price === null || item.sale_price === undefined ? null : Number(item.sale_price),
     stock: Number(item.stock || 0),
@@ -121,7 +129,7 @@ async function copyText(value: string, setNotice: (message: string) => void) {
   try {
     await navigator.clipboard.writeText(value)
     setNotice('Đã sao chép.')
-  } catch (_error) {
+  } catch {
     setNotice('Không thể sao chép tự động, vui lòng bôi đen và copy thủ công.')
   }
 }
@@ -148,8 +156,13 @@ function LoadingButton({ loading, children, className = '', disabled = false, ty
   )
 }
 
+function initialPage(): Page {
+  const params = new URLSearchParams(window.location.search)
+  return window.location.pathname.includes('reset-password') || params.has('token') ? 'reset' : 'home'
+}
+
 function ShopApp() {
-  const [page, setPage] = useState<Page>('home')
+  const [page, setPage] = useState<Page>(initialPage)
   const [routeId, setRouteId] = useState<string>('')
   const [user, setUser] = useState<User | null>(null)
   const [booting, setBooting] = useState(true)
@@ -160,6 +173,20 @@ function ShopApp() {
   const lastNotificationId = useRef<number | null>(null)
   const lastChatNotificationId = useRef<number | null>(null)
   const lastAdminUnread = useRef<number | null>(null)
+
+  const showNotice = useCallback((message: string) => {
+    const normalized = message.toLowerCase()
+    const action = normalized.includes('số dư không đủ') || normalized.includes('nạp thêm')
+      ? 'deposit'
+      : normalized.includes('đăng nhập')
+        ? 'login'
+        : normalized.includes('giỏ hàng')
+          ? 'cart'
+          : normalized.includes('chat') || normalized.includes('tin nhắn')
+            ? 'chat'
+            : undefined
+    setNoticeState({ message, action })
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -176,10 +203,6 @@ function ShopApp() {
     api<Settings>('/settings/public').then((data) => {
       if (active) setSettings(data)
     }).catch(() => undefined)
-    const params = new URLSearchParams(window.location.search)
-    if (window.location.pathname.includes('reset-password') || params.has('token')) {
-      setPage('reset')
-    }
     return () => {
       active = false
     }
@@ -199,7 +222,7 @@ function ShopApp() {
     }).catch(() => undefined)
     const timer = window.setInterval(refreshUser, 15000)
     return () => window.clearInterval(timer)
-  }, [user?.id])
+  }, [user, showNotice])
 
   useEffect(() => {
     if (!user) return undefined
@@ -245,7 +268,7 @@ function ShopApp() {
     checkNotifications()
     const timer = window.setInterval(checkNotifications, 12000)
     return () => window.clearInterval(timer)
-  }, [page, user?.id, user?.role])
+  }, [page, user, showNotice])
 
   function go(nextPage: Page, id = '') {
     setPage(nextPage)
@@ -253,19 +276,6 @@ function ShopApp() {
     setNoticeState(null)
     setMobileMenuOpen(false)
     window.scrollTo({ top: 0 })
-  }
-
-  function noticeAction(message: string): NoticeAction | undefined {
-    const normalized = message.toLowerCase()
-    if (normalized.includes('số dư không đủ') || normalized.includes('nạp thêm')) return 'deposit'
-    if (normalized.includes('đăng nhập')) return 'login'
-    if (normalized.includes('giỏ hàng')) return 'cart'
-    if (normalized.includes('chat') || normalized.includes('tin nhắn')) return 'chat'
-    return undefined
-  }
-
-  function showNotice(message: string) {
-    setNoticeState({ message, action: noticeAction(message) })
   }
 
   function closeNotice() {
@@ -389,9 +399,11 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
     featured: Item[]
     bestSellers: Item[]
     sales: Item[]
+    categories: GameCategory[]
     reviews: Review[]
     recentOrders: RecentOrder[]
-  }>({ featured: [], bestSellers: [], sales: [], reviews: [], recentOrders: [] })
+  }>({ featured: [], bestSellers: [], sales: [], categories: [], reviews: [], recentOrders: [] })
+  const [selectedGame, setSelectedGame] = useState('')
 
   useEffect(() => {
     api<typeof data & { settings: Settings }>('/home').then(setData)
@@ -400,6 +412,8 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
   function scrollToItems() {
     document.getElementById('item-sections')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  const visibleItems = selectedGame ? data.featured.filter((item) => item.game_category_slug === selectedGame) : data.featured
 
   return (
     <>
@@ -426,7 +440,8 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
 
       <NoticeCard text={settings.homepage_notice || 'Tin mới: shop đang cập nhật thêm item Roblox.'} />
       <div id="item-sections" className="item-sections">
-        <ItemSection title="Danh sách item" items={data.featured} go={go} />
+        <GameTabs categories={data.categories} selected={selectedGame} onSelect={setSelectedGame} />
+        <ItemSection title={selectedGame ? `Item ${data.categories.find((category) => category.slug === selectedGame)?.name || ''}` : 'Danh sách item'} items={visibleItems} go={go} />
       </div>
 
       <section className="section two-col">
@@ -460,6 +475,24 @@ function Home({ go, settings }: { go: (page: Page, id?: string) => void; setting
 
 function NoticeCard({ text }: { text: string }) {
   return <div className="notice-card"><strong>Thông báo:</strong> {text}</div>
+}
+
+function GameTabs({ categories, selected, onSelect }: { categories: GameCategory[]; selected: string; onSelect: (slug: string) => void }) {
+  if (!categories.length) return null
+  return (
+    <div className="game-tabs" aria-label="Lọc theo game">
+      <button type="button" className={selected === '' ? 'active' : ''} onClick={() => onSelect('')}>
+        <span>T</span>
+        Tất cả
+      </button>
+      {categories.map((category) => (
+        <button type="button" key={category.id} className={selected === category.slug ? 'active' : ''} onClick={() => onSelect(category.slug)}>
+          <span>{categoryIcon(category)}</span>
+          {category.name}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 function PurchaseTicker({ orders }: { orders: RecentOrder[] }) {
@@ -499,6 +532,7 @@ function ItemCard({ item, go }: { item: Item; go: (page: Page, id?: string) => v
       </button>
       <div className="item-body">
         <h3>{item.name}</h3>
+        {item.game_category_name && <span className="category-pill"><i>{item.game_category_icon || item.game_category_name.slice(0, 1)}</i>{item.game_category_name}</span>}
         <p>{item.short_description}</p>
         <div className="price-row">
           <strong>{money(item.current_price)}</strong>
@@ -516,6 +550,8 @@ function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
   const [items, setItems] = useState<Item[]>([])
   const [sort, setSort] = useState('')
   const [search, setSearch] = useState('')
+  const [categories, setCategories] = useState<GameCategory[]>([])
+  const [selectedGame, setSelectedGame] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -527,13 +563,19 @@ function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
 
   useEffect(() => {
     const params = new URLSearchParams({ filter: 'all', sort, search: debouncedSearch })
-    setLoading(true)
-    setError('')
+    if (selectedGame) params.set('game', selectedGame)
     api<{ items: Item[] }>(`/items?${params}`)
-      .then((data) => setItems(data.items))
+      .then((data) => {
+        setItems(data.items)
+        setError('')
+      })
       .catch((err) => setError(messageFromError(err)))
       .finally(() => setLoading(false))
-  }, [sort, debouncedSearch])
+  }, [sort, debouncedSearch, selectedGame])
+
+  useEffect(() => {
+    api<{ categories: GameCategory[] }>('/game-categories').then((data) => setCategories(data.categories)).catch(() => undefined)
+  }, [])
 
   return (
     <section className="page-section">
@@ -553,6 +595,7 @@ function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
           ].map(([value, label]) => <button type="button" key={value || 'default'} className={sort === value ? 'active' : ''} onClick={() => setSort(value)}>{label}</button>)}
         </div>
       </div>
+      <GameTabs categories={categories} selected={selectedGame} onSelect={setSelectedGame} />
       {loading && <div className="skeleton-grid"><span /><span /><span /></div>}
       {error && <div className="empty-state"><p>{error}</p><button onClick={() => { setSearch(''); setSort('') }}>Thử lại</button></div>}
       <div className="item-grid">
@@ -893,12 +936,12 @@ function DepositPage({ settings, go, user, setUser, setNotice }: { settings: Set
           setFailedCardDeposit(current)
           window.clearInterval(timer)
         }
-      } catch (_error) {
+      } catch {
         window.clearInterval(timer)
       }
     }, isCardDeposit ? 2000 : 5000)
     return () => window.clearInterval(timer)
-  }, [deposit, setNotice, setUser])
+  }, [deposit, isCardDeposit, setNotice, setUser])
 
   return (
     <section className="page-section two-col">
@@ -1183,6 +1226,7 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
       <aside className="admin-menu">
         {[
           ['dashboard', 'Dashboard'],
+          ['games', 'Game category'],
           ['items', 'Quản lý item'],
           ['orders', 'Quản lý đơn'],
           ['users', 'Quản lý user'],
@@ -1196,6 +1240,7 @@ function AdminPanel({ user, settings, setNotice }: { user: User | null; settings
       </aside>
       <div className="admin-content">
         {tab === 'dashboard' && <AdminDashboard />}
+        {tab === 'games' && <AdminGameCategories setNotice={setNotice} />}
         {tab === 'items' && <AdminItems setNotice={setNotice} />}
         {tab === 'orders' && <AdminOrders setNotice={setNotice} />}
         {tab === 'users' && <AdminUsers setNotice={setNotice} />}
@@ -1239,14 +1284,70 @@ function AdminDashboard() {
   )
 }
 
+function AdminGameCategories({ setNotice }: { setNotice: (message: string) => void }) {
+  const emptyCategory = { name: '', slug: '', icon: '', description: '', status: 'active', sort_order: '' }
+  const [categories, setCategories] = useState<GameCategory[]>([])
+  const [editing, setEditing] = useState<Record<string, unknown>>(emptyCategory)
+  const [isEditing, setIsEditing] = useState(false)
+  const load = () => api<{ categories: GameCategory[] }>('/admin/game-categories').then((data) => setCategories(data.categories))
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    const path = isEditing ? `/admin/game-categories/${editing.id}` : '/admin/game-categories'
+    try {
+      await api(path, { method: isEditing ? 'PATCH' : 'POST', body: JSON.stringify({ ...editing, sort_order: Number(editing.sort_order || 0) }) })
+      setEditing(emptyCategory)
+      setIsEditing(false)
+      setNotice(isEditing ? 'Đã cập nhật game category.' : 'Đã thêm game category.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  async function remove(category: GameCategory) {
+    try {
+      await api(`/admin/game-categories/${category.id}`, { method: 'DELETE' })
+      setNotice('Đã xóa hoặc ẩn game category.')
+      load()
+    } catch (error) {
+      setNotice(messageFromError(error))
+    }
+  }
+
+  return (
+    <>
+      <h1>Game category</h1>
+      <form className="admin-form" onSubmit={save}>
+        <label>Tên game<input required placeholder="Ví dụ: Sailor Piece" value={String(editing.name || '')} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
+        <label>Slug<input placeholder="Tự tạo nếu để trống" value={String(editing.slug || '')} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} /></label>
+        <label>Icon<input placeholder="Emoji, ký tự hoặc tên icon" value={String(editing.icon || '')} onChange={(event) => setEditing({ ...editing, icon: event.target.value })} /></label>
+        <label>Mô tả<textarea value={String(editing.description || '')} onChange={(event) => setEditing({ ...editing, description: event.target.value })} /></label>
+        <label>Trạng thái<select value={String(editing.status || 'active')} onChange={(event) => setEditing({ ...editing, status: event.target.value })}><option value="active">Hiện</option><option value="hidden">Ẩn</option></select></label>
+        <label>Thứ tự<input type="number" value={numberInputValue(editing.sort_order)} onChange={(event) => setEditing({ ...editing, sort_order: numberInputNext(event.target.value) })} /></label>
+        <button className="primary">{isEditing ? 'Cập nhật game' : 'Thêm game'}</button>
+        {isEditing && <button type="button" onClick={() => { setEditing(emptyCategory); setIsEditing(false) }}>Hủy sửa</button>}
+      </form>
+      <TablePage title="Danh sách game" headers={['Icon', 'Tên', 'Slug', 'Trạng thái', 'Thao tác']} rows={categories.map((category) => [categoryIcon(category), category.name, category.slug, category.status, <span className="actions"><button onClick={() => { setEditing(category); setIsEditing(true) }}>Sửa</button><button onClick={() => remove(category)}>Xóa/ẩn</button></span>])} />
+    </>
+  )
+}
+
 function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
   const [items, setItems] = useState<Item[]>([])
+  const [categories, setCategories] = useState<GameCategory[]>([])
   const [editing, setEditing] = useState<Record<string, unknown>>(emptyItem)
   const [isEditing, setIsEditing] = useState(false)
   const [pasteUploading, setPasteUploading] = useState<'main' | 'gallery' | null>(null)
   const load = () => api<{ items: Item[] }>('/admin/items').then((data) => setItems(data.items))
+  const loadCategories = () => api<{ categories: GameCategory[] }>('/admin/game-categories').then((data) => setCategories(data.categories))
   useEffect(() => {
     load()
+    loadCategories()
   }, [])
 
   async function save(event: FormEvent) {
@@ -1332,6 +1433,7 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
         <p className="form-note">Nhập tên, giá, số lượng và upload ảnh. Có thể copy ảnh rồi Ctrl+V trong form: chưa có ảnh đại diện thì dán vào ảnh đại diện, có rồi thì thêm vào gallery.</p>
         <label>Tên item<input required placeholder="Ví dụ: Light Fruit" value={String(editing.name || '')} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
         <label>Slug URL<input placeholder="Tự nhập hoặc để trống" value={String(editing.slug || '')} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} /></label>
+        <label>Game category<select value={String(editing.game_category_id || '')} onChange={(event) => setEditing({ ...editing, game_category_id: event.target.value })}><option value="">Chưa phân loại</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
         <label>Ảnh đại diện URL<input placeholder="Dán link ảnh hoặc upload bên dưới" value={String(editing.image || '')} onChange={(event) => setEditing({ ...editing, image: event.target.value })} /></label>
         <label className="upload-field"><span>Upload ảnh đại diện</span><span className="upload-button">Chọn ảnh từ máy</span><input type="file" accept="image/*" onChange={uploadMainImage} /></label>
         <div className="paste-upload-box" tabIndex={0} role="button" onPaste={(event) => pasteItemImage(event, 'main')}>
@@ -1350,7 +1452,7 @@ function AdminItems({ setNotice }: { setNotice: (message: string) => void }) {
         <label>Mô tả chi tiết<textarea placeholder="Thông tin chi tiết cho trang sản phẩm" value={String(editing.description || '')} onChange={(event) => setEditing({ ...editing, description: event.target.value })} /></label>
         <button className="primary">{isEditing ? 'Cập nhật item' : 'Thêm item'}</button>
       </form>
-      <TablePage title="Danh sách item" headers={['Tên', 'Giá', 'Trạng thái', 'Thao tác']} rows={items.map((item) => [item.name, money(item.current_price), item.status, <span className="actions"><button onClick={() => { setEditing(item); setIsEditing(true) }}>Sửa</button><button onClick={() => hide(item.id)}>Ẩn</button></span>])} />
+      <TablePage title="Danh sách item" headers={['Tên', 'Game', 'Giá', 'Trạng thái', 'Thao tác']} rows={items.map((item) => [item.name, item.game_category_name || 'Chưa phân loại', money(item.current_price), item.status, <span className="actions"><button onClick={() => { setEditing(item); setIsEditing(true) }}>Sửa</button><button onClick={() => hide(item.id)}>Ẩn</button></span>])} />
     </>
   )
 }
@@ -1413,18 +1515,18 @@ function AdminDeposits({ setNotice }: { setNotice: (message: string) => void }) 
   const [users, setUsers] = useState<User[]>([])
   const [selected, setSelected] = useState<User | null>(null)
   const [deposits, setDeposits] = useState<Deposit[]>([])
-  const loadUsers = () => api<{ users: User[] }>('/admin/users').then((data) => {
+  const loadUsers = useCallback(() => api<{ users: User[] }>('/admin/users').then((data) => {
     setUsers(data.users)
     if (selected) {
       const current = data.users.find((user) => user.id === selected.id)
       if (current) setSelected(current)
     }
-  })
-  const loadDeposits = (userId?: number) => api<{ deposits: Deposit[] }>(userId ? `/admin/deposits?user_id=${userId}` : '/admin/deposits').then((data) => setDeposits(data.deposits))
+  }), [selected])
+  const loadDeposits = useCallback((userId?: number) => api<{ deposits: Deposit[] }>(userId ? `/admin/deposits?user_id=${userId}` : '/admin/deposits').then((data) => setDeposits(data.deposits)), [])
   useEffect(() => {
     loadUsers()
     loadDeposits()
-  }, [])
+  }, [loadUsers, loadDeposits])
   async function selectUser(user: User) {
     setSelected(user)
     await loadDeposits(user.id)

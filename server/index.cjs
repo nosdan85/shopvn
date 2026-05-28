@@ -30,28 +30,12 @@ const imageMimeTypes = new Set([
   'image/png',
   'image/webp',
   'image/gif',
-  'image/svg+xml',
-  'image/bmp',
-  'image/x-icon',
-  'image/vnd.microsoft.icon',
-  'image/tiff',
-  'image/avif',
-  'image/heic',
-  'image/heif',
 ]);
 const imageExtensions = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
   'image/gif': '.gif',
-  'image/svg+xml': '.svg',
-  'image/bmp': '.bmp',
-  'image/x-icon': '.ico',
-  'image/vnd.microsoft.icon': '.ico',
-  'image/tiff': '.tiff',
-  'image/avif': '.avif',
-  'image/heic': '.heic',
-  'image/heif': '.heif',
 };
 
 if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change-this-secret-before-production')) {
@@ -177,23 +161,10 @@ function detectImageMime(buffer) {
   const jpg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
   const gif = buffer.toString('ascii', 0, 6) === 'GIF87a' || buffer.toString('ascii', 0, 6) === 'GIF89a';
   const webp = buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
-  const bmp = buffer[0] === 0x42 && buffer[1] === 0x4d;
-  const ico = buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0x01 && buffer[3] === 0x00;
-  const tiff = (buffer[0] === 0x49 && buffer[1] === 0x49 && buffer[2] === 0x2a && buffer[3] === 0x00) || (buffer[0] === 0x4d && buffer[1] === 0x4d && buffer[2] === 0x00 && buffer[3] === 0x2a);
-  const avif = buffer.toString('ascii', 4, 12) === 'ftypavif' || buffer.toString('ascii', 4, 12) === 'ftypavis';
-  const heif = ['ftypheic', 'ftypheix', 'ftyphevc', 'ftyphevx', 'ftypmif1', 'ftypmsf1'].includes(buffer.toString('ascii', 4, 12));
-  const svgText = buffer.toString('utf8', 0, Math.min(buffer.length, 500)).trimStart();
-  const svg = svgText.startsWith('<svg') || svgText.startsWith('<?xml');
   if (png) return 'image/png';
   if (jpg) return 'image/jpeg';
   if (gif) return 'image/gif';
   if (webp) return 'image/webp';
-  if (bmp) return 'image/bmp';
-  if (ico) return 'image/x-icon';
-  if (tiff) return 'image/tiff';
-  if (avif) return 'image/avif';
-  if (heif) return 'image/heif';
-  if (svg) return 'image/svg+xml';
   return '';
 }
 
@@ -301,11 +272,40 @@ function parseItem(row) {
   return {
     ...row,
     gallery: row.gallery ? JSON.parse(row.gallery) : [],
+    game_category_id: row.game_category_id || null,
+    game_category_name: row.game_category_name || '',
+    game_category_slug: row.game_category_slug || '',
+    game_category_icon: row.game_category_icon || '',
     current_price: row.sale_price || row.price,
     discount_percent: row.sale_price && row.original_price
       ? Math.max(0, Math.round((1 - row.sale_price / row.original_price) * 100))
       : 0,
   };
+}
+
+function parseGameCategory(row) {
+  return {
+    ...row,
+    icon: row.icon || '',
+    description: row.description || '',
+    sort_order: Number(row.sort_order || 0),
+  };
+}
+
+function itemSelect() {
+  return `
+    SELECT items.*,
+      game_categories.name AS game_category_name,
+      game_categories.slug AS game_category_slug,
+      game_categories.icon AS game_category_icon
+    FROM items
+    LEFT JOIN game_categories ON game_categories.id = items.game_category_id
+  `;
+}
+
+function gameCategoryRows({ activeOnly = false } = {}) {
+  const where = activeOnly ? "WHERE status = 'active'" : '';
+  return db.prepare(`SELECT * FROM game_categories ${where} ORDER BY sort_order ASC, id DESC`).all().map(parseGameCategory);
 }
 
 function settingsData({ includeSecrets = false } = {}) {
@@ -347,6 +347,30 @@ function normalizeSlug(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || `item-${nanoid()}`;
+}
+
+function normalizedCategoryPayload(body) {
+  const name = clampText(body.name, 120);
+  const slug = body.slug ? normalizeSlug(body.slug) : normalizeSlug(name);
+  if (!name) throw new Error('Vui lÃ²ng nháº­p tÃªn game.');
+  if (!slug) throw new Error('Slug game khÃ´ng há»£p lá»‡.');
+  return {
+    name,
+    slug,
+    icon: clampText(body.icon, 120),
+    description: clampText(body.description, 500),
+    status: ['active', 'hidden'].includes(body.status) ? body.status : 'active',
+    sort_order: Number(body.sort_order || 0),
+  };
+}
+
+function categoryIdFromBody(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) throw new Error('Game category khÃ´ng há»£p lá»‡.');
+  const exists = db.prepare('SELECT id FROM game_categories WHERE id = ?').get(id);
+  if (!exists) throw new Error('Game category khÃ´ng tá»“n táº¡i.');
+  return id;
 }
 
 function nanoid(size = 8) {
@@ -964,31 +988,40 @@ app.get('/api/items', publicCache, (req, res) => {
   const filter = String(req.query.filter || 'all');
   const search = String(req.query.search || '').trim();
   const sort = String(req.query.sort || '');
-  const where = ['status = ?'];
+  const game = String(req.query.game || '').trim();
+  const where = ['items.status = ?'];
   const params = ['active'];
-  if (filter === 'featured') where.push('is_featured = 1');
-  if (filter === 'best-seller') where.push('is_best_seller = 1');
-  if (filter === 'sale') where.push('is_sale = 1');
-  if (filter === 'in-stock') where.push('stock > 0');
+  if (filter === 'featured') where.push('items.is_featured = 1');
+  if (filter === 'best-seller') where.push('items.is_best_seller = 1');
+  if (filter === 'sale') where.push('items.is_sale = 1');
+  if (filter === 'in-stock') where.push('items.stock > 0');
+  if (game) {
+    where.push('(game_categories.slug = ? OR game_categories.id = ?)');
+    params.push(game, Number(game) || 0);
+  }
   if (search) {
-    where.push('(name LIKE ? OR short_description LIKE ?)');
+    where.push('(items.name LIKE ? OR items.short_description LIKE ?)');
     params.push(`%${search}%`, `%${search}%`);
   }
   const order = sort === 'price-asc'
-    ? 'COALESCE(sale_price, price) ASC'
+    ? 'COALESCE(items.sale_price, items.price) ASC'
     : sort === 'price-desc'
-      ? 'COALESCE(sale_price, price) DESC'
-      : 'sort_order ASC, sold_count DESC';
-  const total = db.prepare(`SELECT COUNT(*) as count FROM items WHERE ${where.join(' AND ')}`).get(...params).count;
+      ? 'COALESCE(items.sale_price, items.price) DESC'
+      : 'items.sort_order ASC, items.sold_count DESC';
+  const total = db.prepare(`
+    SELECT COUNT(*) as count FROM items
+    LEFT JOIN game_categories ON game_categories.id = items.game_category_id
+    WHERE ${where.join(' AND ')}
+  `).get(...params).count;
   const rows = db.prepare(`
-    SELECT * FROM items WHERE ${where.join(' AND ')}
+    ${itemSelect()} WHERE ${where.join(' AND ')}
     ORDER BY ${order}
   `).all(...params);
   res.json({ items: rows.map(parseItem), total, page: 1, limit: total });
 });
 
 app.get('/api/items/:slug', publicCache, (req, res) => {
-  const item = db.prepare('SELECT * FROM items WHERE slug = ? AND status = ?').get(req.params.slug, 'active');
+  const item = db.prepare(`${itemSelect()} WHERE items.slug = ? AND items.status = ?`).get(req.params.slug, 'active');
   if (!item) {
     res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
@@ -1002,8 +1035,13 @@ app.get('/api/items/:slug', publicCache, (req, res) => {
   res.json({ item: parseItem(item), reviews });
 });
 
+app.get('/api/game-categories', publicCache, (_req, res) => {
+  res.json({ categories: gameCategoryRows({ activeOnly: true }) });
+});
+
 app.get('/api/home', publicCache, (_req, res) => {
-  const featured = db.prepare("SELECT * FROM items WHERE status = 'active' ORDER BY sort_order ASC, sold_count DESC").all().map(parseItem);
+  const categories = gameCategoryRows({ activeOnly: true });
+  const featured = db.prepare(`${itemSelect()} WHERE items.status = 'active' ORDER BY items.sort_order ASC, items.sold_count DESC`).all().map(parseItem);
   const recentOrders = db.prepare(`
     SELECT orders.order_code, orders.created_at, users.username, GROUP_CONCAT(order_items.item_name, ', ') AS item_names
     FROM orders
@@ -1021,7 +1059,7 @@ app.get('/api/home', publicCache, (_req, res) => {
     WHERE reviews.status = 'approved'
     ORDER BY reviews.created_at DESC LIMIT 6
   `).all();
-  res.json({ settings: publicSettings(), featured, bestSellers: [], sales: [], reviews, recentOrders });
+  res.json({ settings: publicSettings(), categories, featured, bestSellers: [], sales: [], reviews, recentOrders });
 });
 
 app.get('/api/deposits', requireAuth, (req, res) => {
@@ -1488,32 +1526,96 @@ app.get('/api/admin/dashboard', requireAdmin, (_req, res) => {
     completedOrders: db.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'completed'").get().count,
     cancelledOrders: db.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'cancelled'").get().count,
   };
-  const topItems = db.prepare('SELECT * FROM items ORDER BY sold_count DESC LIMIT 5').all().map(parseItem);
+  const topItems = db.prepare(`${itemSelect()} ORDER BY items.sold_count DESC LIMIT 5`).all().map(parseItem);
   const deposits = db.prepare('SELECT deposits.*, users.username FROM deposits JOIN users ON users.id = deposits.user_id ORDER BY deposits.created_at DESC LIMIT 8').all();
   const orders = db.prepare('SELECT orders.*, users.username FROM orders JOIN users ON users.id = orders.user_id ORDER BY orders.created_at DESC LIMIT 8').all();
   res.json({ stats, topItems, deposits, orders });
 });
 
+app.get('/api/admin/game-categories', requireAdmin, (_req, res) => {
+  res.json({ categories: gameCategoryRows() });
+});
+
+app.post('/api/admin/game-categories', requireAdmin, (req, res) => {
+  try {
+    const category = normalizedCategoryPayload(req.body);
+    const result = db.prepare(`
+      INSERT INTO game_categories (name, slug, icon, description, status, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(category.name, category.slug, category.icon, category.description, category.status, category.sort_order);
+    logAdmin(req.user.id, 'create_game_category', 'game_category', result.lastInsertRowid, req);
+    res.json({ category: parseGameCategory(db.prepare('SELECT * FROM game_categories WHERE id = ?').get(result.lastInsertRowid)) });
+  } catch (error) {
+    const duplicate = String(error.message || '').includes('UNIQUE');
+    res.status(duplicate ? 409 : 400).json({ message: duplicate ? 'Slug game Ä‘Ã£ tá»“n táº¡i.' : error.message });
+  }
+});
+
+app.patch('/api/admin/game-categories/:id', requireAdmin, (req, res) => {
+  const existing = db.prepare('SELECT * FROM game_categories WHERE id = ?').get(req.params.id);
+  if (!existing) {
+    res.status(404).json({ message: 'KhÃ´ng tÃ¬m tháº¥y game category.' });
+    return;
+  }
+  try {
+    const category = normalizedCategoryPayload({ ...existing, ...req.body });
+    db.prepare(`
+      UPDATE game_categories
+      SET name = ?, slug = ?, icon = ?, description = ?, status = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(category.name, category.slug, category.icon, category.description, category.status, category.sort_order, existing.id);
+    logAdmin(req.user.id, 'update_game_category', 'game_category', existing.id, req);
+    res.json({ category: parseGameCategory(db.prepare('SELECT * FROM game_categories WHERE id = ?').get(existing.id)) });
+  } catch (error) {
+    const duplicate = String(error.message || '').includes('UNIQUE');
+    res.status(duplicate ? 409 : 400).json({ message: duplicate ? 'Slug game Ä‘Ã£ tá»“n táº¡i.' : error.message });
+  }
+});
+
+app.delete('/api/admin/game-categories/:id', requireAdmin, (req, res) => {
+  const existing = db.prepare('SELECT * FROM game_categories WHERE id = ?').get(req.params.id);
+  if (!existing) {
+    res.status(404).json({ message: 'KhÃ´ng tÃ¬m tháº¥y game category.' });
+    return;
+  }
+  const used = db.prepare('SELECT COUNT(*) as count FROM items WHERE game_category_id = ?').get(existing.id).count;
+  if (used > 0) {
+    db.prepare("UPDATE game_categories SET status = 'hidden', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(existing.id);
+  } else {
+    db.prepare('DELETE FROM game_categories WHERE id = ?').run(existing.id);
+  }
+  logAdmin(req.user.id, 'delete_game_category', 'game_category', existing.id, req);
+  res.json({ ok: true, softDeleted: used > 0 });
+});
+
 app.get('/api/admin/items', requireAdmin, (req, res) => {
   const search = String(req.query.search || '');
   const rows = search
-    ? db.prepare('SELECT * FROM items WHERE name LIKE ? OR slug LIKE ? ORDER BY sort_order ASC, id DESC').all(`%${search}%`, `%${search}%`)
-    : db.prepare('SELECT * FROM items ORDER BY sort_order ASC, id DESC').all();
+    ? db.prepare(`${itemSelect()} WHERE items.name LIKE ? OR items.slug LIKE ? ORDER BY items.sort_order ASC, items.id DESC`).all(`%${search}%`, `%${search}%`)
+    : db.prepare(`${itemSelect()} ORDER BY items.sort_order ASC, items.id DESC`).all();
   res.json({ items: rows.map(parseItem) });
 });
 
 app.post('/api/admin/items', requireAdmin, (req, res) => {
   const body = req.body;
   const slug = body.slug ? normalizeSlug(body.slug) : normalizeSlug(body.name);
+  let categoryId;
+  try {
+    categoryId = categoryIdFromBody(body.game_category_id);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
   const result = db.prepare(`
     INSERT INTO items (
-      name, slug, item_code, image, gallery, short_description, description, price, original_price, sale_price,
+      name, slug, game_category_id, item_code, image, gallery, short_description, description, price, original_price, sale_price,
       stock, is_featured, is_best_seller, is_sale, status, sort_order, seo_title, seo_description
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     body.name,
     slug,
+    categoryId,
     body.item_code || '',
     body.image || '',
     JSON.stringify(body.gallery || []),
@@ -1532,7 +1634,7 @@ app.post('/api/admin/items', requireAdmin, (req, res) => {
     body.seo_description || body.short_description || '',
   );
   logAdmin(req.user.id, 'create_item', 'item', result.lastInsertRowid, req);
-  res.json({ item: parseItem(db.prepare('SELECT * FROM items WHERE id = ?').get(result.lastInsertRowid)) });
+  res.json({ item: parseItem(db.prepare(`${itemSelect()} WHERE items.id = ?`).get(result.lastInsertRowid)) });
 });
 
 app.patch('/api/admin/items/:id', requireAdmin, (req, res) => {
@@ -1542,14 +1644,22 @@ app.patch('/api/admin/items/:id', requireAdmin, (req, res) => {
     res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
     return;
   }
+  let categoryId;
+  try {
+    categoryId = categoryIdFromBody(body.game_category_id ?? existing.game_category_id);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
   db.prepare(`
-    UPDATE items SET name = ?, slug = ?, item_code = ?, image = ?, gallery = ?, short_description = ?, description = ?,
+    UPDATE items SET name = ?, slug = ?, game_category_id = ?, item_code = ?, image = ?, gallery = ?, short_description = ?, description = ?,
       price = ?, original_price = ?, sale_price = ?, stock = ?, is_featured = ?, is_best_seller = ?, is_sale = ?,
       status = ?, sort_order = ?, seo_title = ?, seo_description = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(
     body.name ?? existing.name,
     body.slug ? normalizeSlug(body.slug) : existing.slug,
+    categoryId,
     body.item_code ?? existing.item_code,
     body.image ?? existing.image,
     JSON.stringify(body.gallery ?? JSON.parse(existing.gallery || '[]')),
@@ -1569,7 +1679,7 @@ app.patch('/api/admin/items/:id', requireAdmin, (req, res) => {
     existing.id,
   );
   logAdmin(req.user.id, 'update_item', 'item', existing.id, req);
-  res.json({ item: parseItem(db.prepare('SELECT * FROM items WHERE id = ?').get(existing.id)) });
+  res.json({ item: parseItem(db.prepare(`${itemSelect()} WHERE items.id = ?`).get(existing.id)) });
 });
 
 app.delete('/api/admin/items/:id', requireAdmin, (req, res) => {
@@ -2026,4 +2136,8 @@ async function startServer() {
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, startServer };

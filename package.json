@@ -12,6 +12,7 @@
     "card:bot": "node server/card-worker.cjs",
     "card:bot:once": "node server/card-worker.cjs --once",
     "seed": "node server/seed.cjs",
+    "test": "node --test tests/*.test.cjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

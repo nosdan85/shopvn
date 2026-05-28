@@ -623,6 +623,54 @@ small {
   margin-bottom: 1rem;
 }
 
+.game-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+}
+
+.game-tabs button,
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.game-tabs button {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.game-tabs button.active {
+  border-color: rgba(57, 217, 255, 0.8);
+  background: rgba(57, 217, 255, 0.14);
+}
+
+.game-tabs span,
+.category-pill i {
+  display: inline-grid;
+  width: 1.6rem;
+  height: 1.6rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-style: normal;
+  font-size: 0.78rem;
+}
+
+.category-pill {
+  width: fit-content;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .gallery {
   align-self: start;
   overflow: hidden;

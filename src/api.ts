@@ -4,7 +4,7 @@ const publicCacheMs = 30_000
 
 function canCache(path: string, options: RequestInit) {
   const method = String(options.method || 'GET').toUpperCase()
-  return method === 'GET' && (path === '/home' || path === '/settings/public' || path.startsWith('/items'))
+  return method === 'GET' && (path === '/home' || path === '/settings/public' || path === '/game-categories' || path.startsWith('/items'))
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {

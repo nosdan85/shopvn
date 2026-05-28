@@ -40,10 +40,23 @@ const schemaSql = `
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS game_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      icon TEXT,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE,
+      game_category_id INTEGER,
       item_code TEXT,
       image TEXT,
       gallery TEXT NOT NULL DEFAULT '[]',
@@ -62,7 +75,8 @@ const schemaSql = `
       seo_title TEXT,
       seo_description TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (game_category_id) REFERENCES game_categories(id)
     );
 
     CREATE TABLE IF NOT EXISTS orders (
@@ -264,13 +278,21 @@ const schemaSql = `
     CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON chat_messages(user_id);
     CREATE INDEX IF NOT EXISTS idx_order_chat_messages_order_id ON order_chat_messages(order_id);
     CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at);
+    CREATE INDEX IF NOT EXISTS idx_game_categories_slug ON game_categories(slug);
+    CREATE INDEX IF NOT EXISTS idx_game_categories_status ON game_categories(status, sort_order);
   `;
 function migrate() {
   db.exec(schemaSql);
+  const itemColumns = originalPrepare('PRAGMA table_info(items)').all().map((column) => column.name);
+  if (!itemColumns.includes('game_category_id')) {
+    originalPrepare('ALTER TABLE items ADD COLUMN game_category_id INTEGER REFERENCES game_categories(id)').run();
+  }
+  originalPrepare('CREATE INDEX IF NOT EXISTS idx_items_game_category ON items(game_category_id)').run();
 }
 
 const persistentTables = [
   'users',
+  'game_categories',
   'items',
   'orders',
   'order_items',
@@ -325,6 +347,12 @@ async function migrateRemote() {
   for (const statement of splitSqlStatements(schemaSql)) {
     await remoteClient.execute(statement);
   }
+  const columns = await remoteClient.execute('PRAGMA table_info(items)');
+  const itemColumnNames = (columns.rows || []).map((column) => column.name);
+  if (!itemColumnNames.includes('game_category_id')) {
+    await remoteClient.execute('ALTER TABLE items ADD COLUMN game_category_id INTEGER REFERENCES game_categories(id)');
+  }
+  await remoteClient.execute('CREATE INDEX IF NOT EXISTS idx_items_game_category ON items(game_category_id)');
 }
 
 async function backupLocalToRemote() {

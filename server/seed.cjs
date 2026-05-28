@@ -28,6 +28,32 @@ for (const [key, value] of Object.entries(settings)) {
   setSetting(key, value);
 }
 
+function upsertGameCategory(category) {
+  const existing = db.prepare('SELECT id FROM game_categories WHERE slug = ?').get(category.slug);
+  if (existing) {
+    db.prepare(`
+      UPDATE game_categories
+      SET name = ?, icon = ?, description = ?, status = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(category.name, category.icon, category.description, category.status, category.sort_order, existing.id);
+    return existing.id;
+  }
+  const result = db.prepare(`
+    INSERT INTO game_categories (name, slug, icon, description, status, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(category.name, category.slug, category.icon, category.description, category.status, category.sort_order);
+  return result.lastInsertRowid;
+}
+
+const sailorPieceCategoryId = upsertGameCategory({
+  name: 'Sailor Piece',
+  slug: 'sailor-piece',
+  icon: 'anchor',
+  description: 'Item Roblox cho game Sailor Piece.',
+  status: 'active',
+  sort_order: 1,
+});
+
 function insertUser(user) {
   const exists = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(user.username, user.email);
   if (exists) return exists.id;
@@ -176,13 +202,14 @@ for (const item of items) {
   if (!exists) {
     db.prepare(`
       INSERT INTO items (
-        name, slug, item_code, image, gallery, short_description, description, price, original_price, sale_price,
+        name, slug, game_category_id, item_code, image, gallery, short_description, description, price, original_price, sale_price,
         stock, sold_count, is_featured, is_best_seller, is_sale, status, sort_order, seo_title, seo_description, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
     `).run(
       item.name,
       item.slug,
+      sailorPieceCategoryId,
       item.item_code,
       item.image,
       JSON.stringify(item.gallery),
@@ -202,6 +229,9 @@ for (const item of items) {
       now,
       now,
     );
+  } else {
+    db.prepare('UPDATE items SET game_category_id = COALESCE(game_category_id, ?), updated_at = CURRENT_TIMESTAMP WHERE slug = ?')
+      .run(sailorPieceCategoryId, item.slug);
   }
 }
 
