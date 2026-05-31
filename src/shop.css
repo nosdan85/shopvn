@@ -3042,3 +3042,439 @@ td {
     background: rgba(88, 101, 242, 0.16);
   }
 }
+
+.compat-storefront,
+.compat-cart-page,
+.compat-orders-page,
+.compat-profile-page,
+.compat-admin-page,
+.compat-proofs-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.compat-nav,
+.compat-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.compat-nav-brand,
+.compat-page-head > div:first-child {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.compat-nav-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.compat-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.compat-section-head h2,
+.compat-page-head h1 {
+  margin: 0;
+}
+
+.compat-chip-row,
+.compat-admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.compat-chip,
+.compat-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid rgba(88, 101, 242, 0.14);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+.compat-chip.active,
+.compat-pill.on {
+  color: var(--primary);
+  border-color: rgba(88, 101, 242, 0.2);
+  background: rgba(88, 101, 242, 0.12);
+}
+
+.compat-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.compat-toolbar input {
+  min-width: min(320px, 100%);
+  flex: 1 1 320px;
+}
+
+.compat-module-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.compat-hero-pills,
+.compat-stat-strip,
+.compat-module-grid,
+.compat-proof-preview-grid,
+.compat-product-grid,
+.compat-stat-grid,
+.compat-toggle-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.compat-hero-pills {
+  grid-template-columns: repeat(auto-fit, minmax(120px, max-content));
+  margin-top: 1rem;
+}
+
+.compat-hero-pills span,
+.compat-proof-foot span:first-child,
+.compat-proof-preview-foot span:first-child {
+  font-weight: 700;
+}
+
+.compat-stat-strip {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  margin-top: 1rem;
+}
+
+.compat-stat-strip article,
+.compat-module-card,
+.compat-proof-preview-card,
+.compat-proof-card,
+.compat-roblox-result {
+  border: 1px solid rgba(88, 101, 242, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.compat-stat-strip article {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.9rem 1rem;
+}
+
+.compat-stat-strip strong {
+  font-size: 1.05rem;
+}
+
+.compat-module-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.compat-module-card,
+.compat-proof-preview-card,
+.compat-proof-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.compat-module-card h3,
+.compat-proof-preview-card h3,
+.compat-proof-card h3 {
+  margin: 0;
+}
+
+.compat-product-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.compat-product-card {
+  display: grid;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  border: 1px solid rgba(88, 101, 242, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.1);
+}
+
+.compat-product-image,
+.compat-modal-image,
+.compat-proof-image {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(88, 101, 242, 0.08), rgba(255, 255, 255, 0.85));
+}
+
+.compat-product-image {
+  min-height: 180px;
+  border-radius: 24px 24px 0 0;
+}
+
+.compat-product-image img,
+.compat-modal-image img,
+.compat-proof-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.compat-product-body {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1rem;
+}
+
+.compat-product-body h3,
+.compat-product-body p {
+  margin: 0;
+}
+
+.compat-ticker-track {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+}
+
+.compat-ticker-track span {
+  flex: 0 0 auto;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid rgba(88, 101, 242, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.compat-product-modal {
+  width: min(860px, calc(100vw - 2rem));
+  max-height: min(88vh, 860px);
+  overflow: auto;
+}
+
+.compat-modal-head,
+.compat-cart-row,
+.compat-total-row,
+.compat-proof-meta,
+.compat-proof-foot,
+.compat-proof-preview-head,
+.compat-proof-preview-foot,
+.compat-pagination,
+.compat-admin-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.compat-modal-grid,
+.compat-cart-layout,
+.compat-field-grid,
+.compat-admin-order-list,
+.compat-proof-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.compat-modal-grid {
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+}
+
+.compat-modal-body,
+.compat-checkout-card,
+.compat-profile-card {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.compat-field,
+.compat-toggle {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.compat-field-wide {
+  grid-column: 1 / -1;
+}
+
+.compat-field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compat-action-row,
+.compat-inline-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.compat-cart-layout {
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+  align-items: start;
+}
+
+.compat-cart-list,
+.compat-admin-order-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.compat-cart-row,
+.compat-admin-order-row,
+.compat-roblox-result {
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(88, 101, 242, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.compat-cart-row > div:first-child,
+.compat-proof-body {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.compat-cart-row p {
+  margin: 0;
+}
+
+.compat-cart-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.compat-cart-controls input {
+  width: 84px;
+}
+
+.compat-inline-search input {
+  flex: 1 1 180px;
+}
+
+.compat-roblox-result {
+  display: flex;
+  align-items: center;
+}
+
+.compat-roblox-result img {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.compat-roblox-result div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.compat-proof-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.compat-proof-image {
+  min-height: 200px;
+}
+
+.compat-proof-preview-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.compat-proof-preview-head,
+.compat-proof-preview-foot,
+.compat-proof-foot {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.compat-referral-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(88, 101, 242, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.compat-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.compat-toggle-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.compat-toggle {
+  min-height: 52px;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid rgba(88, 101, 242, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.compat-toggle input {
+  margin-right: 0.5rem;
+}
+
+.compat-error {
+  color: var(--danger);
+}
+
+.compat-success {
+  color: var(--success);
+}
+
+.compat-pagination {
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .compat-nav,
+  .compat-page-head,
+  .compat-modal-head,
+  .compat-total-row,
+  .compat-proof-meta,
+  .compat-proof-foot,
+  .compat-proof-preview-head,
+  .compat-proof-preview-foot,
+  .compat-pagination,
+  .compat-admin-order-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .compat-modal-grid,
+  .compat-cart-layout,
+  .compat-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compat-cart-controls,
+  .compat-inline-search,
+  .compat-nav-actions {
+    width: 100%;
+  }
+
+  .compat-product-modal {
+    width: min(100vw - 1rem, 680px);
+  }
+}

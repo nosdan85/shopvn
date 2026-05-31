@@ -9,9 +9,39 @@ export type User = {
   status: string
   full_name?: string
   phone?: string
+  discord_id?: string
+  discord_username?: string
+  discord_linked_at?: string
+  referral_code?: string
+  referred_by_user_id?: number | null
+  referral_linked_at?: string
   total_deposited: number
   total_spent: number
   created_at: string
+}
+
+export type ReferralReward = {
+  id: number
+  rewardAmount: number
+  rewardPercent: number
+  status: string
+  createdAt: string
+  paidAt?: string
+  sourceOrderId: number
+}
+
+export type ReferralSummary = {
+  referralCode: string
+  referredBy: null | {
+    id: number
+    username: string
+  }
+  stats: {
+    totalEarned: number
+    totalRewards: number
+    pendingReversals: number
+  }
+  rewards: ReferralReward[]
 }
 
 export type GameCategory = {
@@ -70,6 +100,10 @@ export type Order = {
   admin_note?: string
   internal_note?: string
   refund_reason?: string
+  discord_ticket_status?: string
+  discord_ticket_channel_id?: string
+  discord_ticket_url?: string
+  discord_ticket_error?: string
   completed_at?: string
   created_at: string
   updated_at: string
