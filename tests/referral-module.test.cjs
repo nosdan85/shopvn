@@ -5,6 +5,7 @@ const {
   computeReferralRewardAmount,
   canApplyReferralForUser,
   mapReferralSummary,
+  shouldReverseReferralReward,
   shouldRewardReferralOnCompletedOrder,
 } = require('../server/referrals.cjs')
 
@@ -62,4 +63,18 @@ test('mapReferralSummary returns profile-safe referral payload', () => {
   assert.equal(summary.referralCode, 'TESTAB12')
   assert.equal(summary.referredBy.username, 'owner')
   assert.equal(summary.stats.totalEarned, 100000)
+})
+
+test('shouldReverseReferralReward only reverses a paid reward on refunded status', () => {
+  assert.equal(shouldReverseReferralReward({
+    nextStatus: 'refunded',
+    previousStatus: 'completed',
+    rewardStatus: 'paid',
+  }), true)
+
+  assert.equal(shouldReverseReferralReward({
+    nextStatus: 'cancelled',
+    previousStatus: 'completed',
+    rewardStatus: 'paid',
+  }), false)
 })

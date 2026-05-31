@@ -34,6 +34,10 @@ function shouldRewardReferralOnCompletedOrder({ nextStatus, previousStatus, hasR
     && !rewardExistsForOrder
 }
 
+function shouldReverseReferralReward({ nextStatus, previousStatus, rewardStatus }) {
+  return nextStatus === 'refunded' && previousStatus !== 'refunded' && rewardStatus === 'paid'
+}
+
 function mapReferralSummary({ user, referrer, rewards }) {
   const rows = Array.isArray(rewards) ? rewards : []
   return {
@@ -61,5 +65,6 @@ module.exports = {
   canApplyReferralForUser,
   computeReferralRewardAmount,
   mapReferralSummary,
+  shouldReverseReferralReward,
   shouldRewardReferralOnCompletedOrder,
 }

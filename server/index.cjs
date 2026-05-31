@@ -28,6 +28,7 @@ const {
   canApplyReferralForUser,
   computeReferralRewardAmount,
   mapReferralSummary,
+  shouldReverseReferralReward,
   shouldRewardReferralOnCompletedOrder,
 } = require('./referrals.cjs');
 const { cacheDelPattern, cacheGet, cacheSet, createRedisRateLimitStore, redisKey, redisStatus, withRedisLock, sessionGetUser, sessionSetUser, sessionDelUser, setBotStatus, getBotStatus } = require('./redis.cjs');
@@ -2197,9 +2198,15 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
     const updated = db.transaction(() => {
       const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
       if (!order) throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng.');
+      const buyer = db.prepare('SELECT * FROM users WHERE id = ?').get(order.user_id);
+      const completedOrdersBeforeUpdate = db.prepare(`
+        SELECT COUNT(*) AS count FROM orders
+        WHERE user_id = ? AND status = 'completed' AND id != ?
+      `).get(order.user_id, order.id).count;
+      const existingReferralReward = db.prepare('SELECT * FROM referral_rewards WHERE source_order_id = ?').get(order.id);
       if (status === 'refunded') {
         if (order.status === 'refunded') throw new Error('ÄÆ¡n Ä‘Ã£ hoÃ n tiá»n trÆ°á»›c Ä‘Ã³.');
-        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(order.user_id);
+        const user = buyer;
         const before = user.balance;
         const after = before + order.total_amount;
         db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(after, user.id);
@@ -2215,6 +2222,41 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
           createdBy: req.user.id,
         });
         notifyUser(user.id, 'ÄÆ¡n Ä‘Æ°á»£c hoÃ n tiá»n', `ÄÆ¡n ${order.order_code} Ä‘Ã£ Ä‘Æ°á»£c hoÃ n tiá»n.`, 'order');
+        if (shouldReverseReferralReward({
+          nextStatus: status,
+          previousStatus: order.status,
+          rewardStatus: existingReferralReward?.status,
+        })) {
+          const referrer = db.prepare('SELECT * FROM users WHERE id = ?').get(existingReferralReward.referrer_user_id);
+          if (referrer && referrer.balance >= existingReferralReward.reward_amount) {
+            const referrerBefore = referrer.balance;
+            const referrerAfter = referrerBefore - existingReferralReward.reward_amount;
+            db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(referrerAfter, referrer.id);
+            createBalanceLog({
+              userId: referrer.id,
+              type: 'referral_reversal',
+              amount: -Number(existingReferralReward.reward_amount || 0),
+              before: referrerBefore,
+              after: referrerAfter,
+              referenceId: order.id,
+              referenceType: 'order',
+              note: `Hoan nguoc referral do refund don ${order.order_code}`,
+              createdBy: req.user.id,
+            });
+            db.prepare(`
+              UPDATE referral_rewards
+              SET status = 'reversed', reversed_at = CURRENT_TIMESTAMP, reversal_note = ?
+              WHERE id = ?
+            `).run(`Refunded order ${order.order_code}`, existingReferralReward.id);
+            notifyUser(referrer.id, 'Referral da bi hoan nguoc', `Don ${order.order_code} da bi refund va thuong referral da duoc tru lai.`, 'balance');
+          } else if (referrer) {
+            db.prepare(`
+              UPDATE referral_rewards
+              SET status = 'reversal_pending', reversal_note = ?
+              WHERE id = ?
+            `).run(`Insufficient balance while refunding order ${order.order_code}`, existingReferralReward.id);
+          }
+        }
       }
       const completedAt = status === 'completed' ? 'CURRENT_TIMESTAMP' : 'completed_at';
       db.prepare(`
@@ -2228,6 +2270,38 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
       if (status === 'completed') {
         createCompletedOrderReview(order);
         notifyUser(order.user_id, '\u0110\u01a1n \u0111\u00e3 giao h\u00e0ng', `\u0110\u01a1n ${order.order_code} \u0111\u00e3 giao h\u00e0ng.`, 'order');
+        if (shouldRewardReferralOnCompletedOrder({
+          nextStatus: status,
+          previousStatus: order.status,
+          hasReferrer: Boolean(buyer.referred_by_user_id),
+          completedOrdersBeforeUpdate,
+          rewardExistsForOrder: Boolean(existingReferralReward),
+        })) {
+          const referrer = db.prepare('SELECT * FROM users WHERE id = ?').get(buyer.referred_by_user_id);
+          if (referrer) {
+            const rewardPercent = 50;
+            const rewardAmount = computeReferralRewardAmount(order.total_amount, rewardPercent);
+            const referrerBefore = referrer.balance;
+            const referrerAfter = referrerBefore + rewardAmount;
+            db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(referrerAfter, referrer.id);
+            createBalanceLog({
+              userId: referrer.id,
+              type: 'referral_reward',
+              amount: rewardAmount,
+              before: referrerBefore,
+              after: referrerAfter,
+              referenceId: order.id,
+              referenceType: 'order',
+              note: `Thuong referral tu don ${order.order_code}`,
+              createdBy: req.user.id,
+            });
+            db.prepare(`
+              INSERT INTO referral_rewards (referrer_user_id, referred_user_id, source_order_id, reward_percent, reward_amount, status, paid_at)
+              VALUES (?, ?, ?, ?, ?, 'paid', CURRENT_TIMESTAMP)
+            `).run(referrer.id, buyer.id, order.id, rewardPercent, rewardAmount);
+            notifyUser(referrer.id, 'Ban nhan thuong referral', `Don ${order.order_code} da cong ${rewardAmount} vao vi cua ban.`, 'balance');
+          }
+        }
       }
       if (status === 'cancelled') notifyUser(order.user_id, 'ÄÆ¡n Ä‘Ã£ há»§y', `ÄÆ¡n ${order.order_code} Ä‘Ã£ bá»‹ há»§y.`, 'order');
       logAdmin(req.user.id, 'update_order_status', 'order', order.id, req);
