@@ -4,6 +4,7 @@ const {
   buildReferralCode,
   computeReferralRewardAmount,
   canApplyReferralForUser,
+  mapReferralSummary,
   shouldRewardReferralOnCompletedOrder,
 } = require('../server/referrals.cjs')
 
@@ -49,4 +50,16 @@ test('shouldRewardReferralOnCompletedOrder only rewards first completed order on
     completedOrdersBeforeUpdate: 1,
     rewardExistsForOrder: true,
   }), false)
+})
+
+test('mapReferralSummary returns profile-safe referral payload', () => {
+  const summary = mapReferralSummary({
+    user: { id: 5, referral_code: 'TESTAB12', referred_by_user_id: 9 },
+    referrer: { id: 9, username: 'owner' },
+    rewards: [{ id: 1, reward_amount: 100000, reward_percent: 50, status: 'paid', created_at: '2026-05-31 10:00:00', source_order_id: 33 }],
+  })
+
+  assert.equal(summary.referralCode, 'TESTAB12')
+  assert.equal(summary.referredBy.username, 'owner')
+  assert.equal(summary.stats.totalEarned, 100000)
 })

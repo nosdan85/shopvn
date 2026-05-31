@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+﻿const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
@@ -11,6 +11,26 @@ const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const nodemailer = require('nodemailer');
 const { db, setting, setSetting, initPersistentStore } = require('./db.cjs');
+const {
+  buildDiscordAuthUrl,
+  buildDiscordTicketPayload,
+  createDiscordTicketChannel,
+  exchangeDiscordCode,
+  fetchDiscordIdentity,
+  shouldRequireDiscordLink,
+  signDiscordState,
+  verifyDiscordState,
+} = require('./discord.cjs');
+const { buildCompatStorefrontSummary } = require('./compat/storefront.cjs');
+const { buildCompatAdminDashboard } = require('./compat/admin.cjs');
+const {
+  buildReferralCode,
+  canApplyReferralForUser,
+  computeReferralRewardAmount,
+  mapReferralSummary,
+  shouldRewardReferralOnCompletedOrder,
+} = require('./referrals.cjs');
+const { cacheDelPattern, cacheGet, cacheSet, createRedisRateLimitStore, redisKey, redisStatus, withRedisLock, sessionGetUser, sessionSetUser, sessionDelUser, setBotStatus, getBotStatus } = require('./redis.cjs');
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -75,11 +95,16 @@ function publicCache(_req, res, next) {
   next();
 }
 
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false });
-const adminLimiter = rateLimit({ windowMs: 60 * 1000, max: 90, standardHeaders: true, legacyHeaders: false });
-const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false });
-const depositLimiter = rateLimit({ windowMs: 60 * 1000, max: 12, standardHeaders: true, legacyHeaders: false });
-const purchaseLimiter = rateLimit({ windowMs: 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+function limiter(name, options) {
+  const store = process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL ? createRedisRateLimitStore(name) : undefined;
+  return rateLimit({ ...options, store, passOnStoreError: true, standardHeaders: true, legacyHeaders: false });
+}
+
+const loginLimiter = limiter('login', { windowMs: 15 * 60 * 1000, max: 8 });
+const adminLimiter = limiter('admin', { windowMs: 60 * 1000, max: 90 });
+const webhookLimiter = limiter('webhook', { windowMs: 60 * 1000, max: 120 });
+const depositLimiter = limiter('deposit', { windowMs: 60 * 1000, max: 12 });
+const purchaseLimiter = limiter('purchase', { windowMs: 60 * 1000, max: 20 });
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => cb(null, `${Date.now()}-${nanoid(10)}${imageExtensions[file.mimetype] || path.extname(file.originalname) || ''}`),
@@ -89,7 +114,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!String(file.mimetype || '').startsWith('image/')) {
-      cb(new Error('Chỉ cho phép upload file ảnh.'));
+      cb(new Error('Chá»‰ cho phÃ©p upload file áº£nh.'));
       return;
     }
     cb(null, true);
@@ -97,11 +122,11 @@ const upload = multer({
 });
 
 const orderStatusLabels = {
-  pending: 'Chờ xử lý',
-  processing: 'Đang xử lý',
-  completed: 'Đã giao hàng',
-  cancelled: 'Đã hủy',
-  refunded: 'Đã hoàn tiền',
+  pending: 'Chá» xá»­ lÃ½',
+  processing: 'Äang xá»­ lÃ½',
+  completed: 'ÄÃ£ giao hÃ ng',
+  cancelled: 'ÄÃ£ há»§y',
+  refunded: 'ÄÃ£ hoÃ n tiá»n',
 };
 
 function ensureEnvAdmin() {
@@ -135,10 +160,82 @@ function sanitizeUser(user) {
     status: user.status,
     full_name: user.full_name,
     phone: user.phone,
+    discord_id: user.discord_id,
+    discord_username: user.discord_username,
+    discord_linked_at: user.discord_linked_at,
+    referral_code: user.referral_code,
+    referred_by_user_id: user.referred_by_user_id,
+    referral_linked_at: user.referral_linked_at,
     total_deposited: user.total_deposited,
     total_spent: user.total_spent,
     created_at: user.created_at,
   };
+}
+
+function safeRelativeReturnTo(value) {
+  const text = String(value || '').trim() || '/?discord_linked=1';
+  if (!text.startsWith('/') || text.startsWith('//')) return '/?discord_linked=1';
+  return text;
+}
+
+function discordRedirectUri(req) {
+  const host = req.get('host');
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+  return `${proto}://${host}/api/discord/link/callback`;
+}
+
+function discordAuthStatePayload(req, userId, returnTo) {
+  return signDiscordState({
+    userId,
+    returnTo: safeRelativeReturnTo(returnTo),
+  });
+}
+
+function discordLinkStartUrl(req, userId, returnTo) {
+  return buildDiscordAuthUrl({
+    clientId: process.env.DISCORD_CLIENT_ID || '',
+    redirectUri: process.env.DISCORD_REDIRECT_URI || discordRedirectUri(req),
+    state: discordAuthStatePayload(req, userId, returnTo),
+    scopes: ['identify'],
+  });
+}
+
+function discordLinkStatusQuery(url, status, message) {
+  const next = new URL(url);
+  next.searchParams.set('discord_linked', status);
+  if (message) next.searchParams.set('discord_message', message.slice(0, 180));
+  return `${next.pathname}${next.search}${next.hash}`;
+}
+
+async function createDiscordTicketForOrder({ order, user }) {
+  const guildId = String(process.env.DISCORD_GUILD_ID || '').trim();
+  const botToken = String(process.env.DISCORD_BOT_TOKEN || '').trim();
+  const categoryId = String(process.env.DISCORD_TICKET_CATEGORY_ID || '').trim();
+  if (!guildId || !botToken) {
+    return { ok: false, error: 'Discord bot chưa cấu hình.' };
+  }
+  if (!user?.discord_id) {
+    return { ok: false, error: 'User chưa liên kết Discord.' };
+  }
+  const ticketPayload = buildDiscordTicketPayload({
+    orderCode: order.order_code,
+    orderId: order.id,
+    username: user.username,
+    discordId: user.discord_id,
+    totalAmount: order.total_amount,
+  });
+  try {
+    const ticket = await createDiscordTicketChannel({
+      guildId,
+      botToken,
+      categoryId,
+      ticket: ticketPayload,
+      userDiscordId: user.discord_id,
+    });
+    return { ok: true, ticket };
+  } catch (error) {
+    return { ok: false, error: error.message || 'Không tạo được ticket Discord.' };
+  }
 }
 
 function authCookieOptions() {
@@ -192,7 +289,7 @@ async function sendEmail({ to, subject, text, html }) {
   const pass = process.env.SMTP_PASS;
   const from = process.env.SMTP_FROM || user;
   if (!host || !user || !pass || !from) {
-    console.log(`Email chưa cấu hình SMTP. Nội dung gửi đến ${to}: ${text}`);
+    console.log(`Email chÆ°a cáº¥u hÃ¬nh SMTP. Ná»™i dung gá»­i Ä‘áº¿n ${to}: ${text}`);
     return false;
   }
   const transporter = nodemailer.createTransport({
@@ -220,7 +317,7 @@ function requireAuth(req, res, next) {
   const user = getCurrentUser(req);
   if (!user || user.status !== 'active') {
     logSecurity({ eventType: 'auth_required_denied', severity: 'low', message: 'Unauthenticated request blocked.', req });
-    res.status(401).json({ message: 'Vui lòng đăng nhập.' });
+    res.status(401).json({ message: 'Vui lÃ²ng Ä‘Äƒng nháº­p.' });
     return;
   }
   req.user = user;
@@ -231,7 +328,7 @@ function requireAdmin(req, res, next) {
   const user = getCurrentUser(req);
   if (!user || user.status !== 'active' || !['admin', 'super_admin'].includes(user.role)) {
     logSecurity({ eventType: 'admin_access_denied', userId: user?.id, severity: 'medium', message: 'Admin request blocked.', req });
-    res.status(403).json({ message: 'Bạn không có quyền truy cập admin.' });
+    res.status(403).json({ message: 'Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p admin.' });
     return;
   }
   req.user = user;
@@ -334,6 +431,15 @@ function publicSettings() {
   return settingsData();
 }
 
+function parseJsonSetting(value, fallback) {
+  try {
+    const parsed = JSON.parse(String(value || '').trim() || 'null');
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function adminSettings() {
   return settingsData({ includeSecrets: true });
 }
@@ -347,11 +453,19 @@ function normalizeSlug(value) {
     .replace(/^-+|-+$/g, '') || `item-${nanoid()}`;
 }
 
+function createUniqueReferralCode(username) {
+  let referralCode = '';
+  do {
+    referralCode = buildReferralCode(username, () => nanoid(4));
+  } while (db.prepare('SELECT id FROM users WHERE referral_code = ?').get(referralCode));
+  return referralCode;
+}
+
 function normalizedCategoryPayload(body) {
   const name = clampText(body.name, 120);
   const slug = body.slug ? normalizeSlug(body.slug) : normalizeSlug(name);
-  if (!name) throw new Error('Vui lÃ²ng nháº­p tÃªn game.');
-  if (!slug) throw new Error('Slug game khÃ´ng há»£p lá»‡.');
+  if (!name) throw new Error('Vui lÃƒÂ²ng nhÃ¡ÂºÂ­p tÃƒÂªn game.');
+  if (!slug) throw new Error('Slug game khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»â€¡.');
   return {
     name,
     slug,
@@ -365,10 +479,34 @@ function normalizedCategoryPayload(body) {
 function categoryIdFromBody(value) {
   if (value === '' || value === null || value === undefined) return null;
   const id = Number(value);
-  if (!Number.isInteger(id) || id <= 0) throw new Error('Game category khÃ´ng há»£p lá»‡.');
+  if (!Number.isInteger(id) || id <= 0) throw new Error('Game category khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»â€¡.');
   const exists = db.prepare('SELECT id FROM game_categories WHERE id = ?').get(id);
-  if (!exists) throw new Error('Game category khÃ´ng tá»“n táº¡i.');
+  if (!exists) throw new Error('Game category khÃƒÂ´ng tÃ¡Â»â€œn tÃ¡ÂºÂ¡i.');
   return id;
+}
+
+function requestCacheKey(req, name) {
+  const query = new URLSearchParams(req.query || {});
+  query.sort();
+  return redisKey('cache', name, req.path, query.toString() || 'root');
+}
+
+async function cachedJson(req, res, name, ttlSeconds, producer) {
+  const key = requestCacheKey(req, name);
+  const cached = await cacheGet(key);
+  if (cached) {
+    res.set('X-Redis-Cache', 'HIT');
+    res.json(cached);
+    return;
+  }
+  const data = await producer();
+  cacheSet(key, data, ttlSeconds).catch(() => undefined);
+  res.set('X-Redis-Cache', 'MISS');
+  res.json(data);
+}
+
+function clearPublicCache() {
+  cacheDelPattern(redisKey('cache', '*')).catch((error) => console.error('Redis cache clear failed:', error.message));
 }
 
 function nanoid(size = 8) {
@@ -469,7 +607,7 @@ function createBalanceLog({ userId, type, amount, before, after, referenceId, re
 }
 
 function completeDeposit(current, meta = {}) {
-  if (!current) throw new Error('Không tìm thấy giao dịch.');
+  if (!current) throw new Error('KhÃ´ng tÃ¬m tháº¥y giao dá»‹ch.');
   if (current.status === 'success') return current;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(current.user_id);
   const before = user.balance;
@@ -484,10 +622,10 @@ function completeDeposit(current, meta = {}) {
     after,
     referenceId: current.id,
     referenceType: 'deposit',
-    note: meta.note || `Nạp tiền ${current.transaction_code}`,
+    note: meta.note || `Náº¡p tiá»n ${current.transaction_code}`,
     createdBy: meta.createdBy || null,
   });
-  notifyUser(user.id, 'Nạp tiền thành công', `Giao dịch ${current.transaction_code} đã được cộng tiền.`, 'deposit');
+  notifyUser(user.id, 'Náº¡p tiá»n thÃ nh cÃ´ng', `Giao dá»‹ch ${current.transaction_code} Ä‘Ã£ Ä‘Æ°á»£c cá»™ng tiá»n.`, 'deposit');
   db.prepare(`
     UPDATE deposits SET status = 'success', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
     WHERE id = ?
@@ -498,20 +636,20 @@ function completeDeposit(current, meta = {}) {
 function processIncomingDepositTransfer(raw, source = 'Webhook') {
   const transfer = normalizeIncomingTransfer(raw);
   if (transfer.transferType && !['in', 'credit', 'deposit'].includes(transfer.transferType)) {
-    return { ignored: true, message: 'Bỏ qua giao dịch không phải tiền vào.', transferType: transfer.transferType };
+    return { ignored: true, message: 'Bá» qua giao dá»‹ch khÃ´ng pháº£i tiá»n vÃ o.', transferType: transfer.transferType };
   }
   const depositCode = extractDepositCode(transfer.content);
   return db.transaction(() => {
     if (transfer.transactionId) {
       const processed = db.prepare("SELECT * FROM deposits WHERE bank_transaction_id = ? AND status = 'success'").get(transfer.transactionId);
-      if (processed) return { ignored: true, message: 'Giao dịch đã được xử lý trước đó.', deposit: processed };
+      if (processed) return { ignored: true, message: 'Giao dá»‹ch Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ trÆ°á»›c Ä‘Ã³.', deposit: processed };
     }
-    if (!depositCode) return { ignored: true, message: 'Không tìm thấy mã nạp NAP trong nội dung chuyển khoản.' };
+    if (!depositCode) return { ignored: true, message: 'KhÃ´ng tÃ¬m tháº¥y mÃ£ náº¡p NAP trong ná»™i dung chuyá»ƒn khoáº£n.' };
     const current = db.prepare("SELECT * FROM deposits WHERE transaction_code = ? AND status = 'pending' AND method = 'bank_transfer'").get(depositCode);
-    if (!current) return { ignored: true, message: `Không tìm thấy lệnh nạp pending cho mã ${depositCode}.` };
-    if (!Number.isFinite(transfer.amount) || transfer.amount <= 0) return { ignored: true, message: 'Không đọc được số tiền chuyển khoản.' };
-    if (transfer.amount < current.amount) return { ignored: true, message: `Số tiền chuyển khoản ${transfer.amount} nhỏ hơn số tiền cần nạp ${current.amount}.`, deposit: current };
-    return completeDeposit(current, { transactionId: transfer.transactionId, adminNote: `${source} tự động xác nhận`, note: `${source} xác nhận ${current.transaction_code}` });
+    if (!current) return { ignored: true, message: `KhÃ´ng tÃ¬m tháº¥y lá»‡nh náº¡p pending cho mÃ£ ${depositCode}.` };
+    if (!Number.isFinite(transfer.amount) || transfer.amount <= 0) return { ignored: true, message: 'KhÃ´ng Ä‘á»c Ä‘Æ°á»£c sá»‘ tiá»n chuyá»ƒn khoáº£n.' };
+    if (transfer.amount < current.amount) return { ignored: true, message: `Sá»‘ tiá»n chuyá»ƒn khoáº£n ${transfer.amount} nhá» hÆ¡n sá»‘ tiá»n cáº§n náº¡p ${current.amount}.`, deposit: current };
+    return completeDeposit(current, { transactionId: transfer.transactionId, adminNote: `${source} tá»± Ä‘á»™ng xÃ¡c nháº­n`, note: `${source} xÃ¡c nháº­n ${current.transaction_code}` });
   })();
 }
 
@@ -528,8 +666,8 @@ function cardWebhookValue(payload, keys) {
 
 function normalizeCardWebhookStatus(value) {
   const text = String(value || '').trim().toLowerCase();
-  if (['1', 'success', 'successful', 'done', 'completed', 'approved', 'thanhcong', 'thanh_cong', 'đúng', 'dung', 'the_dung', 'card_correct'].includes(text)) return 'success';
-  if (['2', '99', 'pending', 'processing', 'wait', 'waiting', 'cho_xu_ly', 'chờ xử lý'].includes(text)) return 'pending';
+  if (['1', 'success', 'successful', 'done', 'completed', 'approved', 'thanhcong', 'thanh_cong', 'Ä‘Ãºng', 'dung', 'the_dung', 'card_correct'].includes(text)) return 'success';
+  if (['2', '99', 'pending', 'processing', 'wait', 'waiting', 'cho_xu_ly', 'chá» xá»­ lÃ½'].includes(text)) return 'pending';
   if (['3', '4', '30', '100', 'fail', 'failed', 'error', 'cancel', 'cancelled', 'rejected', 'sai', 'thatbai', 'that_bai', 'the_sai', 'card_wrong'].includes(text)) return 'failed';
   return text;
 }
@@ -564,7 +702,7 @@ function normalizeGachTheFastResponse(data) {
 async function submitGachTheFastCard({ deposit, method, serial, cardCode, amount }) {
   const config = gachTheFastConfig();
   if (!config.apiUrl || !config.partnerId || !config.partnerKey) {
-    throw new Error('Chưa cấu hình GachTheFast API URL, Partner ID hoặc Partner Key.');
+    throw new Error('ChÆ°a cáº¥u hÃ¬nh GachTheFast API URL, Partner ID hoáº·c Partner Key.');
   }
   const params = new URLSearchParams({
     partner_id: config.partnerId,
@@ -585,7 +723,7 @@ async function submitGachTheFastCard({ deposit, method, serial, cardCode, amount
     : await fetch(`${config.apiUrl}${config.apiUrl.includes('?') ? '&' : '?'}${params.toString()}`, { headers: { accept: 'application/json' } });
   const contentType = response.headers.get('content-type') || '';
   const data = contentType.includes('application/json') ? await response.json() : { message: await response.text() };
-  if (!response.ok) throw new Error(data?.message || `GachTheFast API lỗi ${response.status}`);
+  if (!response.ok) throw new Error(data?.message || `GachTheFast API lá»—i ${response.status}`);
   return { raw: data, ...normalizeGachTheFastResponse(data) };
 }
 
@@ -629,22 +767,22 @@ function processGachTheFastCallback(payload) {
       LIMIT 1
     `).get(...lookupValues.flatMap((value) => [value, value, `%${value}%`, value, value]))
     : null;
-  if (!current) return { ignored: true, message: 'Không tìm thấy giao dịch thẻ pending tương ứng.' };
+  if (!current) return { ignored: true, message: 'KhÃ´ng tÃ¬m tháº¥y giao dá»‹ch tháº» pending tÆ°Æ¡ng á»©ng.' };
   if (status === 'success') {
     return db.transaction(() => {
       const fresh = db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id);
-      if (!fresh || fresh.status !== 'pending') return { ignored: true, message: 'Giao dịch thẻ đã được xử lý trước đó.', deposit: fresh || current };
+      if (!fresh || fresh.status !== 'pending') return { ignored: true, message: 'Giao dá»‹ch tháº» Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ trÆ°á»›c Ä‘Ã³.', deposit: fresh || current };
       if (Number.isFinite(callbackAmount) && callbackAmount > 0 && callbackAmount < fresh.amount) {
-        return { ignored: true, message: `Mệnh giá callback ${callbackAmount} nhỏ hơn mệnh giá khai báo ${fresh.amount}.`, deposit: fresh };
+        return { ignored: true, message: `Má»‡nh giÃ¡ callback ${callbackAmount} nhá» hÆ¡n má»‡nh giÃ¡ khai bÃ¡o ${fresh.amount}.`, deposit: fresh };
       }
       if (current.job_id) {
         db.prepare(`
           UPDATE card_deposit_jobs
           SET status = 'success', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).run(note || 'GachTheFast callback xác nhận thẻ thành công.', providerTransactionId || requestId || null, current.job_id);
+        `).run(note || 'GachTheFast callback xÃ¡c nháº­n tháº» thÃ nh cÃ´ng.', providerTransactionId || requestId || null, current.job_id);
       }
-      return completeDeposit(fresh, { transactionId: providerTransactionId || requestId || `GTF-${fresh.transaction_code}`, adminNote: `GachTheFast xác nhận${note ? `: ${note}` : ''}`, note: `GachTheFast xác nhận ${fresh.transaction_code}` });
+      return completeDeposit(fresh, { transactionId: providerTransactionId || requestId || `GTF-${fresh.transaction_code}`, adminNote: `GachTheFast xÃ¡c nháº­n${note ? `: ${note}` : ''}`, note: `GachTheFast xÃ¡c nháº­n ${fresh.transaction_code}` });
     })();
   }
   if (status === 'failed') {
@@ -654,23 +792,23 @@ function processGachTheFastCallback(payload) {
           UPDATE card_deposit_jobs
           SET status = 'failed', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).run(note || 'GachTheFast báo thẻ thất bại.', providerTransactionId || requestId || null, current.job_id);
+        `).run(note || 'GachTheFast bÃ¡o tháº» tháº¥t báº¡i.', providerTransactionId || requestId || null, current.job_id);
       }
       db.prepare(`
         UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
         WHERE id = ? AND status = 'pending'
-      `).run(note || 'GachTheFast báo thẻ thất bại.', providerTransactionId || requestId || null, current.id);
+      `).run(note || 'GachTheFast bÃ¡o tháº» tháº¥t báº¡i.', providerTransactionId || requestId || null, current.id);
     })();
-    return { ignored: true, message: 'GachTheFast báo thẻ thất bại.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
+    return { ignored: true, message: 'GachTheFast bÃ¡o tháº» tháº¥t báº¡i.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
   }
   if (current.job_id) {
     db.prepare(`
       UPDATE card_deposit_jobs
       SET status = 'processing', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(note || 'GachTheFast callback báo thẻ đang chờ xử lý.', providerTransactionId || requestId || null, current.job_id);
+    `).run(note || 'GachTheFast callback bÃ¡o tháº» Ä‘ang chá» xá»­ lÃ½.', providerTransactionId || requestId || null, current.job_id);
   }
-  return { ignored: true, message: 'GachTheFast callback chưa hoàn tất.', deposit: current };
+  return { ignored: true, message: 'GachTheFast callback chÆ°a hoÃ n táº¥t.', deposit: current };
 }
 
 function cardWorkerSecretOk(req) {
@@ -692,7 +830,7 @@ function processCardWorkerResult(raw) {
   const status = normalizeCardWebhookStatus(cardWebhookValue(raw, ['status', 'card_status', 'result', 'state']));
   const note = clampText(cardWebhookValue(raw, ['message', 'msg', 'note', 'reason', 'description']), 300);
   const callbackAmount = parseAmount(cardWebhookValue(raw, ['real_amount', 'receive_amount', 'value_receive', 'amount_receive', 'amount', 'value', 'declared_amount']));
-  if (!depositCode) return { ignored: true, message: 'Thiếu mã giao dịch thẻ.' };
+  if (!depositCode) return { ignored: true, message: 'Thiáº¿u mÃ£ giao dá»‹ch tháº».' };
   return db.transaction(() => {
     const current = db.prepare(`
       SELECT deposits.*, card_deposit_jobs.id AS job_id, card_deposit_jobs.submitted_at AS job_submitted_at
@@ -701,49 +839,49 @@ function processCardWorkerResult(raw) {
       WHERE deposits.transaction_code = ? AND deposits.method IN ('viettel_card','mobifone_card','vinaphone_card')
       LIMIT 1
     `).get(depositCode);
-    if (!current) return { ignored: true, message: 'Không tìm thấy giao dịch thẻ tương ứng.' };
-    if (current.status !== 'pending') return { ignored: true, message: 'Giao dịch thẻ đã được xử lý trước đó.', deposit: current };
+    if (!current) return { ignored: true, message: 'KhÃ´ng tÃ¬m tháº¥y giao dá»‹ch tháº» tÆ°Æ¡ng á»©ng.' };
+    if (current.status !== 'pending') return { ignored: true, message: 'Giao dá»‹ch tháº» Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ trÆ°á»›c Ä‘Ã³.', deposit: current };
     if (status === 'retry') {
       db.prepare(`
         UPDATE card_deposit_jobs SET status = 'retry', worker_note = ?, locked_until = NULL, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(note || 'Worker lỗi tạm thời, sẽ thử lại.', current.job_id);
-      return { ignored: true, message: note || 'Worker lỗi tạm thời, sẽ thử lại.', deposit: current };
+      `).run(note || 'Worker lá»—i táº¡m thá»i, sáº½ thá»­ láº¡i.', current.job_id);
+      return { ignored: true, message: note || 'Worker lá»—i táº¡m thá»i, sáº½ thá»­ láº¡i.', deposit: current };
     }
     if (status === 'success') {
       if (Number.isFinite(callbackAmount) && callbackAmount > 0 && callbackAmount < current.amount) {
         db.prepare(`
           UPDATE card_deposit_jobs SET status = 'failed', worker_note = ?, provider_transaction_id = ?, completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).run(`Mệnh giá nhận ${callbackAmount} nhỏ hơn mệnh giá khai báo ${current.amount}.`, providerTransactionId || null, current.job_id);
+        `).run(`Má»‡nh giÃ¡ nháº­n ${callbackAmount} nhá» hÆ¡n má»‡nh giÃ¡ khai bÃ¡o ${current.amount}.`, providerTransactionId || null, current.job_id);
         db.prepare(`
           UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).run(`Mệnh giá nhận ${callbackAmount} nhỏ hơn mệnh giá khai báo ${current.amount}.`, providerTransactionId || null, current.id);
-        return { ignored: true, message: 'Mệnh giá thẻ không khớp.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
+        `).run(`Má»‡nh giÃ¡ nháº­n ${callbackAmount} nhá» hÆ¡n má»‡nh giÃ¡ khai bÃ¡o ${current.amount}.`, providerTransactionId || null, current.id);
+        return { ignored: true, message: 'Má»‡nh giÃ¡ tháº» khÃ´ng khá»›p.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
       }
       db.prepare(`
         UPDATE card_deposit_jobs SET status = 'success', worker_note = ?, provider_transaction_id = ?, completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(note || 'Worker báo thẻ thành công.', providerTransactionId || null, current.job_id);
-      return completeDeposit(current, { transactionId: providerTransactionId || `CARD-${current.transaction_code}`, adminNote: note || 'Worker xác nhận thẻ thành công.', note: `Worker xác nhận thẻ ${current.transaction_code}` });
+      `).run(note || 'Worker bÃ¡o tháº» thÃ nh cÃ´ng.', providerTransactionId || null, current.job_id);
+      return completeDeposit(current, { transactionId: providerTransactionId || `CARD-${current.transaction_code}`, adminNote: note || 'Worker xÃ¡c nháº­n tháº» thÃ nh cÃ´ng.', note: `Worker xÃ¡c nháº­n tháº» ${current.transaction_code}` });
     }
     if (status === 'failed') {
       db.prepare(`
         UPDATE card_deposit_jobs SET status = 'failed', worker_note = ?, provider_transaction_id = ?, completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(note || 'Worker báo thẻ thất bại.', providerTransactionId || null, current.job_id);
+      `).run(note || 'Worker bÃ¡o tháº» tháº¥t báº¡i.', providerTransactionId || null, current.job_id);
       db.prepare(`
         UPDATE deposits SET status = 'failed', admin_note = ?, bank_transaction_id = ?, completed_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(note || 'Thẻ không hợp lệ hoặc đã được sử dụng.', providerTransactionId || null, current.id);
-      return { ignored: true, message: note || 'Thẻ không hợp lệ hoặc đã được sử dụng.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
+      `).run(note || 'Tháº» khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng.', providerTransactionId || null, current.id);
+      return { ignored: true, message: note || 'Tháº» khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng.', deposit: db.prepare('SELECT * FROM deposits WHERE id = ?').get(current.id) };
     }
     db.prepare(`
       UPDATE card_deposit_jobs SET status = 'success', worker_note = ?, provider_transaction_id = COALESCE(?, provider_transaction_id), submitted_at = COALESCE(submitted_at, CURRENT_TIMESTAMP), completed_at = CURRENT_TIMESTAMP, locked_until = NULL, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(note || 'Worker báo thẻ đã được hệ thống nhận, cộng tiền ngay.', providerTransactionId || null, current.job_id);
-    return completeDeposit(current, { transactionId: providerTransactionId || `CARD-${current.transaction_code}`, adminNote: note || 'Thẻ đã được hệ thống nhận, cộng tiền ngay.', note: `Worker xác nhận thẻ đã được nhận ${current.transaction_code}` });
+    `).run(note || 'Worker bÃ¡o tháº» Ä‘Ã£ Ä‘Æ°á»£c há»‡ thá»‘ng nháº­n, cá»™ng tiá»n ngay.', providerTransactionId || null, current.job_id);
+    return completeDeposit(current, { transactionId: providerTransactionId || `CARD-${current.transaction_code}`, adminNote: note || 'Tháº» Ä‘Ã£ Ä‘Æ°á»£c há»‡ thá»‘ng nháº­n, cá»™ng tiá»n ngay.', note: `Worker xÃ¡c nháº­n tháº» Ä‘Ã£ Ä‘Æ°á»£c nháº­n ${current.transaction_code}` });
   })();
 }
 
@@ -751,19 +889,19 @@ function createOrderChatSummary({ order, items }) {
   const itemDetailLines = items
     .map((item) => {
       const detail = clampText(item.item_detail || item.short_description || item.description || '', 220);
-      return detail ? `Chi tiết ${item.item_name}: ${detail}` : '';
+      return detail ? `Chi tiáº¿t ${item.item_name}: ${detail}` : '';
     })
     .filter(Boolean);
   const lines = [
     'ORDER_EMBED',
-    `Mã đơn: ${order.order_code}`,
-    `Tài khoản web: ${order.username || ''}`,
-    `Tên Roblox: ${order.roblox_username}`,
-    `Tổng tiền: ${order.total_amount} VND`,
-    `Đồ mua: ${items.map((item) => `${item.item_name} x${item.quantity}`).join(', ')}`,
+    `MÃ£ Ä‘Æ¡n: ${order.order_code}`,
+    `TÃ i khoáº£n web: ${order.username || ''}`,
+    `TÃªn Roblox: ${order.roblox_username}`,
+    `Tá»•ng tiá»n: ${order.total_amount} VND`,
+    `Äá»“ mua: ${items.map((item) => `${item.item_name} x${item.quantity}`).join(', ')}`,
     ...itemDetailLines,
   ];
-  if (order.customer_note) lines.push(`Ghi chú khách: ${order.customer_note}`);
+  if (order.customer_note) lines.push(`Ghi chÃº khÃ¡ch: ${order.customer_note}`);
   return lines.join('\n');
 }
 
@@ -772,9 +910,9 @@ function chatMessageWithImage(message, imageUrl) {
   const image = clampText(imageUrl, 500);
   if (!image) return text;
   if (!/^\/uploads\/[A-Za-z0-9._-]+$/.test(image) && !/^https?:\/\/\S{1,480}$/i.test(image)) {
-    throw new Error('Link ảnh không hợp lệ.');
+    throw new Error('Link áº£nh khÃ´ng há»£p lá»‡.');
   }
-  return [text, `Ảnh: ${image}`].filter(Boolean).join('\n');
+  return [text, `áº¢nh: ${image}`].filter(Boolean).join('\n');
 }
 
 function createInitialOrderChat({ userId, message }) {
@@ -788,11 +926,11 @@ function createCompletedOrderReview(order) {
   db.prepare(`
     INSERT OR IGNORE INTO reviews (user_id, item_id, order_id, rating, content, status)
     VALUES (?, ?, ?, 5, ?, 'approved')
-  `).run(order.user_id, orderItem.item_id, order.id, 'Shop giao hàng nhanh, đơn đã hoàn thành tốt.');
+  `).run(order.user_id, orderItem.item_id, order.id, 'Shop giao hÃ ng nhanh, Ä‘Æ¡n Ä‘Ã£ hoÃ n thÃ nh tá»‘t.');
   db.prepare(`
     UPDATE reviews SET rating = 5, content = ?, status = 'approved', updated_at = CURRENT_TIMESTAMP
     WHERE order_id = ?
-  `).run('Shop giao hàng nhanh, đơn đã hoàn thành tốt.', order.id);
+  `).run('Shop giao hÃ ng nhanh, Ä‘Æ¡n Ä‘Ã£ hoÃ n thÃ nh tá»‘t.', order.id);
 }
 
 let sepayBotRunning = false;
@@ -801,10 +939,10 @@ let sepayBotLastRunAt = null;
 let sepayBotLastError = '';
 
 async function runSepayBotOnce() {
-  if (sepayBotRunning) return { skipped: true, message: 'Bot đang chạy vòng trước.' };
+  if (sepayBotRunning) return { skipped: true, message: 'Bot Ä‘ang cháº¡y vÃ²ng trÆ°á»›c.' };
   const apiUrl = setting('sepay_bot_api_url');
   const apiKey = setting('sepay_bot_api_key');
-  if (!apiUrl || !apiKey) return { skipped: true, message: 'Thiếu SEPAY_BOT_API_URL hoặc SEPAY_BOT_API_KEY.' };
+  if (!apiUrl || !apiKey) return { skipped: true, message: 'Thiáº¿u SEPAY_BOT_API_URL hoáº·c SEPAY_BOT_API_KEY.' };
   sepayBotRunning = true;
   sepayBotLastRunAt = new Date().toISOString();
   try {
@@ -816,7 +954,7 @@ async function runSepayBotOnce() {
       },
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data?.message || `SePay API lỗi ${response.status}`);
+    if (!response.ok) throw new Error(data?.message || `SePay API lá»—i ${response.status}`);
     const transactions = transactionListFromResponse(data);
     const results = transactions.map((transaction) => processIncomingDepositTransfer(transaction, 'SePay bot'));
     sepayBotLastResult = {
@@ -870,39 +1008,41 @@ function startSepayBot() {
   }, intervalMs);
 }
 
-app.get('/api/settings/public', publicCache, (_req, res) => {
-  res.json(publicSettings());
+app.get('/api/settings/public', publicCache, (req, res) => {
+  cachedJson(req, res, 'settings-public', 30, () => publicSettings()).catch((error) => res.status(500).json({ message: error.message }));
 });
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, redis: redisStatus() });
 });
 
 app.post('/api/auth/register', (req, res) => {
   if (setting('registration_enabled', 'true') !== 'true') {
-    res.status(403).json({ message: 'Website đang tắt đăng ký.' });
+    res.status(403).json({ message: 'Website Ä‘ang táº¯t Ä‘Äƒng kÃ½.' });
     return;
   }
   const { username, email, password, confirmPassword } = req.body;
   if (!username || !email || !password || !confirmPassword) {
-    res.status(400).json({ message: 'Vui lòng nhập đầy đủ thông tin.' });
+    res.status(400).json({ message: 'Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin.' });
     return;
   }
   if (password !== confirmPassword || String(password).length < 8) {
-    res.status(400).json({ message: 'Mật khẩu phải từ 8 ký tự và nhập lại khớp.' });
+    res.status(400).json({ message: 'Máº­t kháº©u pháº£i tá»« 8 kÃ½ tá»± vÃ  nháº­p láº¡i khá»›p.' });
     return;
   }
   const exists = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
   if (exists) {
-    res.status(409).json({ message: 'Username hoặc email đã tồn tại.' });
+    res.status(409).json({ message: 'Username hoáº·c email Ä‘Ã£ tá»“n táº¡i.' });
     return;
   }
   const passwordHash = bcrypt.hashSync(password, 12);
+  const referralCode = createUniqueReferralCode(username);
   const result = db.prepare(`
-    INSERT INTO users (username, email, password_hash, role, status)
-    VALUES (?, ?, ?, 'user', 'active')
-  `).run(username, email, passwordHash);
-  notifyUser(result.lastInsertRowid, 'Đăng ký thành công', 'Chào mừng bạn đến Sailor Piece Item Shop.', 'auth');
+    INSERT INTO users (username, email, password_hash, role, status, referral_code)
+    VALUES (?, ?, ?, 'user', 'active', ?)
+  `).run(username, email, passwordHash, referralCode);
+  notifyUser(result.lastInsertRowid, 'ÄÄƒng kÃ½ thÃ nh cÃ´ng', 'ChÃ o má»«ng báº¡n Ä‘áº¿n Sailor Piece Item Shop.', 'auth');
+  clearPublicCache();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
   res.cookie('token', signToken(user), authCookieOptions()).json({ user: sanitizeUser(user) });
 });
@@ -910,22 +1050,22 @@ app.post('/api/auth/register', (req, res) => {
 app.post('/api/auth/login', loginLimiter, (req, res) => {
   const { account, password } = req.body;
   if (!account || !password) {
-    res.status(400).json({ message: 'Vui lòng nhập tài khoản và mật khẩu.' });
+    res.status(400).json({ message: 'Vui lÃ²ng nháº­p tÃ i khoáº£n vÃ  máº­t kháº©u.' });
     return;
   }
   const user = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(account, account);
   if (!user) {
-    res.status(401).json({ message: 'Sai tài khoản hoặc mật khẩu.' });
+    res.status(401).json({ message: 'Sai tÃ i khoáº£n hoáº·c máº­t kháº©u.' });
     return;
   }
   if (user.status !== 'active') {
-    res.status(403).json({ message: 'Tài khoản đang bị khóa.' });
+    res.status(403).json({ message: 'TÃ i khoáº£n Ä‘ang bá»‹ khÃ³a.' });
     return;
   }
   const ok = bcrypt.compareSync(password, user.password_hash);
   if (!ok) {
     logSecurity({ eventType: 'login_failed', userId: user.id, severity: 'medium', message: 'Invalid password.', req });
-    res.status(401).json({ message: 'Sai tài khoản hoặc mật khẩu.' });
+    res.status(401).json({ message: 'Sai tÃ i khoáº£n hoáº·c máº­t kháº©u.' });
     return;
   }
   if (['admin', 'super_admin'].includes(user.role)) logAdmin(user.id, 'admin_login', 'user', user.id, req);
@@ -940,6 +1080,47 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({ user: sanitizeUser(req.user) });
 });
 
+app.get('/api/referrals/me', requireAuth, (req, res) => {
+  const referrer = req.user.referred_by_user_id
+    ? db.prepare('SELECT id, username FROM users WHERE id = ?').get(req.user.referred_by_user_id)
+    : null;
+  const rewards = db.prepare(`
+    SELECT * FROM referral_rewards
+    WHERE referrer_user_id = ?
+    ORDER BY created_at DESC
+    LIMIT 50
+  `).all(req.user.id);
+  res.json(mapReferralSummary({ user: req.user, referrer, rewards }));
+});
+
+app.post('/api/referrals/apply', requireAuth, (req, res) => {
+  const code = String(req.body.code || '').trim().toUpperCase();
+  if (!code) {
+    res.status(400).json({ message: 'Vui lÃ²ng nháº­p referral code.' });
+    return;
+  }
+  const referrer = db.prepare('SELECT id, username FROM users WHERE referral_code = ?').get(code);
+  const existingOrder = db.prepare('SELECT id FROM orders WHERE user_id = ? LIMIT 1').get(req.user.id);
+  const validation = canApplyReferralForUser({
+    currentUserId: req.user.id,
+    referrerUserId: referrer?.id || 0,
+    hasExistingOrders: Boolean(existingOrder),
+    alreadyReferred: Boolean(req.user.referred_by_user_id),
+  });
+  if (!validation.ok) {
+    res.status(400).json({ code: validation.code, message: 'KhÃ´ng thá»ƒ Ã¡p dá»¥ng referral code nÃ y.' });
+    return;
+  }
+  db.prepare(`
+    UPDATE users
+    SET referred_by_user_id = ?, referral_linked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(referrer.id, req.user.id);
+  clearPublicCache();
+  const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  res.json(mapReferralSummary({ user: updatedUser, referrer, rewards: [] }));
+});
+
 app.post('/api/auth/forgot-password', async (req, res) => {
   const { email } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -952,37 +1133,82 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     try {
       await sendEmail({
         to: email,
-        subject: 'Mã đặt lại mật khẩu NosRoblox',
-        text: `Mã đặt lại mật khẩu của bạn là ${token}. Mã có hiệu lực trong 15 phút. Nhập mã tại ${resetUrl}`,
-        html: `<p>Mã đặt lại mật khẩu của bạn là:</p><h2>${token}</h2><p>Mã có hiệu lực trong 15 phút.</p><p>Nhập mã tại <a href="${resetUrl}">${resetUrl}</a></p>`,
+        subject: 'MÃ£ Ä‘áº·t láº¡i máº­t kháº©u NosRoblox',
+        text: `MÃ£ Ä‘áº·t láº¡i máº­t kháº©u cá»§a báº¡n lÃ  ${token}. MÃ£ cÃ³ hiá»‡u lá»±c trong 15 phÃºt. Nháº­p mÃ£ táº¡i ${resetUrl}`,
+        html: `<p>MÃ£ Ä‘áº·t láº¡i máº­t kháº©u cá»§a báº¡n lÃ :</p><h2>${token}</h2><p>MÃ£ cÃ³ hiá»‡u lá»±c trong 15 phÃºt.</p><p>Nháº­p mÃ£ táº¡i <a href="${resetUrl}">${resetUrl}</a></p>`,
       });
     } catch (error) {
-      console.error('Không thể gửi email reset mật khẩu:', error.message);
+      console.error('KhÃ´ng thá»ƒ gá»­i email reset máº­t kháº©u:', error.message);
     }
   }
-  res.json({ message: 'Nếu email tồn tại, hệ thống đã gửi mã đặt lại mật khẩu.' });
+  res.json({ message: 'Náº¿u email tá»“n táº¡i, há»‡ thá»‘ng Ä‘Ã£ gá»­i mÃ£ Ä‘áº·t láº¡i máº­t kháº©u.' });
 });
 
 app.post('/api/auth/reset-password', (req, res) => {
   const { email, token, password, confirmPassword } = req.body;
   if (!email || !token || !password || password !== confirmPassword || String(password).length < 8) {
-    res.status(400).json({ message: 'Thông tin đặt lại mật khẩu không hợp lệ.' });
+    res.status(400).json({ message: 'ThÃ´ng tin Ä‘áº·t láº¡i máº­t kháº©u khÃ´ng há»£p lá»‡.' });
     return;
   }
   const hash = crypto.createHash('sha256').update(token).digest('hex');
   const user = db.prepare('SELECT * FROM users WHERE email = ? AND reset_token_hash = ?').get(email, hash);
   if (!user || !user.reset_token_expires_at || new Date(user.reset_token_expires_at).getTime() < Date.now()) {
-    res.status(400).json({ message: 'Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.' });
+    res.status(400).json({ message: 'Token Ä‘áº·t láº¡i máº­t kháº©u khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n.' });
     return;
   }
   db.prepare(`
     UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?
   `).run(bcrypt.hashSync(password, 12), user.id);
-  notifyUser(user.id, 'Đổi mật khẩu thành công', 'Mật khẩu tài khoản của bạn đã được cập nhật.', 'auth');
-  res.json({ message: 'Đổi mật khẩu thành công.' });
+  notifyUser(user.id, 'Äá»•i máº­t kháº©u thÃ nh cÃ´ng', 'Máº­t kháº©u tÃ i khoáº£n cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t.', 'auth');
+  res.json({ message: 'Äá»•i máº­t kháº©u thÃ nh cÃ´ng.' });
+});
+
+app.get('/api/discord/link', requireAuth, (req, res) => {
+  try {
+    const returnTo = safeRelativeReturnTo(req.query.return_to);
+    res.redirect(302, discordLinkStartUrl(req, req.user.id, returnTo));
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+app.get('/api/discord/link/callback', async (req, res) => {
+  const returnTo = safeRelativeReturnTo(req.query.return_to || '/?discord_linked=1');
+  try {
+    const code = String(req.query.code || '').trim();
+    const state = String(req.query.state || '').trim();
+    if (!code || !state) throw new Error('Thiếu mã xác thực Discord.');
+    const statePayload = verifyDiscordState(state);
+    const currentUser = db.prepare('SELECT * FROM users WHERE id = ?').get(statePayload.userId);
+    if (!currentUser) throw new Error('Không tìm thấy tài khoản cần liên kết.');
+    const tokenResponse = await exchangeDiscordCode({
+      clientId: process.env.DISCORD_CLIENT_ID || '',
+      clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
+      code,
+      redirectUri: process.env.DISCORD_REDIRECT_URI || discordRedirectUri(req),
+    });
+    const identity = await fetchDiscordIdentity(tokenResponse.access_token);
+    const linkedElsewhere = db.prepare('SELECT id FROM users WHERE discord_id = ? AND id != ?').get(String(identity.id || '').trim(), currentUser.id);
+    if (linkedElsewhere) throw new Error('Discord này đã được liên kết với tài khoản khác.');
+    db.prepare(`
+      UPDATE users
+      SET discord_id = ?, discord_username = ?, discord_linked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(String(identity.id || '').trim(), String(identity.username || identity.global_name || '').trim() || currentUser.username, currentUser.id);
+    const next = new URL(returnTo, primaryClientOrigin());
+    next.searchParams.set('discord_linked', '1');
+    next.searchParams.delete('discord_message');
+    res.redirect(302, next.pathname + next.search + next.hash);
+  } catch (error) {
+    const next = new URL(returnTo, primaryClientOrigin());
+    next.searchParams.set('discord_linked', '0');
+    next.searchParams.set('discord_message', String(error.message || 'Không liên kết được Discord.').slice(0, 180));
+    res.redirect(302, next.pathname + next.search + next.hash);
+  }
 });
 
 app.get('/api/items', publicCache, (req, res) => {
+  cachedJson(req, res, 'items', 30, () => {
   const filter = String(req.query.filter || 'all');
   const search = String(req.query.search || '').trim();
   const sort = String(req.query.sort || '');
@@ -1015,14 +1241,17 @@ app.get('/api/items', publicCache, (req, res) => {
     ${itemSelect()} WHERE ${where.join(' AND ')}
     ORDER BY ${order}
   `).all(...params);
-  res.json({ items: rows.map(parseItem), total, page: 1, limit: total });
+  return { items: rows.map(parseItem), total, page: 1, limit: total };
+  }).catch((error) => res.status(500).json({ message: error.message }));
 });
 
 app.get('/api/items/:slug', publicCache, (req, res) => {
+  cachedJson(req, res, 'item-detail', 30, () => {
   const item = db.prepare(`${itemSelect()} WHERE items.slug = ? AND items.status = ?`).get(req.params.slug, 'active');
   if (!item) {
-    res.status(404).json({ message: 'Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u01a1n h\u00e0ng.' });
-    return;
+    const error = new Error('Kh\u00f4ng t\u00ecm th\u1ea5y item.');
+    error.status = 404;
+    throw error;
   }
   const reviews = db.prepare(`
     SELECT reviews.*, users.username FROM reviews
@@ -1030,14 +1259,16 @@ app.get('/api/items/:slug', publicCache, (req, res) => {
     WHERE reviews.item_id = ? AND reviews.status = 'approved'
     ORDER BY reviews.created_at DESC
   `).all(item.id);
-  res.json({ item: parseItem(item), reviews });
+  return { item: parseItem(item), reviews };
+  }).catch((error) => res.status(error.status || 500).json({ message: error.message }));
 });
 
 app.get('/api/game-categories', publicCache, (_req, res) => {
-  res.json({ categories: gameCategoryRows({ activeOnly: true }) });
+  cachedJson(_req, res, 'game-categories', 60, () => ({ categories: gameCategoryRows({ activeOnly: true }) })).catch((error) => res.status(500).json({ message: error.message }));
 });
 
 app.get('/api/home', publicCache, (_req, res) => {
+  cachedJson(_req, res, 'home', 15, () => {
   const categories = gameCategoryRows({ activeOnly: true });
   const featured = db.prepare(`${itemSelect()} WHERE items.status = 'active' ORDER BY items.sort_order ASC, items.sold_count DESC`).all().map(parseItem);
   const recentOrders = db.prepare(`
@@ -1057,7 +1288,136 @@ app.get('/api/home', publicCache, (_req, res) => {
     WHERE reviews.status = 'approved'
     ORDER BY reviews.created_at DESC LIMIT 6
   `).all();
-  res.json({ settings: publicSettings(), categories, featured, bestSellers: [], sales: [], reviews, recentOrders });
+  return { settings: publicSettings(), categories, featured, bestSellers: [], sales: [], reviews, recentOrders };
+  }).catch((error) => res.status(500).json({ message: error.message }));
+});
+
+app.get('/api/compat/storefront', publicCache, (_req, res) => {
+  cachedJson(_req, res, 'compat-storefront', 30, () => {
+    const categories = gameCategoryRows({ activeOnly: true });
+    const items = db.prepare(`
+      ${itemSelect()}
+      WHERE items.status = 'active'
+      ORDER BY items.is_best_seller DESC, items.sort_order ASC, items.created_at DESC
+    `).all().map(parseItem);
+    const recentOrders = db.prepare(`
+      SELECT orders.order_code, orders.created_at, users.username, GROUP_CONCAT(order_items.item_name, ', ') AS item_names
+      FROM orders
+      JOIN users ON users.id = orders.user_id
+      LEFT JOIN order_items ON order_items.order_id = orders.id
+      WHERE orders.status IN ('pending','processing','completed')
+      GROUP BY orders.id
+      ORDER BY orders.created_at DESC
+      LIMIT 12
+    `).all();
+    const proofs = db.prepare(`
+      SELECT reviews.id, reviews.rating, reviews.content, reviews.image, reviews.created_at,
+        users.username, items.name AS item_name, orders.total_amount
+      FROM reviews
+      JOIN users ON users.id = reviews.user_id
+      JOIN items ON items.id = reviews.item_id
+      LEFT JOIN orders ON orders.id = reviews.order_id
+      WHERE reviews.status = 'approved'
+      ORDER BY reviews.created_at DESC
+      LIMIT 6
+    `).all();
+    const settings = publicSettings();
+    const analytics = {
+      totalOrders: db.prepare("SELECT COUNT(*) AS count FROM orders WHERE status IN ('pending','processing','completed')").get().count,
+      totalRevenue: db.prepare("SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE status IN ('processing','completed')").get().total,
+      linkedDiscordUsers: db.prepare("SELECT COUNT(*) AS count FROM users WHERE discord_id IS NOT NULL AND discord_id != ''").get().count,
+    };
+    return buildCompatStorefrontSummary({
+      banners: parseJsonSetting(settings.banners, []),
+      bestSellerIds: parseJsonSetting(settings.best_seller_ids, []),
+      categories,
+      items,
+      recentOrders,
+      proofs,
+      analytics,
+      modules: {
+        luckyWheelEnabled: settings.compat_lucky_wheel_enabled === 'true',
+        referralEnabled: settings.compat_referral_enabled === 'true',
+        proofsEnabled: settings.compat_proofs_enabled === 'true',
+        luckyWheelTitle: settings.compat_lucky_wheel_title || 'Lucky Wheel Event',
+        luckyWheelMessage: settings.compat_lucky_wheel_message || 'Link Discord after checkout to unlock spins and support perks.',
+        luckyWheelTickets: Number(settings.compat_lucky_wheel_preview_tickets || 1),
+        referralHeadline: settings.compat_referral_headline || 'Referral missions',
+        referralDetails: settings.compat_referral_details || 'Invite new buyers and keep the same wallet + Discord ticket flow.',
+      },
+    });
+  }).catch((error) => res.status(500).json({ message: error.message }));
+});
+
+app.get('/api/compat/proofs', publicCache, (req, res) => {
+  const page = Math.max(1, Number(req.query.page || 1) || 1);
+  const limit = Math.min(24, Math.max(1, Number(req.query.limit || 12) || 12));
+  const offset = (page - 1) * limit;
+  cachedJson(req, res, `compat-proofs-${page}-${limit}`, 30, () => {
+    const rows = db.prepare(`
+      SELECT reviews.id, reviews.rating, reviews.content, reviews.image, reviews.created_at,
+        users.username, items.name AS item_name, orders.total_amount
+      FROM reviews
+      JOIN users ON users.id = reviews.user_id
+      JOIN items ON items.id = reviews.item_id
+      LEFT JOIN orders ON orders.id = reviews.order_id
+      WHERE reviews.status = 'approved'
+      ORDER BY reviews.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(limit + 1, offset);
+    const items = rows.slice(0, limit).map((proof) => ({
+      id: proof.id,
+      username: proof.username || 'Anonymous',
+      itemName: proof.item_name || '',
+      content: proof.content || '',
+      rating: Number(proof.rating || 5),
+      imageUrls: proof.image ? [proof.image] : [],
+      totalAmount: Number(proof.total_amount || 0),
+      createdAt: proof.created_at,
+    }));
+    return {
+      page,
+      hasMore: rows.length > limit,
+      items,
+    };
+  }).catch((error) => res.status(500).json({ message: error.message }));
+});
+
+app.get('/api/compat/roblox/search', async (req, res) => {
+  const username = clampText(req.query.username, 32);
+  if (!username) {
+    res.status(400).json({ message: 'Vui long nhap Roblox username.' });
+    return;
+  }
+  try {
+    const lookupRes = await fetch('https://users.roblox.com/v1/usernames/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usernames: [username], excludeBannedUsers: true }),
+    });
+    const lookupData = await lookupRes.json();
+    const profile = Array.isArray(lookupData?.data) ? lookupData.data[0] : null;
+    if (!lookupRes.ok || !profile?.id) {
+      res.status(404).json({ message: 'Khong tim thay Roblox user.' });
+      return;
+    }
+    let avatar = '';
+    try {
+      const avatarRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${encodeURIComponent(profile.id)}&size=180x180&format=Png&isCircular=false`);
+      const avatarData = await avatarRes.json();
+      avatar = Array.isArray(avatarData?.data) ? String(avatarData.data[0]?.imageUrl || '') : '';
+    } catch {
+      avatar = '';
+    }
+    res.json({
+      userId: String(profile.id),
+      username: String(profile.name || profile.displayName || username),
+      displayName: String(profile.displayName || profile.name || username),
+      avatar,
+    });
+  } catch (error) {
+    res.status(502).json({ message: error.message || 'Khong tim duoc Roblox user.' });
+  }
 });
 
 app.get('/api/deposits', requireAuth, (req, res) => {
@@ -1067,22 +1427,22 @@ app.get('/api/deposits', requireAuth, (req, res) => {
 
 app.post('/api/deposits', requireAuth, depositLimiter, (req, res) => {
   if (setting('deposit_enabled', 'true') !== 'true') {
-    res.status(403).json({ message: 'Website đang tắt nạp tiền.' });
+    res.status(403).json({ message: 'Website Ä‘ang táº¯t náº¡p tiá»n.' });
     return;
   }
   const method = String(req.body.method || 'bank_transfer');
   const amount = Number(req.body.amount);
   const cardMethods = ['viettel_card', 'mobifone_card', 'vinaphone_card'];
   if (![...cardMethods, 'bank_transfer'].includes(method)) {
-    res.status(400).json({ message: 'Phương thức nạp không hợp lệ.' });
+    res.status(400).json({ message: 'PhÆ°Æ¡ng thá»©c náº¡p khÃ´ng há»£p lá»‡.' });
     return;
   }
   if (!Number.isInteger(amount) || amount < 10000) {
-    res.status(400).json({ message: 'Số tiền nạp tối thiểu là 10.000đ.' });
+    res.status(400).json({ message: 'Sá»‘ tiá»n náº¡p tá»‘i thiá»ƒu lÃ  10.000Ä‘.' });
     return;
   }
   if (amount > 100000000 || amount % 1000 !== 0) {
-    res.status(400).json({ message: 'Số tiền nạp không hợp lệ.' });
+    res.status(400).json({ message: 'Sá»‘ tiá»n náº¡p khÃ´ng há»£p lá»‡.' });
     return;
   }
   const code = `NAP${nanoid()}`;
@@ -1093,7 +1453,7 @@ app.post('/api/deposits', requireAuth, depositLimiter, (req, res) => {
     cardSerial = clampText(req.body.serial, 80);
     cardCode = clampText(req.body.code, 80);
     if (!cardSerial || !cardCode) {
-      res.status(400).json({ message: 'Vui lòng nhập serial và mã thẻ.' });
+      res.status(400).json({ message: 'Vui lÃ²ng nháº­p serial vÃ  mÃ£ tháº».' });
       return;
     }
     transferContent = `CARD-${method.toUpperCase()}-${cardSerial.slice(-6)}-${code}`;
@@ -1118,7 +1478,7 @@ app.post('/api/deposits', requireAuth, depositLimiter, (req, res) => {
 app.get('/api/webhooks/card-worker/jobs', webhookLimiter, (req, res) => {
   if (!cardWorkerSecretOk(req)) {
     logSecurity({ eventType: 'card_worker_secret_denied', severity: 'high', message: 'Invalid card worker secret.', req });
-    res.status(401).json({ success: false, message: 'Worker secret không hợp lệ.' });
+    res.status(401).json({ success: false, message: 'Worker secret khÃ´ng há»£p lá»‡.' });
     return;
   }
   const limit = Math.min(20, Math.max(1, Number(req.query.limit || 5)));
@@ -1149,7 +1509,7 @@ app.get('/api/webhooks/card-worker/jobs', webhookLimiter, (req, res) => {
 app.post('/api/webhooks/card-worker/result', webhookLimiter, (req, res) => {
   if (!cardWorkerSecretOk(req)) {
     logSecurity({ eventType: 'card_worker_secret_denied', severity: 'high', message: 'Invalid card worker secret.', req });
-    res.status(401).json({ success: false, ignored: true, message: 'Worker secret không hợp lệ.' });
+    res.status(401).json({ success: false, ignored: true, message: 'Worker secret khÃ´ng há»£p lá»‡.' });
     return;
   }
   try {
@@ -1158,7 +1518,7 @@ app.post('/api/webhooks/card-worker/result', webhookLimiter, (req, res) => {
       res.json({ success: false, ignored: true, message: result.message, deposit: result.deposit || null });
       return;
     }
-    res.json({ success: true, ignored: false, message: 'Đã xử lý kết quả thẻ.', deposit: result });
+    res.json({ success: true, ignored: false, message: 'ÄÃ£ xá»­ lÃ½ káº¿t quáº£ tháº».', deposit: result });
   } catch (error) {
     res.status(400).json({ success: false, ignored: true, message: error.message });
   }
@@ -1169,12 +1529,12 @@ app.post('/api/webhooks/deposits', webhookLimiter, (req, res) => {
   const providedSecrets = extractWebhookSecret(req);
   if (!allowedSecrets.length || !providedSecrets.some((secret) => allowedSecrets.includes(secret))) {
     logSecurity({ eventType: 'webhook_secret_denied', severity: 'high', message: 'Invalid deposit webhook secret.', req });
-    res.status(401).json({ success: false, ignored: true, message: 'Webhook secret không hợp lệ.' });
+    res.status(401).json({ success: false, ignored: true, message: 'Webhook secret khÃ´ng há»£p lá»‡.' });
     return;
   }
   if (!verifyOptionalWebhookSignature(req)) {
     logSecurity({ eventType: 'webhook_signature_denied', severity: 'high', message: 'Invalid deposit webhook signature.', req });
-    res.status(401).json({ success: false, ignored: true, message: 'Webhook signature không hợp lệ.' });
+    res.status(401).json({ success: false, ignored: true, message: 'Webhook signature khÃ´ng há»£p lá»‡.' });
     return;
   }
   try {
@@ -1183,7 +1543,7 @@ app.post('/api/webhooks/deposits', webhookLimiter, (req, res) => {
       res.json({ success: false, ignored: true, message: deposit.message, deposit: deposit.deposit || null });
       return;
     }
-    res.json({ success: true, ignored: false, message: 'Đã xác nhận giao dịch và cộng tiền.', deposit });
+    res.json({ success: true, ignored: false, message: 'ÄÃ£ xÃ¡c nháº­n giao dá»‹ch vÃ  cá»™ng tiá»n.', deposit });
   } catch (error) {
     res.json({ success: false, ignored: true, message: error.message });
   }
@@ -1193,7 +1553,7 @@ function handleGachTheFastWebhook(req, res) {
   const payload = cardWebhookPayload(req);
   if (!cardCallbackSecretOk(req, payload)) {
     logSecurity({ eventType: 'card_webhook_secret_denied', severity: 'high', message: 'Invalid GachTheFast webhook secret.', req });
-    res.status(401).json({ success: false, ignored: true, message: 'Card webhook secret không hợp lệ.' });
+    res.status(401).json({ success: false, ignored: true, message: 'Card webhook secret khÃ´ng há»£p lá»‡.' });
     return;
   }
   try {
@@ -1202,7 +1562,7 @@ function handleGachTheFastWebhook(req, res) {
       res.json({ success: false, ignored: true, message: result.message, deposit: result.deposit || null });
       return;
     }
-    res.json({ success: true, ignored: false, message: 'Đã xác nhận thẻ và cộng tiền.', deposit: result });
+    res.json({ success: true, ignored: false, message: 'ÄÃ£ xÃ¡c nháº­n tháº» vÃ  cá»™ng tiá»n.', deposit: result });
   } catch (error) {
     res.json({ success: false, ignored: true, message: error.message });
   }
@@ -1216,7 +1576,7 @@ app.get('/api/webhooks/deposits/pending-codes', webhookLimiter, (req, res) => {
   const providedSecrets = extractWebhookSecret(req);
   if (!allowedSecrets.length || !providedSecrets.some((secret) => allowedSecrets.includes(secret))) {
     logSecurity({ eventType: 'pending_codes_secret_denied', severity: 'high', message: 'Invalid pending-codes secret.', req });
-    res.status(401).json({ success: false, message: 'Webhook secret không hợp lệ.' });
+    res.status(401).json({ success: false, message: 'Webhook secret khÃ´ng há»£p lá»‡.' });
     return;
   }
   const deposits = db.prepare(`
@@ -1234,12 +1594,12 @@ app.post('/api/webhooks/sepay-bot/report', webhookLimiter, (req, res) => {
   const providedSecrets = extractWebhookSecret(req);
   if (!allowedSecrets.length || !providedSecrets.some((secret) => allowedSecrets.includes(secret))) {
     logSecurity({ eventType: 'bot_report_secret_denied', severity: 'high', message: 'Invalid bot report secret.', req });
-    res.status(401).json({ success: false, message: 'Webhook secret không hợp lệ.' });
+    res.status(401).json({ success: false, message: 'Webhook secret khÃ´ng há»£p lá»‡.' });
     return;
   }
   const report = req.body || {};
   setSetting('sepay_bot_last_run_at', String(report.ran_at || new Date().toISOString()));
-  setSetting('sepay_bot_last_error', report.ok === false ? String(report.error || 'Bot lỗi không rõ nguyên nhân.') : '');
+  setSetting('sepay_bot_last_error', report.ok === false ? String(report.error || 'Bot lá»—i khÃ´ng rÃµ nguyÃªn nhÃ¢n.') : '');
   setSetting('sepay_bot_last_result', JSON.stringify(report).slice(0, 5000));
   res.json({ success: true });
 });
@@ -1312,9 +1672,16 @@ app.post('/api/orders/:id/chat', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
+app.post('/api/orders/buy', requireAuth, purchaseLimiter, async (req, res) => {
   if (setting('purchase_enabled', 'true') !== 'true') {
-    res.status(403).json({ message: 'Website đang tắt mua hàng.' });
+    res.status(403).json({ message: 'Website Ä‘ang táº¯t mua hÃ ng.' });
+    return;
+  }
+  if (shouldRequireDiscordLink(req.user)) {
+    res.status(409).json({
+      code: 'DISCORD_LINK_REQUIRED',
+      message: 'Vui lÃ²ng liÃªn káº¿t Discord trÆ°á»›c khi hoÃ n táº¥t Ä‘Æ¡n.',
+    });
     return;
   }
   const { itemId, quantity } = req.body;
@@ -1324,15 +1691,15 @@ app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
     ? req.body.items
     : [{ itemId, quantity }];
   if (!robloxUsername || !requestedItems.length) {
-    res.status(400).json({ message: 'Vui lòng nhập Roblox Username và item cần mua.' });
+    res.status(400).json({ message: 'Vui lÃ²ng nháº­p Roblox Username vÃ  item cáº§n mua.' });
     return;
   }
   if (!/^[A-Za-z0-9_]{3,32}$/.test(robloxUsername)) {
-    res.status(400).json({ message: 'Roblox Username không hợp lệ.' });
+    res.status(400).json({ message: 'Roblox Username khÃ´ng há»£p lá»‡.' });
     return;
   }
   if (requestedItems.length > 20) {
-    res.status(400).json({ message: 'Giỏ hàng có quá nhiều loại item.' });
+    res.status(400).json({ message: 'Giá» hÃ ng cÃ³ quÃ¡ nhiá»u loáº¡i item.' });
     return;
   }
 
@@ -1343,20 +1710,20 @@ app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
         itemId: Number(entry.itemId),
         quantity: Number(entry.quantity),
       })).filter((entry) => Number.isInteger(entry.itemId) && Number.isInteger(entry.quantity) && entry.quantity > 0 && entry.quantity <= 999);
-      if (!normalizedItems.length) throw new Error('Giỏ hàng không hợp lệ.');
+      if (!normalizedItems.length) throw new Error('Giá» hÃ ng khÃ´ng há»£p lá»‡.');
       const merged = new Map();
       for (const entry of normalizedItems) merged.set(entry.itemId, (merged.get(entry.itemId) || 0) + entry.quantity);
       const orderItems = [];
       for (const [targetItemId, qty] of merged.entries()) {
         const item = db.prepare("SELECT * FROM items WHERE id = ? AND status = 'active'").get(targetItemId);
-        if (!item) throw new Error('Item không tồn tại.');
-        if (item.stock < qty) throw new Error(`${item.name} đã hết hàng hoặc không đủ số lượng.`);
+        if (!item) throw new Error('Item khÃ´ng tá»“n táº¡i.');
+        if (item.stock < qty) throw new Error(`${item.name} Ä‘Ã£ háº¿t hÃ ng hoáº·c khÃ´ng Ä‘á»§ sá»‘ lÆ°á»£ng.`);
         const price = item.sale_price || item.price;
         orderItems.push({ item, qty, price, total: price * qty });
       }
       const total = orderItems.reduce((sum, entry) => sum + entry.total, 0);
-      if (!Number.isSafeInteger(total) || total <= 0) throw new Error('Tổng đơn hàng không hợp lệ.');
-      if (user.balance < total) throw new Error('Số dư không đủ. Vui lòng nạp thêm tiền.');
+      if (!Number.isSafeInteger(total) || total <= 0) throw new Error('Tá»•ng Ä‘Æ¡n hÃ ng khÃ´ng há»£p lá»‡.');
+      if (user.balance < total) throw new Error('Sá»‘ dÆ° khÃ´ng Ä‘á»§. Vui lÃ²ng náº¡p thÃªm tiá»n.');
       const before = user.balance;
       const after = before - total;
       db.prepare('UPDATE users SET balance = ?, total_spent = total_spent + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
@@ -1369,14 +1736,14 @@ app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
       for (const entry of orderItems) {
         const stockUpdate = db.prepare('UPDATE items SET stock = stock - ?, sold_count = sold_count + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND stock >= ?')
           .run(entry.qty, entry.qty, entry.item.id, entry.qty);
-        if (stockUpdate.changes !== 1) throw new Error(`${entry.item.name} vừa hết hàng, vui lòng thử lại.`);
+        if (stockUpdate.changes !== 1) throw new Error(`${entry.item.name} vá»«a háº¿t hÃ ng, vui lÃ²ng thá»­ láº¡i.`);
         db.prepare(`
           INSERT INTO order_items (order_id, item_id, item_name, quantity, price, total_price)
           VALUES (?, ?, ?, ?, ?, ?)
         `).run(orderResult.lastInsertRowid, entry.item.id, entry.item.name, entry.qty, entry.price, entry.total);
       }
       db.prepare('INSERT INTO order_status_logs (order_id, old_status, new_status, note, created_by) VALUES (?, NULL, ?, ?, ?)')
-        .run(orderResult.lastInsertRowid, 'pending', 'Đơn hàng mới được tạo.', user.id);
+        .run(orderResult.lastInsertRowid, 'pending', 'ÄÆ¡n hÃ ng má»›i Ä‘Æ°á»£c táº¡o.', user.id);
       createBalanceLog({
         userId: user.id,
         type: 'purchase',
@@ -1385,7 +1752,7 @@ app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
         after,
         referenceId: orderResult.lastInsertRowid,
         referenceType: 'order',
-        note: `Mua ${orderItems.length} loại item`,
+        note: `Mua ${orderItems.length} loáº¡i item`,
       });
       const order = db.prepare('SELECT orders.*, users.username FROM orders JOIN users ON users.id = orders.user_id WHERE orders.id = ?').get(orderResult.lastInsertRowid);
       const savedItems = db.prepare(`
@@ -1395,9 +1762,25 @@ app.post('/api/orders/buy', requireAuth, purchaseLimiter, (req, res) => {
         WHERE order_items.order_id = ?
       `).all(orderResult.lastInsertRowid);
       createInitialOrderChat({ orderId: order.id, userId: user.id, message: createOrderChatSummary({ order, items: savedItems }) });
+      clearPublicCache();
       return db.prepare('SELECT * FROM orders WHERE id = ?').get(orderResult.lastInsertRowid);
     })();
-    res.json({ order: result });
+    const ticketResult = await createDiscordTicketForOrder({ order: result, user: req.user });
+    if (ticketResult.ok) {
+      db.prepare(`
+        UPDATE orders
+        SET discord_ticket_status = ?, discord_ticket_channel_id = ?, discord_ticket_url = ?, discord_ticket_error = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run('created', ticketResult.ticket.channelId, ticketResult.ticket.channelUrl, '', result.id);
+    } else {
+      db.prepare(`
+        UPDATE orders
+        SET discord_ticket_status = ?, discord_ticket_channel_id = NULL, discord_ticket_url = NULL, discord_ticket_error = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run('failed', ticketResult.error || 'Không tạo được ticket Discord.', result.id);
+    }
+    const orderWithTicket = db.prepare('SELECT * FROM orders WHERE id = ?').get(result.id);
+    res.json({ order: orderWithTicket, discord_ticket: ticketResult });
   } catch (error) {
     logSecurity({ eventType: 'purchase_failed', userId: req.user.id, severity: 'low', message: error.message, req });
     res.status(400).json({ message: error.message });
@@ -1445,12 +1828,12 @@ app.post('/api/reviews', requireAuth, (req, res) => {
   const { orderId, rating, content, image } = req.body;
   const score = Number(rating);
   if (!Number.isInteger(score) || score < 1 || score > 5 || !content) {
-    res.status(400).json({ message: 'Đánh giá cần số sao 1-5 và nội dung.' });
+    res.status(400).json({ message: 'ÄÃ¡nh giÃ¡ cáº§n sá»‘ sao 1-5 vÃ  ná»™i dung.' });
     return;
   }
   const order = db.prepare("SELECT * FROM orders WHERE id = ? AND user_id = ? AND status = 'completed'").get(orderId, req.user.id);
   if (!order) {
-    res.status(400).json({ message: 'Chỉ đánh giá được đơn đã hoàn thành.' });
+    res.status(400).json({ message: 'Chá»‰ Ä‘Ã¡nh giÃ¡ Ä‘Æ°á»£c Ä‘Æ¡n Ä‘Ã£ hoÃ n thÃ nh.' });
     return;
   }
   const orderItem = db.prepare('SELECT * FROM order_items WHERE order_id = ? LIMIT 1').get(order.id);
@@ -1459,9 +1842,9 @@ app.post('/api/reviews', requireAuth, (req, res) => {
       INSERT INTO reviews (user_id, item_id, order_id, rating, content, image, status)
       VALUES (?, ?, ?, ?, ?, ?, 'pending')
     `).run(req.user.id, orderItem.item_id, order.id, score, content, image || '');
-    res.json({ message: 'Đã gửi đánh giá, vui lòng chờ admin duyệt.' });
+    res.json({ message: 'ÄÃ£ gá»­i Ä‘Ã¡nh giÃ¡, vui lÃ²ng chá» admin duyá»‡t.' });
   } catch (_error) {
-    res.status(409).json({ message: 'Đơn này đã được đánh giá.' });
+    res.status(409).json({ message: 'ÄÆ¡n nÃ y Ä‘Ã£ Ä‘Æ°á»£c Ä‘Ã¡nh giÃ¡.' });
   }
 });
 
@@ -1480,17 +1863,17 @@ app.patch('/api/profile', requireAuth, (req, res) => {
 app.post('/api/profile/change-password', requireAuth, (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
   if (!bcrypt.compareSync(currentPassword || '', req.user.password_hash)) {
-    res.status(400).json({ message: 'Mật khẩu hiện tại không đúng.' });
+    res.status(400).json({ message: 'Máº­t kháº©u hiá»‡n táº¡i khÃ´ng Ä‘Ãºng.' });
     return;
   }
   if (!newPassword || newPassword !== confirmPassword || String(newPassword).length < 8) {
-    res.status(400).json({ message: 'Mật khẩu mới phải từ 8 ký tự và nhập lại khớp.' });
+    res.status(400).json({ message: 'Máº­t kháº©u má»›i pháº£i tá»« 8 kÃ½ tá»± vÃ  nháº­p láº¡i khá»›p.' });
     return;
   }
   db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
     .run(bcrypt.hashSync(newPassword, 12), req.user.id);
-  notifyUser(req.user.id, 'Đổi mật khẩu thành công', 'Mật khẩu tài khoản của bạn đã được cập nhật.', 'auth');
-  res.json({ message: 'Đổi mật khẩu thành công.' });
+  notifyUser(req.user.id, 'Äá»•i máº­t kháº©u thÃ nh cÃ´ng', 'Máº­t kháº©u tÃ i khoáº£n cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t.', 'auth');
+  res.json({ message: 'Äá»•i máº­t kháº©u thÃ nh cÃ´ng.' });
 });
 
 app.post('/api/uploads/chat-image', requireAuth, upload.single('image'), (req, res) => {
@@ -1542,17 +1925,18 @@ app.post('/api/admin/game-categories', requireAdmin, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(category.name, category.slug, category.icon, category.description, category.status, category.sort_order);
     logAdmin(req.user.id, 'create_game_category', 'game_category', result.lastInsertRowid, req);
+    clearPublicCache();
     res.json({ category: parseGameCategory(db.prepare('SELECT * FROM game_categories WHERE id = ?').get(result.lastInsertRowid)) });
   } catch (error) {
     const duplicate = String(error.message || '').includes('UNIQUE');
-    res.status(duplicate ? 409 : 400).json({ message: duplicate ? 'Slug game Ä‘Ã£ tá»“n táº¡i.' : error.message });
+    res.status(duplicate ? 409 : 400).json({ message: duplicate ? 'Slug game Ã„â€˜ÃƒÂ£ tÃ¡Â»â€œn tÃ¡ÂºÂ¡i.' : error.message });
   }
 });
 
 app.patch('/api/admin/game-categories/:id', requireAdmin, (req, res) => {
   const existing = db.prepare('SELECT * FROM game_categories WHERE id = ?').get(req.params.id);
   if (!existing) {
-    res.status(404).json({ message: 'KhÃ´ng tÃ¬m tháº¥y game category.' });
+    res.status(404).json({ message: 'KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y game category.' });
     return;
   }
   try {
@@ -1563,17 +1947,18 @@ app.patch('/api/admin/game-categories/:id', requireAdmin, (req, res) => {
       WHERE id = ?
     `).run(category.name, category.slug, category.icon, category.description, category.status, category.sort_order, existing.id);
     logAdmin(req.user.id, 'update_game_category', 'game_category', existing.id, req);
+    clearPublicCache();
     res.json({ category: parseGameCategory(db.prepare('SELECT * FROM game_categories WHERE id = ?').get(existing.id)) });
   } catch (error) {
     const duplicate = String(error.message || '').includes('UNIQUE');
-    res.status(duplicate ? 409 : 400).json({ message: duplicate ? 'Slug game Ä‘Ã£ tá»“n táº¡i.' : error.message });
+    res.status(duplicate ? 409 : 400).json({ message: duplicate ? 'Slug game Ã„â€˜ÃƒÂ£ tÃ¡Â»â€œn tÃ¡ÂºÂ¡i.' : error.message });
   }
 });
 
 app.delete('/api/admin/game-categories/:id', requireAdmin, (req, res) => {
   const existing = db.prepare('SELECT * FROM game_categories WHERE id = ?').get(req.params.id);
   if (!existing) {
-    res.status(404).json({ message: 'KhÃ´ng tÃ¬m tháº¥y game category.' });
+    res.status(404).json({ message: 'KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y game category.' });
     return;
   }
   const used = db.prepare('SELECT COUNT(*) as count FROM items WHERE game_category_id = ?').get(existing.id).count;
@@ -1583,6 +1968,7 @@ app.delete('/api/admin/game-categories/:id', requireAdmin, (req, res) => {
     db.prepare('DELETE FROM game_categories WHERE id = ?').run(existing.id);
   }
   logAdmin(req.user.id, 'delete_game_category', 'game_category', existing.id, req);
+  clearPublicCache();
   res.json({ ok: true, softDeleted: used > 0 });
 });
 
@@ -1632,6 +2018,7 @@ app.post('/api/admin/items', requireAdmin, (req, res) => {
     body.seo_description || body.short_description || '',
   );
   logAdmin(req.user.id, 'create_item', 'item', result.lastInsertRowid, req);
+  clearPublicCache();
   res.json({ item: parseItem(db.prepare(`${itemSelect()} WHERE items.id = ?`).get(result.lastInsertRowid)) });
 });
 
@@ -1677,6 +2064,7 @@ app.patch('/api/admin/items/:id', requireAdmin, (req, res) => {
     existing.id,
   );
   logAdmin(req.user.id, 'update_item', 'item', existing.id, req);
+  clearPublicCache();
   res.json({ item: parseItem(db.prepare(`${itemSelect()} WHERE items.id = ?`).get(existing.id)) });
 });
 
@@ -1688,6 +2076,7 @@ app.delete('/api/admin/items/:id', requireAdmin, (req, res) => {
     db.prepare('DELETE FROM items WHERE id = ?').run(req.params.id);
   }
   logAdmin(req.user.id, 'delete_item', 'item', Number(req.params.id), req);
+  clearPublicCache();
   res.json({ ok: true, softDeleted: used > 0 });
 });
 
@@ -1714,6 +2103,61 @@ app.get('/api/admin/orders', requireAdmin, (req, res) => {
   res.json({ orders });
 });
 
+app.get('/api/compat/admin/dashboard', requireAdmin, (_req, res) => {
+  const users = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  const orders = db.prepare('SELECT COUNT(*) as count FROM orders').get().count;
+  const revenue = db.prepare("SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status IN ('processing', 'completed')").get().total;
+  const pendingDeposits = db.prepare("SELECT COUNT(*) as count FROM deposits WHERE status = 'pending'").get().count;
+  const recentOrders = db.prepare(`
+    SELECT orders.id, orders.order_code, orders.total_amount, orders.status, orders.created_at, users.username
+    FROM orders
+    JOIN users ON users.id = orders.user_id
+    ORDER BY orders.created_at DESC
+    LIMIT 8
+  `).all();
+  const topProducts = db.prepare(`
+    SELECT items.id, items.name,
+      COALESCE(SUM(order_items.total_price), 0) AS revenue,
+      COALESCE(SUM(order_items.quantity), 0) AS quantity_sold
+    FROM order_items
+    JOIN orders ON orders.id = order_items.order_id
+    JOIN items ON items.id = order_items.item_id
+    WHERE orders.status IN ('processing', 'completed')
+    GROUP BY items.id, items.name
+    ORDER BY revenue DESC, quantity_sold DESC, items.name ASC
+    LIMIT 6
+  `).all();
+  const recentProofs = db.prepare(`
+    SELECT reviews.id, reviews.status, reviews.created_at, users.username, items.name AS item_name
+    FROM reviews
+    JOIN users ON users.id = reviews.user_id
+    JOIN items ON items.id = reviews.item_id
+    ORDER BY reviews.created_at DESC
+    LIMIT 6
+  `).all();
+  const settings = adminSettings();
+  res.json(buildCompatAdminDashboard({
+    users,
+    orders,
+    revenue,
+    pendingDeposits,
+    recentOrders,
+    topProducts,
+    proofStats: {
+      totalProofs: db.prepare('SELECT COUNT(*) AS count FROM reviews').get().count,
+      pendingProofs: db.prepare("SELECT COUNT(*) AS count FROM reviews WHERE status = 'pending'").get().count,
+      recentProofs,
+    },
+    moduleConfig: {
+      luckyWheelEnabled: settings.compat_lucky_wheel_enabled === 'true',
+      referralEnabled: settings.compat_referral_enabled === 'true',
+      proofsEnabled: settings.compat_proofs_enabled === 'true',
+      luckyWheelTitle: settings.compat_lucky_wheel_title || 'Lucky Wheel Event',
+      luckyWheelMessage: settings.compat_lucky_wheel_message || 'Link Discord after checkout to unlock spins and support perks.',
+    },
+  }));
+});
+
 app.delete('/api/admin/orders/:id', requireAdmin, (req, res) => {
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
   if (!order) {
@@ -1727,6 +2171,7 @@ app.delete('/api/admin/orders/:id', requireAdmin, (req, res) => {
     db.prepare('DELETE FROM order_items WHERE order_id = ?').run(order.id);
     db.prepare('DELETE FROM orders WHERE id = ?').run(order.id);
     logAdmin(req.user.id, 'delete_order', 'order', order.id, req);
+    clearPublicCache();
   })();
   res.json({ ok: true });
 });
@@ -1745,15 +2190,15 @@ app.get('/api/admin/orders/:id', requireAdmin, (req, res) => {
 app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
   const { status, admin_note, internal_note, refund_reason, assigned_to } = req.body;
   if (!Object.keys(orderStatusLabels).includes(status)) {
-    res.status(400).json({ message: 'Trạng thái đơn không hợp lệ.' });
+    res.status(400).json({ message: 'Tráº¡ng thÃ¡i Ä‘Æ¡n khÃ´ng há»£p lá»‡.' });
     return;
   }
   try {
     const updated = db.transaction(() => {
       const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
-      if (!order) throw new Error('Không tìm thấy đơn hàng.');
+      if (!order) throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng.');
       if (status === 'refunded') {
-        if (order.status === 'refunded') throw new Error('Đơn đã hoàn tiền trước đó.');
+        if (order.status === 'refunded') throw new Error('ÄÆ¡n Ä‘Ã£ hoÃ n tiá»n trÆ°á»›c Ä‘Ã³.');
         const user = db.prepare('SELECT * FROM users WHERE id = ?').get(order.user_id);
         const before = user.balance;
         const after = before + order.total_amount;
@@ -1766,10 +2211,10 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
           after,
           referenceId: order.id,
           referenceType: 'order',
-          note: refund_reason || 'Hoàn tiền đơn hàng',
+          note: refund_reason || 'HoÃ n tiá»n Ä‘Æ¡n hÃ ng',
           createdBy: req.user.id,
         });
-        notifyUser(user.id, 'Đơn được hoàn tiền', `Đơn ${order.order_code} đã được hoàn tiền.`, 'order');
+        notifyUser(user.id, 'ÄÆ¡n Ä‘Æ°á»£c hoÃ n tiá»n', `ÄÆ¡n ${order.order_code} Ä‘Ã£ Ä‘Æ°á»£c hoÃ n tiá»n.`, 'order');
       }
       const completedAt = status === 'completed' ? 'CURRENT_TIMESTAMP' : 'completed_at';
       db.prepare(`
@@ -1779,13 +2224,14 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
       `).run(status, admin_note || order.admin_note || '', internal_note || order.internal_note || '', refund_reason || order.refund_reason || '', assigned_to || order.assigned_to || null, order.id);
       db.prepare('INSERT INTO order_status_logs (order_id, old_status, new_status, note, created_by) VALUES (?, ?, ?, ?, ?)')
         .run(order.id, order.status, status, admin_note || orderStatusLabels[status], req.user.id);
-      if (status === 'processing') notifyUser(order.user_id, 'Đơn đang xử lý', `Đơn ${order.order_code} đang được shop xử lý.`, 'order');
+      if (status === 'processing') notifyUser(order.user_id, 'ÄÆ¡n Ä‘ang xá»­ lÃ½', `ÄÆ¡n ${order.order_code} Ä‘ang Ä‘Æ°á»£c shop xá»­ lÃ½.`, 'order');
       if (status === 'completed') {
         createCompletedOrderReview(order);
         notifyUser(order.user_id, '\u0110\u01a1n \u0111\u00e3 giao h\u00e0ng', `\u0110\u01a1n ${order.order_code} \u0111\u00e3 giao h\u00e0ng.`, 'order');
       }
-      if (status === 'cancelled') notifyUser(order.user_id, 'Đơn đã hủy', `Đơn ${order.order_code} đã bị hủy.`, 'order');
+      if (status === 'cancelled') notifyUser(order.user_id, 'ÄÆ¡n Ä‘Ã£ há»§y', `ÄÆ¡n ${order.order_code} Ä‘Ã£ bá»‹ há»§y.`, 'order');
       logAdmin(req.user.id, 'update_order_status', 'order', order.id, req);
+      clearPublicCache();
       return db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id);
     })();
     res.json({ order: updated });
@@ -1797,8 +2243,8 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
 app.get('/api/admin/users', requireAdmin, (req, res) => {
   const search = String(req.query.search || '');
   const users = search
-    ? db.prepare('SELECT id, username, email, balance, role, status, total_deposited, total_spent, created_at FROM users WHERE username LIKE ? OR email LIKE ? ORDER BY created_at DESC').all(`%${search}%`, `%${search}%`)
-    : db.prepare('SELECT id, username, email, balance, role, status, total_deposited, total_spent, created_at FROM users ORDER BY created_at DESC').all();
+    ? db.prepare('SELECT id, username, email, balance, role, status, discord_id, discord_username, discord_linked_at, total_deposited, total_spent, created_at FROM users WHERE username LIKE ? OR email LIKE ? ORDER BY created_at DESC').all(`%${search}%`, `%${search}%`)
+    : db.prepare('SELECT id, username, email, balance, role, status, discord_id, discord_username, discord_linked_at, total_deposited, total_spent, created_at FROM users ORDER BY created_at DESC').all();
   res.json({ users });
 });
 
@@ -1811,16 +2257,16 @@ app.patch('/api/admin/users/:id', requireAdmin, (req, res) => {
   const nextStatus = req.body.status || user.status;
   const nextRole = req.body.role || user.role;
   if (!['active', 'locked', 'banned'].includes(nextStatus) || !['user', 'admin', 'super_admin'].includes(nextRole)) {
-    res.status(400).json({ message: 'Trạng thái hoặc quyền không hợp lệ.' });
+    res.status(400).json({ message: 'Tráº¡ng thÃ¡i hoáº·c quyá»n khÃ´ng há»£p lá»‡.' });
     return;
   }
   if (req.body.role && req.user.role !== 'super_admin') {
     logSecurity({ eventType: 'role_update_denied', userId: req.user.id, severity: 'high', message: 'Non-super-admin attempted role change.', req, metadata: { targetUserId: user.id, nextRole } });
-    res.status(403).json({ message: 'Chỉ super admin được đổi quyền tài khoản.' });
+    res.status(403).json({ message: 'Chá»‰ super admin Ä‘Æ°á»£c Ä‘á»•i quyá»n tÃ i khoáº£n.' });
     return;
   }
   if (user.id === req.user.id && nextStatus !== 'active') {
-    res.status(400).json({ message: 'Không thể tự khóa tài khoản đang đăng nhập.' });
+    res.status(400).json({ message: 'KhÃ´ng thá»ƒ tá»± khÃ³a tÃ i khoáº£n Ä‘ang Ä‘Äƒng nháº­p.' });
     return;
   }
   db.prepare('UPDATE users SET status = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
@@ -1833,20 +2279,20 @@ app.post('/api/admin/users/:id/adjust-balance', requireAdmin, (req, res) => {
   const amount = Number(req.body.amount);
   const note = clampText(req.body.note, 300);
   if (!Number.isInteger(amount) || amount === 0 || !note) {
-    res.status(400).json({ message: 'Cần nhập số tiền cộng/trừ và lý do.' });
+    res.status(400).json({ message: 'Cáº§n nháº­p sá»‘ tiá»n cá»™ng/trá»« vÃ  lÃ½ do.' });
     return;
   }
   if (Math.abs(amount) > 100000000) {
-    res.status(400).json({ message: 'Số tiền điều chỉnh quá lớn.' });
+    res.status(400).json({ message: 'Sá»‘ tiá»n Ä‘iá»u chá»‰nh quÃ¡ lá»›n.' });
     return;
   }
   try {
     const user = db.transaction(() => {
       const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
-      if (!target) throw new Error('Không tìm thấy user.');
+      if (!target) throw new Error('KhÃ´ng tÃ¬m tháº¥y user.');
       const before = target.balance;
       const after = before + amount;
-      if (after < 0) throw new Error('Không thể trừ quá số dư hiện tại.');
+      if (after < 0) throw new Error('KhÃ´ng thá»ƒ trá»« quÃ¡ sá»‘ dÆ° hiá»‡n táº¡i.');
       db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(after, target.id);
       createBalanceLog({
         userId: target.id,
@@ -1858,10 +2304,11 @@ app.post('/api/admin/users/:id/adjust-balance', requireAdmin, (req, res) => {
         note,
         createdBy: req.user.id,
       });
-      notifyUser(target.id, amount > 0 ? 'Admin cộng tiền' : 'Admin trừ tiền', note, 'balance');
+      notifyUser(target.id, amount > 0 ? 'Admin cá»™ng tiá»n' : 'Admin trá»« tiá»n', note, 'balance');
       logAdmin(req.user.id, 'adjust_balance', 'user', target.id, req);
       return db.prepare('SELECT * FROM users WHERE id = ?').get(target.id);
     })();
+    sessionDelUser(user.id).catch(() => undefined);
     res.json({ user: sanitizeUser(user) });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -2031,8 +2478,8 @@ app.patch('/api/admin/deposits/:id', requireAdmin, (req, res) => {
   try {
     const deposit = db.transaction(() => {
       const current = db.prepare('SELECT * FROM deposits WHERE id = ?').get(req.params.id);
-      if (!current) throw new Error('Không tìm thấy giao dịch.');
-      if (current.status === 'success') throw new Error('Giao dịch đã được cộng tiền.');
+      if (!current) throw new Error('KhÃ´ng tÃ¬m tháº¥y giao dá»‹ch.');
+      if (current.status === 'success') throw new Error('Giao dá»‹ch Ä‘Ã£ Ä‘Æ°á»£c cá»™ng tiá»n.');
       if (status === 'success') {
         completeDeposit(current, { createdBy: req.user.id, transactionId: bank_transaction_id, adminNote: admin_note || current.admin_note || '' });
       } else {
@@ -2105,7 +2552,7 @@ app.patch('/api/admin/settings', requireAdmin, (req, res) => {
 
 app.use('/api', (error, req, res, _next) => {
   logSecurity({ eventType: 'api_error', userId: req.user?.id, severity: 'medium', message: error.message, req });
-  res.status(error.status || 500).json({ message: error.message || 'Có lỗi xảy ra, vui lòng thử lại.' });
+  res.status(error.status || 500).json({ message: error.message || 'CÃ³ lá»—i xáº£y ra, vui lÃ²ng thá»­ láº¡i.' });
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -2126,10 +2573,10 @@ async function startServer() {
     ensureEnvAdmin();
     app.listen(port, () => {
       console.log(`Sailor Piece API running at http://localhost:${port}`);
-      console.log('SePay bot chạy bằng worker/tool riêng, web chỉ nhận webhook và hiển thị report.');
+      console.log('SePay bot cháº¡y báº±ng worker/tool riÃªng, web chá»‰ nháº­n webhook vÃ  hiá»ƒn thá»‹ report.');
     });
   } catch (error) {
-    console.error('Không thể khởi động persistent store:', error);
+    console.error('KhÃ´ng thá»ƒ khá»Ÿi Ä‘á»™ng persistent store:', error);
     process.exit(1);
   }
 }

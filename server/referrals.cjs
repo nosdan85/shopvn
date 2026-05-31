@@ -34,9 +34,32 @@ function shouldRewardReferralOnCompletedOrder({ nextStatus, previousStatus, hasR
     && !rewardExistsForOrder
 }
 
+function mapReferralSummary({ user, referrer, rewards }) {
+  const rows = Array.isArray(rewards) ? rewards : []
+  return {
+    referralCode: user?.referral_code || '',
+    referredBy: referrer ? { id: referrer.id, username: referrer.username } : null,
+    stats: {
+      totalEarned: rows.filter((row) => row.status === 'paid').reduce((sum, row) => sum + Number(row.reward_amount || 0), 0),
+      totalRewards: rows.length,
+      pendingReversals: rows.filter((row) => row.status === 'reversal_pending').length,
+    },
+    rewards: rows.map((row) => ({
+      id: row.id,
+      rewardAmount: Number(row.reward_amount || 0),
+      rewardPercent: Number(row.reward_percent || 0),
+      status: row.status,
+      createdAt: row.created_at,
+      paidAt: row.paid_at || '',
+      sourceOrderId: row.source_order_id,
+    })),
+  }
+}
+
 module.exports = {
   buildReferralCode,
   canApplyReferralForUser,
   computeReferralRewardAmount,
+  mapReferralSummary,
   shouldRewardReferralOnCompletedOrder,
 }
