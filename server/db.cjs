@@ -36,6 +36,9 @@ const schemaSql = `
       locked_until TEXT,
       total_deposited INTEGER NOT NULL DEFAULT 0,
       total_spent INTEGER NOT NULL DEFAULT 0,
+      discord_id TEXT,
+      discord_username TEXT,
+      discord_linked_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -93,6 +96,10 @@ const schemaSql = `
       internal_note TEXT,
       refund_reason TEXT,
       assigned_to INTEGER,
+      discord_ticket_status TEXT NOT NULL DEFAULT 'not_created',
+      discord_ticket_channel_id TEXT,
+      discord_ticket_url TEXT,
+      discord_ticket_error TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -288,6 +295,62 @@ function migrate() {
     originalPrepare('ALTER TABLE items ADD COLUMN game_category_id INTEGER REFERENCES game_categories(id)').run();
   }
   originalPrepare('CREATE INDEX IF NOT EXISTS idx_items_game_category ON items(game_category_id)').run();
+  const userColumns = originalPrepare('PRAGMA table_info(users)').all().map((column) => column.name);
+  if (!userColumns.includes('discord_id')) {
+    originalPrepare('ALTER TABLE users ADD COLUMN discord_id TEXT').run();
+  }
+  if (!userColumns.includes('discord_username')) {
+    originalPrepare('ALTER TABLE users ADD COLUMN discord_username TEXT').run();
+  }
+  if (!userColumns.includes('discord_linked_at')) {
+    originalPrepare('ALTER TABLE users ADD COLUMN discord_linked_at TEXT').run();
+  }
+  if (!userColumns.includes('referral_code')) {
+    originalPrepare('ALTER TABLE users ADD COLUMN referral_code TEXT').run();
+  }
+  if (!userColumns.includes('referred_by_user_id')) {
+    originalPrepare('ALTER TABLE users ADD COLUMN referred_by_user_id INTEGER REFERENCES users(id)').run();
+  }
+  if (!userColumns.includes('referral_linked_at')) {
+    originalPrepare('ALTER TABLE users ADD COLUMN referral_linked_at TEXT').run();
+  }
+  const orderColumns = originalPrepare('PRAGMA table_info(orders)').all().map((column) => column.name);
+  if (!orderColumns.includes('discord_ticket_status')) {
+    originalPrepare("ALTER TABLE orders ADD COLUMN discord_ticket_status TEXT NOT NULL DEFAULT 'not_created'").run();
+  }
+  if (!orderColumns.includes('discord_ticket_channel_id')) {
+    originalPrepare('ALTER TABLE orders ADD COLUMN discord_ticket_channel_id TEXT').run();
+  }
+  if (!orderColumns.includes('discord_ticket_url')) {
+    originalPrepare('ALTER TABLE orders ADD COLUMN discord_ticket_url TEXT').run();
+  }
+  if (!orderColumns.includes('discord_ticket_error')) {
+    originalPrepare('ALTER TABLE orders ADD COLUMN discord_ticket_error TEXT').run();
+  }
+  originalPrepare(`
+    CREATE TABLE IF NOT EXISTS referral_rewards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      referrer_user_id INTEGER NOT NULL,
+      referred_user_id INTEGER NOT NULL,
+      source_order_id INTEGER NOT NULL UNIQUE,
+      reward_percent INTEGER NOT NULL,
+      reward_amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'paid',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      paid_at TEXT,
+      reversed_at TEXT,
+      reversal_note TEXT,
+      FOREIGN KEY (referrer_user_id) REFERENCES users(id),
+      FOREIGN KEY (referred_user_id) REFERENCES users(id),
+      FOREIGN KEY (source_order_id) REFERENCES orders(id)
+    )
+  `).run();
+  originalPrepare('CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)').run();
+  originalPrepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)').run();
+  originalPrepare('CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users(referred_by_user_id)').run();
+  originalPrepare('CREATE INDEX IF NOT EXISTS idx_orders_discord_ticket_status ON orders(discord_ticket_status)').run();
+  originalPrepare('CREATE INDEX IF NOT EXISTS idx_referral_rewards_referrer_user_id ON referral_rewards(referrer_user_id)').run();
+  originalPrepare('CREATE INDEX IF NOT EXISTS idx_referral_rewards_referred_user_id ON referral_rewards(referred_user_id)').run();
 }
 
 const persistentTables = [
@@ -307,6 +370,7 @@ const persistentTables = [
   'settings',
   'admin_logs',
   'security_events',
+  'referral_rewards',
 ];
 const originalPrepare = db.prepare.bind(db);
 const originalTransaction = db.transaction.bind(db);
