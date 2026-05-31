@@ -1,8 +1,8 @@
-import ShopApp from './ShopApp'
+import AppRouter from './app/AppRouter'
 import './shop.css'
 
 function App() {
-  return <ShopApp />
+  return <AppRouter />
 }
 
 export default App

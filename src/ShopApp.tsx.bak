@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, ClipboardEvent, FormEvent, SyntheticEvent } from 'react'
-import { ApiError, api, assetUrl, backendUrl, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
-import type { AdminChat, AdminOrderChat, BalanceLog, ChatMessage, Deposit, GameCategory, Item, Notification, Order, OrderItem, Review, Settings, User } from './types'
+import { api, assetUrl, dateTime, depositMethod, depositStatus, money, orderStatus, uploadImage } from './api'
+import type { AdminChat, AdminOrderChat, BalanceLog, ChatMessage, Deposit, GameCategory, Item, Notification, Order, Review, Settings, User } from './types'
 
 type Page =
   | 'home'
@@ -49,26 +49,7 @@ type CartItem = { item: Item; quantity: number | '' }
 type NoticeAction = 'deposit' | 'login' | 'cart' | 'home' | 'chat'
 type NoticeState = { message: string; action?: NoticeAction } | null
 type RecentOrder = { order_code: string; username: string; item_names?: string; created_at: string }
-type DiscordCheckoutPayload =
-  | {
-      kind: 'cart'
-      page: 'cart'
-      routeId: ''
-      robloxUsername: string
-      customerNote: string
-      items: Array<{ itemId: number; quantity: number }>
-    }
-  | {
-      kind: 'item'
-      page: 'item'
-      routeId: string
-      robloxUsername: string
-      customerNote: string
-      itemId: number
-      quantity: number
-    }
 const cartStorageKey = 'sailor_piece_cart'
-const discordCheckoutStorageKey = 'pending_discord_checkout'
 const shopName = 'Nos Roblox Shop'
 const shopLogo = '/favicon.png'
 
@@ -98,41 +79,11 @@ function maskUsername(username?: string) {
   return `${value.slice(0, 2)}**`
 }
 
-function saveDiscordCheckout(payload: DiscordCheckoutPayload) {
-  window.sessionStorage.setItem(discordCheckoutStorageKey, JSON.stringify(payload))
-}
-
-function loadDiscordCheckout() {
-  try {
-    const raw = window.sessionStorage.getItem(discordCheckoutStorageKey)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (!parsed || !parsed.kind || !parsed.page) return null
-    return parsed as DiscordCheckoutPayload
-  } catch {
-    return null
-  }
-}
-
-function clearDiscordCheckout() {
-  window.sessionStorage.removeItem(discordCheckoutStorageKey)
-}
-
-function isDiscordLinkError(error: unknown) {
-  return error instanceof ApiError && error.code === 'DISCORD_LINK_REQUIRED'
-}
-
-function discordLinkUrl() {
-  return backendUrl(`/discord/link?return_to=${encodeURIComponent('/?discord_linked=1')}`)
-}
-
 function CategoryIcon({ category, fallbackLogo = false }: { category?: Pick<GameCategory, 'icon' | 'name'> | null; fallbackLogo?: boolean }) {
   const icon = String(category?.icon || '').trim()
   const label = String(category?.name || 'Game')
-  const [failed, setFailed] = useState(false)
-  const src = assetUrl((!failed && icon) ? icon : (fallbackLogo ? shopLogo : ''))
-  if (src) {
-    return <img className="category-icon-img" src={src} alt={label} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+  if (icon || fallbackLogo) {
+    return <img className="category-icon-img" src={assetUrl(icon || shopLogo)} alt={label} />
   }
   return <span>{label.slice(0, 1).toUpperCase()}</span>
 }
@@ -154,12 +105,13 @@ function loadSavedCart() {
 
 function itemPayload(item: Record<string, unknown>) {
   return {
-    name: String(item.name || '').trim(),
+    ...item,
     price: Number(item.price || 0),
     game_category_id: item.game_category_id === '' || item.game_category_id === null || item.game_category_id === undefined ? null : Number(item.game_category_id),
-    image: String(item.image || '').trim(),
-    short_description: String(item.short_description || '').trim(),
-    description: String(item.description || '').trim(),
+    original_price: Number(item.original_price || 0),
+    sale_price: item.sale_price === '' || item.sale_price === null || item.sale_price === undefined ? null : Number(item.sale_price),
+    stock: Number(item.stock || 0),
+    sort_order: Number(item.sort_order || 0),
   }
 }
 
@@ -185,17 +137,14 @@ async function copyText(value: string, setNotice: (message: string) => void) {
   }
 }
 
-function BootScreen({ progress, label }: { progress: number; label: string }) {
-  const pct = Math.max(0, Math.min(100, Math.round(progress)))
+function BootScreen() {
   return (
     <div className="boot-screen" role="status" aria-live="polite">
       <div className="boot-card">
-        <div className="boot-track" aria-label={label}>
-          <span style={{ width: `${pct}%` }} />
-          <div className="boot-dog" style={{ left: `calc(${pct}% - 24px)` }} aria-hidden="true">🐕</div>
-        </div>
-        <strong>{label}</strong>
-        <p>Shop đang tải dữ liệu cho bạn.</p>
+        <div className="boot-dog">🐕</div>
+        <div className="boot-track"><span /></div>
+        <strong>Đang tải tài khoản...</strong>
+        <p>Shop đang kiểm tra phiên đăng nhập của bạn.</p>
       </div>
     </div>
   )
@@ -210,44 +159,20 @@ function LoadingButton({ loading, children, className = '', disabled = false, ty
   )
 }
 
-function DiscordLinkModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  if (!open) return null
-  return (
-    <div className="toast-backdrop" role="dialog" aria-modal="true" aria-label="Liên kết Discord">
-      <div className="toast discord-link-modal" style={{ width: 'min(92vw, 520px)' }}>
-        <h3>Liên kết Discord</h3>
-        <p>Đơn hàng sẽ được hoàn tất sau khi bạn liên kết Discord.</p>
-        <div className="discord-link-actions">
-          <button className="primary" type="button" onClick={() => { window.location.href = discordLinkUrl() }}>Liên kết ngay</button>
-          <button className="ghost" type="button" onClick={onClose}>Đóng</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function initialPage(): Page {
   const params = new URLSearchParams(window.location.search)
   return window.location.pathname.includes('reset-password') || params.has('token') ? 'reset' : 'home'
 }
 
-type ShopAppProps = {
-  initialPageOverride?: Page
-}
-
-function ShopApp({ initialPageOverride }: ShopAppProps = {}) {
-  const [page, setPage] = useState<Page>(() => initialPageOverride || initialPage())
+function ShopApp() {
+  const [page, setPage] = useState<Page>(initialPage)
   const [routeId, setRouteId] = useState<string>('')
   const [user, setUser] = useState<User | null>(null)
   const [booting, setBooting] = useState(true)
-  const [bootProgress] = useState(0)
-  const [bootLabel, setBootLabel] = useState('Đang tải...')
   const [settings, setSettings] = useState<Settings>({})
   const [noticeState, setNoticeState] = useState<NoticeState>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>(loadSavedCart)
-  const [discordCheckoutResumeToken, setDiscordCheckoutResumeToken] = useState(0)
-  void setBootLabel
   const lastNotificationId = useRef<number | null>(null)
   const lastChatNotificationId = useRef<number | null>(null)
   const lastAdminUnread = useRef<number | null>(null)
@@ -265,30 +190,6 @@ function ShopApp({ initialPageOverride }: ShopAppProps = {}) {
             : undefined
     setNoticeState({ message, action })
   }, [])
-
-  useEffect(() => {
-    if (booting) return
-    const params = new URLSearchParams(window.location.search)
-    const linked = params.get('discord_linked')
-    const message = params.get('discord_message')
-    if (linked) {
-      const pending = loadDiscordCheckout()
-      if (linked === '1' && pending) {
-        setPage(pending.page)
-        setRouteId(pending.routeId)
-        setDiscordCheckoutResumeToken(Date.now())
-        showNotice('Da lien ket Discord, dang tiep tuc don hang.')
-      } else if (message) {
-        showNotice(message)
-      } else if (linked === '1') {
-        showNotice('Da lien ket Discord thanh cong.')
-      }
-      params.delete('discord_linked')
-      params.delete('discord_message')
-      const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`
-      window.history.replaceState({}, '', next)
-    }
-  }, [booting, showNotice])
 
   useEffect(() => {
     let active = true
@@ -422,7 +323,7 @@ function ShopApp({ initialPageOverride }: ShopAppProps = {}) {
     ? [...navItems, { page: 'profile' as Page, label: 'Tài khoản', icon: '👤', show: true }]
     : [...navItems, { page: 'login' as Page, label: 'Đăng nhập', icon: '↪', show: true }, { page: 'register' as Page, label: 'Đăng ký', icon: '+', show: true }]
 
-  if (booting) return <BootScreen progress={bootProgress} label={bootLabel} />
+  if (booting) return <BootScreen />
 
   return (
     <div className="app-shell">
@@ -470,14 +371,14 @@ function ShopApp({ initialPageOverride }: ShopAppProps = {}) {
       <main>
         {page === 'home' && <Home {...context} />}
         {page === 'items' && <ItemsPage {...context} />}
-        {page === 'item' && <ItemDetail {...context} slug={routeId} resumeToken={discordCheckoutResumeToken} />}
+        {page === 'item' && <ItemDetail {...context} slug={routeId} />}
         {page === 'login' && <Login {...context} />}
         {page === 'register' && <Register {...context} />}
         {page === 'forgot' && <ForgotPassword setNotice={showNotice} />}
         {page === 'reset' && <ResetPassword setNotice={showNotice} />}
         {page === 'deposit' && <DepositPage {...context} />}
         {page === 'deposits' && <DepositsPage />}
-        {page === 'cart' && <CartPage user={user} cart={cart} setCart={setCart} go={go} setUser={setUser} setNotice={showNotice} resumeToken={discordCheckoutResumeToken} />}
+        {page === 'cart' && <CartPage user={user} cart={cart} setCart={setCart} go={go} setUser={setUser} setNotice={showNotice} />}
         {page === 'orders' && <ChatPage user={user} go={go} setNotice={showNotice} locationId={routeId} />}
         {page === 'order' && <ChatPage user={user} go={go} setNotice={showNotice} locationId={routeId} />}
         {page === 'profile' && <Profile {...context} />}
@@ -722,7 +623,6 @@ function ItemsPage({ go }: { go: (page: Page, id?: string) => void }) {
 
 function ItemDetail({
   slug,
-  resumeToken = 0,
   user,
   go,
   setUser,
@@ -730,7 +630,6 @@ function ItemDetail({
   addToCart,
 }: {
   slug: string
-  resumeToken?: number
   user: User | null
   go: (page: Page, id?: string) => void
   setUser: (user: User | null) => void
@@ -740,8 +639,6 @@ function ItemDetail({
   const [item, setItem] = useState<Item | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
   const [form, setForm] = useState<{ quantity: number | ''; robloxUsername: string; customerNote: string }>({ quantity: 1, robloxUsername: '', customerNote: '' })
-  const [discordLinkOpen, setDiscordLinkOpen] = useState(false)
-  const lastResumeToken = useRef(0)
 
   useEffect(() => {
     api<{ item: Item; reviews: Review[] }>(`/items/${slug}`).then((data) => {
@@ -750,204 +647,129 @@ function ItemDetail({
     })
   }, [slug])
 
-  async function submitPurchase(event?: FormEvent, override?: { quantity: number; robloxUsername: string; customerNote: string }) {
-    if (event) event.preventDefault()
+  async function buy(event: FormEvent) {
+    event.preventDefault()
     if (!user) {
-      setNotice('Vui l?ng ??ng nh?p tr??c khi mua.')
+      setNotice('Vui lòng đăng nhập trước khi mua.')
       go('login')
       return
     }
     if (!item) return
-    const purchase = override || {
-      quantity: safeQuantity(form.quantity),
-      robloxUsername: form.robloxUsername,
-      customerNote: form.customerNote,
-    }
     try {
       const data = await api<{ order: Order }>('/orders/buy', {
         method: 'POST',
-        body: JSON.stringify({ itemId: item.id, ...purchase }),
+        body: JSON.stringify({ itemId: item.id, ...form, quantity: safeQuantity(form.quantity) }),
       })
-      clearDiscordCheckout()
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
-      setDiscordLinkOpen(false)
-      go('order', String(data.order.id))
+      go('chat', String(data.order.id))
     } catch (error) {
-      if (isDiscordLinkError(error)) {
-        saveDiscordCheckout({
-          kind: 'item',
-          page: 'item',
-          routeId: slug,
-          itemId: item.id,
-          quantity: purchase.quantity,
-          robloxUsername: purchase.robloxUsername,
-          customerNote: purchase.customerNote,
-        })
-        setDiscordLinkOpen(true)
-        return
-      }
       setNotice(messageFromError(error))
     }
   }
 
-  useEffect(() => {
-    if (!resumeToken || lastResumeToken.current === resumeToken || !item || !user) return
-    const pending = loadDiscordCheckout()
-    if (!pending || pending.kind !== 'item' || pending.routeId !== slug) return
-    lastResumeToken.current = resumeToken
-    setForm({
-      quantity: pending.quantity,
-      robloxUsername: pending.robloxUsername,
-      customerNote: pending.customerNote,
-    })
-    void submitPurchase(undefined, {
-      quantity: pending.quantity,
-      robloxUsername: pending.robloxUsername,
-      customerNote: pending.customerNote,
-    })
-  }, [item, resumeToken, slug, user])
-
-  if (!item) return <section className="page-section">?ang t?i item...</section>
+  if (!item) return <section className="page-section">Đang tải item...</section>
 
   return (
-    <>
-      <DiscordLinkModal open={discordLinkOpen} onClose={() => setDiscordLinkOpen(false)} />
-      <section className="page-section detail-layout">
-        <div className="gallery">
-          <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />
-          <div className="thumbs">{item.gallery.map((image) => <img key={image} src={assetUrl(image) || placeholderImage} alt={item.name + ' gallery'} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
+    <section className="page-section detail-layout">
+      <div className="gallery">
+        <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />
+        <div className="thumbs">{item.gallery.map((image) => <img key={image} src={assetUrl(image) || placeholderImage} alt={`${item.name} gallery`} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />)}</div>
+      </div>
+      <div className="detail-card">
+        <button className="ghost" onClick={() => go('items')}>Quay lại danh sách item</button>
+        <h1>{item.name}</h1>
+        <p>{item.description}</p>
+        <div className="price-row big">
+          <strong>{money(item.current_price)}</strong>
         </div>
-        <div className="detail-card">
-          <button className="ghost" onClick={() => go('items')}>Quay l?i danh s?ch item</button>
-          <h1>{item.name}</h1>
-          <p>{item.description}</p>
-          <div className="price-row big">
-            <strong>{money(item.current_price)}</strong>
-          </div>
-          <div className="info-box">
-            <h3>H??ng d?n nh?n item</h3>
-            <p>Nh?p ??ng Roblox Username, gi? online ho?c theo d?i th?ng b?o ?? admin li?n h? giao item.</p>
-            <h3>L?u ? tr??c khi mua</h3>
-            <p>Shop ch? b?n item Sailor Piece, kh?ng h?i m?t kh?u Roblox v? kh?ng b?n nick/account.</p>
-          </div>
-          <form className="form-card" onSubmit={submitPurchase}>
-            <h2>Form mua h?ng</h2>
-            <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
-            <label>S? l??ng mua<input required min={1} max={item.stock} type="number" placeholder="Nh?p s? l??ng" value={numberInputValue(form.quantity)} onChange={(event) => setForm({ ...form, quantity: numberInputNext(event.target.value) })} /></label>
-            <textarea placeholder="Ghi ch? cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
-            <button type="button" onClick={() => addToCart(item, safeQuantity(form.quantity))}>Th?m v?o gi? h?ng</button>
-            <button className="primary large" disabled={item.stock < 1}>Mua ngay b?ng s? d?</button>
-          </form>
-          <div className="review-list">
-            <h2>??nh gi? ?? duy?t</h2>
-            {reviews.map((review) => <article className="review-card" key={review.id}><strong>{'?'.repeat(review.rating)}</strong><p>{review.content}</p><small>{review.username}</small></article>)}
-          </div>
+        <div className="info-box">
+          <h3>Hướng dẫn nhận item</h3>
+          <p>Nhập đúng Roblox Username, giữ online hoặc theo dõi thông báo để admin liên hệ giao item.</p>
+          <h3>Lưu ý trước khi mua</h3>
+          <p>Shop chỉ bán item Sailor Piece, không hỏi mật khẩu Roblox và không bán nick/account.</p>
         </div>
-      </section>
-    </>
+        <form className="form-card" onSubmit={buy}>
+          <h2>Form mua hàng</h2>
+          <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
+          <label>Số lượng mua<input required min={1} max={item.stock} type="number" placeholder="Nhập số lượng" value={numberInputValue(form.quantity)} onChange={(event) => setForm({ ...form, quantity: numberInputNext(event.target.value) })} /></label>
+          <textarea placeholder="Ghi chú cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
+          <button type="button" onClick={() => addToCart(item, safeQuantity(form.quantity))}>Thêm vào giỏ hàng</button>
+          <button className="primary large" disabled={item.stock < 1}>Mua ngay bằng số dư</button>
+        </form>
+        <div className="review-list">
+          <h2>Đánh giá đã duyệt</h2>
+          {reviews.map((review) => <article className="review-card" key={review.id}><strong>{'★'.repeat(review.rating)}</strong><p>{review.content}</p><small>{review.username}</small></article>)}
+        </div>
+      </div>
+    </section>
   )
 }
 
-function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0 }: { user: User | null; cart: CartItem[]; setCart: (cart: CartItem[]) => void; go: (page: Page, id?: string) => void; setUser: (user: User | null) => void; setNotice: (message: string) => void; resumeToken?: number }) {
+function CartPage({ user, cart, setCart, go, setUser, setNotice }: { user: User | null; cart: CartItem[]; setCart: (cart: CartItem[]) => void; go: (page: Page, id?: string) => void; setUser: (user: User | null) => void; setNotice: (message: string) => void }) {
   const [form, setForm] = useState({ robloxUsername: '', customerNote: '' })
   const [submitting, setSubmitting] = useState(false)
-  const [discordLinkOpen, setDiscordLinkOpen] = useState(false)
-  const lastResumeToken = useRef(0)
   const total = cart.reduce((sum, entry) => sum + entry.item.current_price * safeQuantity(entry.quantity), 0)
   function updateQuantity(itemId: number, quantity: number | '') {
     setCart(cart.map((entry) => entry.item.id === itemId ? { ...entry, quantity: quantity === '' ? '' : Math.max(1, Math.min(entry.item.stock, quantity)) } : entry))
   }
-  async function submitCheckout(event?: FormEvent, override?: { robloxUsername: string; customerNote: string; items: Array<{ itemId: number; quantity: number }> }) {
-    if (event) event.preventDefault()
+  async function checkout(event: FormEvent) {
+    event.preventDefault()
     if (!user) {
-      setNotice('Vui l?ng ??ng nh?p tr??c khi mua.')
+      setNotice('Vui lòng đăng nhập trước khi mua.')
       go('login')
       return
     }
-    if (!cart.length && !override?.items?.length) {
-      setNotice('Gi? h?ng ?ang tr?ng.')
+    if (!cart.length) {
+      setNotice('Giỏ hàng đang trống.')
       return
-    }
-    const purchase = override || {
-      robloxUsername: form.robloxUsername,
-      customerNote: form.customerNote,
-      items: cart.map((entry) => ({ itemId: entry.item.id, quantity: safeQuantity(entry.quantity) })),
     }
     setSubmitting(true)
     try {
       const data = await api<{ order: Order }>('/orders/buy', {
         method: 'POST',
-        body: JSON.stringify(purchase),
+        body: JSON.stringify({
+          robloxUsername: form.robloxUsername,
+          customerNote: form.customerNote,
+          items: cart.map((entry) => ({ itemId: entry.item.id, quantity: safeQuantity(entry.quantity) })),
+        }),
       })
-      clearDiscordCheckout()
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
       setCart([])
-      setDiscordLinkOpen(false)
-      go('order', String(data.order.id))
+      go('chat', String(data.order.id))
     } catch (error) {
-      if (isDiscordLinkError(error)) {
-        saveDiscordCheckout({
-          kind: 'cart',
-          page: 'cart',
-          routeId: '',
-          robloxUsername: purchase.robloxUsername,
-          customerNote: purchase.customerNote,
-          items: purchase.items,
-        })
-        setDiscordLinkOpen(true)
-        return
-      }
       setNotice(messageFromError(error))
     } finally {
       setSubmitting(false)
     }
   }
-  useEffect(() => {
-    if (!resumeToken || lastResumeToken.current === resumeToken) return
-    const pending = loadDiscordCheckout()
-    if (!pending || pending.kind !== 'cart') return
-    lastResumeToken.current = resumeToken
-    setForm({
-      robloxUsername: pending.robloxUsername,
-      customerNote: pending.customerNote,
-    })
-    void submitCheckout(undefined, {
-      robloxUsername: pending.robloxUsername,
-      customerNote: pending.customerNote,
-      items: pending.items,
-    })
-  }, [resumeToken])
   return (
-    <>
-      <DiscordLinkModal open={discordLinkOpen} onClose={() => setDiscordLinkOpen(false)} />
-      <section className="page-section two-col">
-        <div className="panel">
-          <h1>Gi? h?ng</h1>
-          {!cart.length && <p className="muted">Gi? h?ng ?ang tr?ng.</p>}
-          {cart.map((entry) => (
-            <div className="cart-row" key={entry.item.id}>
-              <img src={assetUrl(entry.item.image) || placeholderImage} alt={entry.item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
-              <div>
-                <strong>{entry.item.name}</strong>
-                <p>{money(entry.item.current_price)}</p>
-                <input min={1} max={entry.item.stock} type="number" value={numberInputValue(entry.quantity)} onChange={(event) => updateQuantity(entry.item.id, numberInputNext(event.target.value))} />
-              </div>
-              <button onClick={() => setCart(cart.filter((item) => item.item.id !== entry.item.id))}>X?a</button>
+    <section className="page-section two-col">
+      <div className="panel">
+        <h1>Giỏ hàng</h1>
+        {!cart.length && <p className="muted">Giỏ hàng đang trống.</p>}
+        {cart.map((entry) => (
+          <div className="cart-row" key={entry.item.id}>
+            <img src={assetUrl(entry.item.image) || placeholderImage} alt={entry.item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.src = placeholderImage }} />
+            <div>
+              <strong>{entry.item.name}</strong>
+              <p>{money(entry.item.current_price)}</p>
+              <input min={1} max={entry.item.stock} type="number" value={numberInputValue(entry.quantity)} onChange={(event) => updateQuantity(entry.item.id, numberInputNext(event.target.value))} />
             </div>
-          ))}
-          <h2>T?ng: {money(total)}</h2>
-        </div>
-        <form className="panel" onSubmit={submitCheckout}>
-          <h2>Thanh to?n gi? h?ng</h2>
-          <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
-          <textarea placeholder="Ghi ch? cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
-          <LoadingButton className="primary large" loading={submitting} disabled={!cart.length}>Mua t?t c? b?ng s? d?</LoadingButton>
-          <button type="button" onClick={() => go('items')}>Ti?p t?c ch?n item</button>
-        </form>
-      </section>
-    </>
+            <button onClick={() => setCart(cart.filter((item) => item.item.id !== entry.item.id))}>Xóa</button>
+          </div>
+        ))}
+        <h2>Tổng: {money(total)}</h2>
+      </div>
+      <form className="panel" onSubmit={checkout}>
+        <h2>Thanh toán giỏ hàng</h2>
+        <input required placeholder="Roblox Username" value={form.robloxUsername} onChange={(event) => setForm({ ...form, robloxUsername: event.target.value })} />
+        <textarea placeholder="Ghi chú cho shop" value={form.customerNote} onChange={(event) => setForm({ ...form, customerNote: event.target.value })} />
+        <LoadingButton className="primary large" loading={submitting} disabled={!cart.length}>Mua tất cả bằng số dư</LoadingButton>
+        <button type="button" onClick={() => go('items')}>Tiếp tục chọn item</button>
+      </form>
+    </section>
   )
 }
 
@@ -1302,20 +1124,6 @@ function Profile({ user, go, setNotice }: { user: User | null; go: (page: Page, 
         <Stat label="Ngày tạo" value={dateTime(summary.user.created_at)} />
       </div>
       <section className="profile-actions">
-        <div className="panel">
-          <h2>Discord</h2>
-          {summary.user.discord_id ? (
-            <>
-              <p>Đã liên kết với <strong>{summary.user.discord_username || summary.user.discord_id}</strong>.</p>
-              <p className="muted">Liên kết lúc {dateTime(summary.user.discord_linked_at)}</p>
-            </>
-          ) : (
-            <>
-              <p>Liên kết Discord để checkout tạo ticket tự động.</p>
-              <button className="primary" type="button" onClick={() => { window.location.href = discordLinkUrl() }}>Liên kết Discord</button>
-            </>
-          )}
-        </div>
         <form className="panel" onSubmit={changePassword}>
           <h2>Đổi mật khẩu</h2>
           <input type="password" placeholder="Mật khẩu hiện tại" value={password.currentPassword} onChange={(event) => setPassword({ ...password, currentPassword: event.target.value })} />
@@ -1372,17 +1180,11 @@ function ChatPage({ user, go, setNotice, locationId = '' }: { user: User | null;
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [message, setMessage] = useState('')
   const [imageUrl, setImageUrl] = useState('')
-  const [orderDetail, setOrderDetail] = useState<{ order: Order; items: OrderItem[]; logs: Array<{ old_status?: string | null; new_status: string; note?: string | null; created_at: string }>; messages: ChatMessage[] } | null>(null)
-  const load = () => {
-    if (locationId) {
-      return api<{ order: Order; items: OrderItem[]; logs: Array<{ old_status?: string | null; new_status: string; note?: string | null; created_at: string }>; messages: ChatMessage[] }>('/orders/' + locationId).then((data) => setOrderDetail(data))
-    }
-    return api<{ messages: ChatMessage[] }>('/chat').then((data) => setMessages(data.messages))
-  }
+  const load = () => api<{ messages: ChatMessage[] }>('/chat').then((data) => setMessages(data.messages))
   useEffect(() => {
     if (!user) return
     load()
-    if (locationId) window.setTimeout(() => document.querySelector('.order-header')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
+    if (locationId) window.setTimeout(() => document.querySelector('.chat-box')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
     const timer = window.setInterval(load, 5000)
     return () => window.clearInterval(timer)
   }, [locationId, user])
@@ -1403,11 +1205,7 @@ function ChatPage({ user, go, setNotice, locationId = '' }: { user: User | null;
       return
     }
     try {
-      if (locationId) {
-        await api('/orders/' + locationId + '/chat', { method: 'POST', body: JSON.stringify({ message, image_url: imageUrl }) })
-      } else {
-        await api('/chat', { method: 'POST', body: JSON.stringify({ message, image_url: imageUrl }) })
-      }
+      await api('/chat', { method: 'POST', body: JSON.stringify({ message, image_url: imageUrl }) })
       setMessage('')
       setImageUrl('')
       load()
@@ -1415,31 +1213,21 @@ function ChatPage({ user, go, setNotice, locationId = '' }: { user: User | null;
       setNotice(messageFromError(error))
     }
   }
-  if (!user) return <section className="page-section"><h1>Vui l?ng ??ng nh?p ?? chat v?i admin.</h1><button className="primary" onClick={() => go('login')}>??ng nh?p</button></section>
-  const visibleMessages = locationId ? orderDetail?.messages || [] : messages
+  if (!user) return <section className="page-section"><h1>Vui lòng đăng nhập để chat với admin.</h1><button className="primary" onClick={() => go('login')}>Đăng nhập</button></section>
   return (
     <section className="page-section">
       <div className="panel chat-panel">
-        {locationId && orderDetail && (
-          <div className="order-header">
-            <h1>??n {orderDetail.order.order_code}</h1>
-            <p>Tr?ng th?i: <strong>{orderStatus[orderDetail.order.status] || orderDetail.order.status}</strong></p>
-            <p>Ticket Discord: <strong>{orderDetail.order.discord_ticket_status || 'not_created'}</strong></p>
-            {orderDetail.order.discord_ticket_url && <p><a href={orderDetail.order.discord_ticket_url} target="_blank" rel="noreferrer">M? ticket Discord</a></p>}
-            {Array.isArray(orderDetail.items) && orderDetail.items.length > 0 && <div className="order-summary-list">{orderDetail.items.map((entry) => <div key={entry.id}><strong>{entry.item_name}</strong><span>x{entry.quantity}</span></div>)}</div>}
-          </div>
-        )}
-        <h1>{locationId ? 'Ticket nh?n h?ng' : 'Chat'}</h1>
+        <h1>Chat</h1>
         <div className="chat-box">
-          {visibleMessages.length === 0 && <p className="muted">Ch?a c? tin nh?n n?o.</p>}
-          {visibleMessages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_id === user.id} />)}
+          {messages.length === 0 && <p className="muted">Chưa có tin nhắn nào.</p>}
+          {messages.map((item) => <ChatBubble key={item.id} item={item} mine={item.sender_id === user.id} />)}
         </div>
         <form className="chat-form" onSubmit={submit}>
-          <input placeholder="Nh?p tin nh?n c?n h? tr?" value={message} onChange={(event) => setMessage(event.target.value)} />
-          <label className="upload-button">?nh<input type="file" accept="image/*" onChange={uploadChatImage} /></label>
-          <button className="primary" disabled={!message && !imageUrl}>G?i</button>
+          <input placeholder="Nhập tin nhắn cần hỗ trợ" value={message} onChange={(event) => setMessage(event.target.value)} />
+          <label className="upload-button">Ảnh<input type="file" accept="image/*" onChange={uploadChatImage} /></label>
+          <button className="primary" disabled={!message && !imageUrl}>Gửi</button>
         </form>
-        {imageUrl && <img className="chat-image-preview" src={assetUrl(imageUrl)} alt="?nh chu?n b? g?i" />}
+        {imageUrl && <img className="chat-image-preview" src={assetUrl(imageUrl)} alt="Ảnh chuẩn bị gửi" />}
       </div>
     </section>
   )

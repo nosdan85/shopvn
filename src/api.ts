@@ -2,9 +2,30 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
 const publicCache = new Map<string, { expiresAt: number; data: unknown }>()
 const publicCacheMs = 30_000
 
+export class ApiError extends Error {
+  status: number
+  code?: string
+  data?: unknown
+
+  constructor(message: string, status: number, code?: string, data?: unknown) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+    this.data = data
+  }
+}
+
 function canCache(path: string, options: RequestInit) {
   const method = String(options.method || 'GET').toUpperCase()
-  return method === 'GET' && (path === '/home' || path === '/settings/public' || path === '/game-categories' || path.startsWith('/items'))
+  return method === 'GET' && (
+    path === '/home' ||
+    path === '/settings/public' ||
+    path === '/game-categories' ||
+    path === '/compat/storefront' ||
+    path.startsWith('/compat/proofs') ||
+    path.startsWith('/items')
+  )
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -25,7 +46,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const data = contentType?.includes('application/json') ? await response.json() : null
 
   if (!response.ok) {
-    throw new Error(data?.message || 'Có lỗi xảy ra, vui lòng thử lại.')
+    throw new ApiError(data?.message || 'Co loi xay ra, vui long thu lai.', response.status, data?.code, data)
   }
 
   if (canCache(path, options)) {
@@ -45,9 +66,13 @@ export async function uploadImage(file: File, path = '/uploads/image'): Promise<
   })
   const data = await response.json()
   if (!response.ok) {
-    throw new Error(data?.message || 'Upload ảnh thất bại.')
+    throw new Error(data?.message || 'Upload anh that bai.')
   }
   return data
+}
+
+export function backendUrl(path: string) {
+  return `${apiBaseUrl}/api${path}`
 }
 
 export function assetUrl(url?: string) {
@@ -75,23 +100,23 @@ export function dateTime(value?: string) {
 }
 
 export const orderStatus: Record<string, string> = {
-  pending: 'Chờ xử lý',
-  processing: 'Đang xử lý',
-  completed: 'Đã giao hàng',
-  cancelled: 'Đã hủy',
-  refunded: 'Đã hoàn tiền',
+  pending: 'Cho xu ly',
+  processing: 'Dang xu ly',
+  completed: 'Da giao hang',
+  cancelled: 'Da huy',
+  refunded: 'Da hoan tien',
 }
 
 export const depositStatus: Record<string, string> = {
-  pending: 'Chờ thanh toán',
-  success: 'Thành công',
-  failed: 'Thất bại',
-  cancelled: 'Đã hủy',
+  pending: 'Cho thanh toan',
+  success: 'Thanh cong',
+  failed: 'That bai',
+  cancelled: 'Da huy',
 }
 
 export const depositMethod: Record<string, string> = {
-  bank_transfer: 'Chuyển khoản ngân hàng',
-  viettel_card: 'Thẻ cào Viettel',
-  mobifone_card: 'Thẻ cào Mobifone',
-  vinaphone_card: 'Thẻ cào Vinaphone',
+  bank_transfer: 'Chuyen khoan ngan hang',
+  viettel_card: 'The cao Viettel',
+  mobifone_card: 'The cao Mobifone',
+  vinaphone_card: 'The cao Vinaphone',
 }
