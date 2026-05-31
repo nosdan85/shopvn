@@ -1,5 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const { buildCompatAdminDashboard } = require('../server/compat/admin.cjs')
 const {
   buildReferralCode,
   computeReferralRewardAmount,
@@ -77,4 +78,17 @@ test('shouldReverseReferralReward only reverses a paid reward on refunded status
     previousStatus: 'completed',
     rewardStatus: 'paid',
   }), false)
+})
+
+test('compat admin dashboard can expose referral stats', () => {
+  const dashboard = buildCompatAdminDashboard({
+    users: 1,
+    orders: 1,
+    revenue: 1000,
+    pendingDeposits: 0,
+    recentOrders: [],
+    referralStats: { totalRewards: 3, totalPaid: 150000, pendingReversals: 1 },
+  })
+
+  assert.equal(dashboard.referralStats.totalPaid, 150000)
 })

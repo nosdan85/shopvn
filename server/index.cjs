@@ -2136,6 +2136,7 @@ app.get('/api/compat/admin/dashboard', requireAdmin, (_req, res) => {
     ORDER BY reviews.created_at DESC
     LIMIT 6
   `).all();
+  const referralRows = db.prepare('SELECT * FROM referral_rewards ORDER BY created_at DESC').all();
   const settings = adminSettings();
   res.json(buildCompatAdminDashboard({
     users,
@@ -2155,6 +2156,13 @@ app.get('/api/compat/admin/dashboard', requireAdmin, (_req, res) => {
       proofsEnabled: settings.compat_proofs_enabled === 'true',
       luckyWheelTitle: settings.compat_lucky_wheel_title || 'Lucky Wheel Event',
       luckyWheelMessage: settings.compat_lucky_wheel_message || 'Link Discord after checkout to unlock spins and support perks.',
+    },
+    referralStats: {
+      totalRewards: referralRows.length,
+      totalPaid: referralRows
+        .filter((row) => row.status === 'paid')
+        .reduce((sum, row) => sum + Number(row.reward_amount || 0), 0),
+      pendingReversals: referralRows.filter((row) => row.status === 'reversal_pending').length,
     },
   }));
 });
