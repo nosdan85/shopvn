@@ -271,22 +271,32 @@ function ShopApp({ initialPageOverride }: ShopAppProps = {}) {
     const params = new URLSearchParams(window.location.search)
     const linked = params.get('discord_linked')
     const message = params.get('discord_message')
+    let resumeTimer = 0
     if (linked) {
       const pending = loadDiscordCheckout()
       if (linked === '1' && pending) {
-        setPage(pending.page)
-        setRouteId(pending.routeId)
-        setDiscordCheckoutResumeToken(Date.now())
-        showNotice('Da lien ket Discord, dang tiep tuc don hang.')
+        resumeTimer = window.setTimeout(() => {
+          setPage(pending.page)
+          setRouteId(pending.routeId)
+          setDiscordCheckoutResumeToken(Date.now())
+          showNotice('Da lien ket Discord, dang tiep tuc don hang.')
+        }, 0)
       } else if (message) {
-        showNotice(message)
+        resumeTimer = window.setTimeout(() => {
+          showNotice(message)
+        }, 0)
       } else if (linked === '1') {
-        showNotice('Da lien ket Discord thanh cong.')
+        resumeTimer = window.setTimeout(() => {
+          showNotice('Da lien ket Discord thanh cong.')
+        }, 0)
       }
       params.delete('discord_linked')
       params.delete('discord_message')
       const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`
       window.history.replaceState({}, '', next)
+    }
+    return () => {
+      if (resumeTimer) window.clearTimeout(resumeTimer)
     }
   }, [booting, showNotice])
 
@@ -795,17 +805,20 @@ function ItemDetail({
     if (!resumeToken || lastResumeToken.current === resumeToken || !item || !user) return
     const pending = loadDiscordCheckout()
     if (!pending || pending.kind !== 'item' || pending.routeId !== slug) return
-    lastResumeToken.current = resumeToken
-    setForm({
-      quantity: pending.quantity,
-      robloxUsername: pending.robloxUsername,
-      customerNote: pending.customerNote,
-    })
-    void submitPurchase(undefined, {
-      quantity: pending.quantity,
-      robloxUsername: pending.robloxUsername,
-      customerNote: pending.customerNote,
-    })
+    const resumeTimer = window.setTimeout(() => {
+      lastResumeToken.current = resumeToken
+      setForm({
+        quantity: pending.quantity,
+        robloxUsername: pending.robloxUsername,
+        customerNote: pending.customerNote,
+      })
+      void submitPurchase(undefined, {
+        quantity: pending.quantity,
+        robloxUsername: pending.robloxUsername,
+        customerNote: pending.customerNote,
+      })
+    }, 0)
+    return () => window.clearTimeout(resumeTimer)
   }, [item, resumeToken, slug, user])
 
   if (!item) return <section className="page-section">?ang t?i item...</section>
@@ -908,16 +921,19 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0
     if (!resumeToken || lastResumeToken.current === resumeToken) return
     const pending = loadDiscordCheckout()
     if (!pending || pending.kind !== 'cart') return
-    lastResumeToken.current = resumeToken
-    setForm({
-      robloxUsername: pending.robloxUsername,
-      customerNote: pending.customerNote,
-    })
-    void submitCheckout(undefined, {
-      robloxUsername: pending.robloxUsername,
-      customerNote: pending.customerNote,
-      items: pending.items,
-    })
+    const resumeTimer = window.setTimeout(() => {
+      lastResumeToken.current = resumeToken
+      setForm({
+        robloxUsername: pending.robloxUsername,
+        customerNote: pending.customerNote,
+      })
+      void submitCheckout(undefined, {
+        robloxUsername: pending.robloxUsername,
+        customerNote: pending.customerNote,
+        items: pending.items,
+      })
+    }, 0)
+    return () => window.clearTimeout(resumeTimer)
   }, [resumeToken])
   return (
     <>

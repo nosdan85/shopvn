@@ -58,6 +58,19 @@ export function CompatAdminDashboardPage() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  async function fetchAllData() {
+    return Promise.all([
+      fetchCompatAdminDashboard(),
+      fetchAdminProducts(),
+      fetchAdminGames(),
+      fetchAdminOrders(),
+      fetchAdminUsers(),
+      fetchAdminSettings(),
+      fetchAdminReviews(),
+      fetchAdminDeposits(),
+    ])
+  }
+
   async function refreshAll() {
     const [
       dashboardData,
@@ -68,16 +81,7 @@ export function CompatAdminDashboardPage() {
       settingsData,
       reviewsData,
       depositsData,
-    ] = await Promise.all([
-      fetchCompatAdminDashboard(),
-      fetchAdminProducts(),
-      fetchAdminGames(),
-      fetchAdminOrders(),
-      fetchAdminUsers(),
-      fetchAdminSettings(),
-      fetchAdminReviews(),
-      fetchAdminDeposits(),
-    ])
+    ] = await fetchAllData()
     setDashboard(dashboardData)
     setProducts(productsData.items)
     setGames(gamesData.categories)
@@ -89,7 +93,35 @@ export function CompatAdminDashboardPage() {
   }
 
   useEffect(() => {
-    refreshAll().catch((err: unknown) => setError(err instanceof Error ? err.message : 'Khong tai duoc admin.'))
+    let active = true
+    void (async () => {
+      try {
+        const [
+          dashboardData,
+          productsData,
+          gamesData,
+          ordersData,
+          usersData,
+          settingsData,
+          reviewsData,
+          depositsData,
+        ] = await fetchAllData()
+        if (!active) return
+        setDashboard(dashboardData)
+        setProducts(productsData.items)
+        setGames(gamesData.categories)
+        setOrders(ordersData.orders)
+        setUsers(usersData.users)
+        setSettingsDraft(settingsData.settings)
+        setReviews(reviewsData.reviews)
+        setDeposits(depositsData.deposits)
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : 'Khong tai duoc admin.')
+      }
+    })()
+    return () => {
+      active = false
+    }
   }, [])
 
   const linkedUsers = useMemo(() => users.filter((user) => Boolean(user.discord_id)), [users])

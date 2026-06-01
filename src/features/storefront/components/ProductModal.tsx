@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { assetUrl, money } from '../../../api'
 import type { CompatStorefrontProduct } from '../../compat/types'
 
@@ -14,10 +14,6 @@ export function ProductModal({
   onBuyNow: (product: CompatStorefrontProduct, quantity: number) => void
 }) {
   const [quantity, setQuantity] = useState(1)
-
-  useEffect(() => {
-    setQuantity(1)
-  }, [product?.id])
 
   if (!product) return null
 

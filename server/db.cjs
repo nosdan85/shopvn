@@ -39,8 +39,12 @@ const schemaSql = `
       discord_id TEXT,
       discord_username TEXT,
       discord_linked_at TEXT,
+      referral_code TEXT,
+      referred_by_user_id INTEGER,
+      referral_linked_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (referred_by_user_id) REFERENCES users(id)
     );
 
     CREATE TABLE IF NOT EXISTS game_categories (
@@ -266,6 +270,23 @@ const schemaSql = `
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS referral_rewards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      referrer_user_id INTEGER NOT NULL,
+      referred_user_id INTEGER NOT NULL,
+      source_order_id INTEGER NOT NULL UNIQUE,
+      reward_percent INTEGER NOT NULL,
+      reward_amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'paid',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      paid_at TEXT,
+      reversed_at TEXT,
+      reversal_note TEXT,
+      FOREIGN KEY (referrer_user_id) REFERENCES users(id),
+      FOREIGN KEY (referred_user_id) REFERENCES users(id),
+      FOREIGN KEY (source_order_id) REFERENCES orders(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_items_slug ON items(slug);
     CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
     CREATE INDEX IF NOT EXISTS idx_items_featured ON items(status, is_featured);
@@ -287,6 +308,12 @@ const schemaSql = `
     CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at);
     CREATE INDEX IF NOT EXISTS idx_game_categories_slug ON game_categories(slug);
     CREATE INDEX IF NOT EXISTS idx_game_categories_status ON game_categories(status, sort_order);
+    CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+    CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users(referred_by_user_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_discord_ticket_status ON orders(discord_ticket_status);
+    CREATE INDEX IF NOT EXISTS idx_referral_rewards_referrer_user_id ON referral_rewards(referrer_user_id);
+    CREATE INDEX IF NOT EXISTS idx_referral_rewards_referred_user_id ON referral_rewards(referred_user_id);
   `;
 function migrate() {
   db.exec(schemaSql);
@@ -411,12 +438,52 @@ async function migrateRemote() {
   for (const statement of splitSqlStatements(schemaSql)) {
     await remoteClient.execute(statement);
   }
-  const columns = await remoteClient.execute('PRAGMA table_info(items)');
-  const itemColumnNames = (columns.rows || []).map((column) => column.name);
+  const itemColumns = await remoteClient.execute('PRAGMA table_info(items)');
+  const itemColumnNames = (itemColumns.rows || []).map((column) => column.name);
   if (!itemColumnNames.includes('game_category_id')) {
     await remoteClient.execute('ALTER TABLE items ADD COLUMN game_category_id INTEGER REFERENCES game_categories(id)');
   }
+  const userColumns = await remoteClient.execute('PRAGMA table_info(users)');
+  const userColumnNames = (userColumns.rows || []).map((column) => column.name);
+  if (!userColumnNames.includes('discord_id')) {
+    await remoteClient.execute('ALTER TABLE users ADD COLUMN discord_id TEXT');
+  }
+  if (!userColumnNames.includes('discord_username')) {
+    await remoteClient.execute('ALTER TABLE users ADD COLUMN discord_username TEXT');
+  }
+  if (!userColumnNames.includes('discord_linked_at')) {
+    await remoteClient.execute('ALTER TABLE users ADD COLUMN discord_linked_at TEXT');
+  }
+  if (!userColumnNames.includes('referral_code')) {
+    await remoteClient.execute('ALTER TABLE users ADD COLUMN referral_code TEXT');
+  }
+  if (!userColumnNames.includes('referred_by_user_id')) {
+    await remoteClient.execute('ALTER TABLE users ADD COLUMN referred_by_user_id INTEGER REFERENCES users(id)');
+  }
+  if (!userColumnNames.includes('referral_linked_at')) {
+    await remoteClient.execute('ALTER TABLE users ADD COLUMN referral_linked_at TEXT');
+  }
+  const orderColumns = await remoteClient.execute('PRAGMA table_info(orders)');
+  const orderColumnNames = (orderColumns.rows || []).map((column) => column.name);
+  if (!orderColumnNames.includes('discord_ticket_status')) {
+    await remoteClient.execute("ALTER TABLE orders ADD COLUMN discord_ticket_status TEXT NOT NULL DEFAULT 'not_created'");
+  }
+  if (!orderColumnNames.includes('discord_ticket_channel_id')) {
+    await remoteClient.execute('ALTER TABLE orders ADD COLUMN discord_ticket_channel_id TEXT');
+  }
+  if (!orderColumnNames.includes('discord_ticket_url')) {
+    await remoteClient.execute('ALTER TABLE orders ADD COLUMN discord_ticket_url TEXT');
+  }
+  if (!orderColumnNames.includes('discord_ticket_error')) {
+    await remoteClient.execute('ALTER TABLE orders ADD COLUMN discord_ticket_error TEXT');
+  }
   await remoteClient.execute('CREATE INDEX IF NOT EXISTS idx_items_game_category ON items(game_category_id)');
+  await remoteClient.execute('CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)');
+  await remoteClient.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)');
+  await remoteClient.execute('CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users(referred_by_user_id)');
+  await remoteClient.execute('CREATE INDEX IF NOT EXISTS idx_orders_discord_ticket_status ON orders(discord_ticket_status)');
+  await remoteClient.execute('CREATE INDEX IF NOT EXISTS idx_referral_rewards_referrer_user_id ON referral_rewards(referrer_user_id)');
+  await remoteClient.execute('CREATE INDEX IF NOT EXISTS idx_referral_rewards_referred_user_id ON referral_rewards(referred_user_id)');
 }
 
 async function backupLocalToRemote() {

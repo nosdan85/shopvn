@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server/dev.cjs",
     "server": "node server/index.cjs",
     "dev:api": "node server/index.cjs",
     "bot": "node server/sepay-worker.cjs",

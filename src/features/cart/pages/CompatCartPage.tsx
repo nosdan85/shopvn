@@ -30,7 +30,7 @@ export function CompatCartPage() {
   const navigate = useNavigate()
   const [summary, setSummary] = useState<CompatStorefrontSummary | null>(null)
   const [user, setUser] = useState<User | null>(null)
-  const [cart, setCart] = useState<CompatCartEntry[]>([])
+  const [cart, setCart] = useState<CompatCartEntry[]>(() => loadCompatCart())
   const [robloxUsername, setRobloxUsername] = useState('')
   const [robloxLookupLoading, setRobloxLookupLoading] = useState(false)
   const [robloxLookup, setRobloxLookup] = useState<null | { userId: string; username: string; displayName: string; avatar: string }>(null)
@@ -39,9 +39,18 @@ export function CompatCartPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    setCart(loadCompatCart())
-    fetchCompatStorefront().then(setSummary).catch(() => undefined)
-    api<{ user: User }>('/auth/me').then((data) => setUser(data.user)).catch(() => setUser(null))
+    let active = true
+    fetchCompatStorefront().then((data) => {
+      if (active) setSummary(data)
+    }).catch(() => undefined)
+    api<{ user: User }>('/auth/me').then((data) => {
+      if (active) setUser(data.user)
+    }).catch(() => {
+      if (active) setUser(null)
+    })
+    return () => {
+      active = false
+    }
   }, [])
 
   const productMap = useMemo(() => {
@@ -114,9 +123,12 @@ export function CompatCartPage() {
     const pending = loadPendingCheckout()
     if (!pending) return
     clearPendingCheckout()
-    void submitCheckout(pending)
+    const resumeTimer = window.setTimeout(() => {
+      void submitCheckout(pending)
+    }, 0)
     params.delete('discord_linked')
     window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`)
+    return () => window.clearTimeout(resumeTimer)
   }, [user])
 
   return (

@@ -14,7 +14,6 @@ export function CompatProofsPage() {
 
   useEffect(() => {
     let active = true
-    setLoading(true)
     fetchCompatProofs(page, 12)
       .then((data) => {
         if (!active) return
@@ -75,9 +74,15 @@ export function CompatProofsPage() {
       </section>
 
       <section className="panel compat-pagination">
-        <button className="ghost" type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>Trang truoc</button>
+        <button className="ghost" type="button" disabled={page <= 1} onClick={() => {
+          setLoading(true)
+          setPage((current) => Math.max(1, current - 1))
+        }}>Trang truoc</button>
         <span>Trang {page}</span>
-        <button className="ghost" type="button" disabled={!hasMore} onClick={() => setPage((current) => current + 1)}>Trang sau</button>
+        <button className="ghost" type="button" disabled={!hasMore} onClick={() => {
+          setLoading(true)
+          setPage((current) => current + 1)
+        }}>Trang sau</button>
       </section>
     </div>
   )

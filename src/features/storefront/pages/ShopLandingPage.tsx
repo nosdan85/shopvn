@@ -29,7 +29,7 @@ export function ShopLandingPage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
-  const [cart, setCart] = useState<CompatCartEntry[]>([])
+  const [cart, setCart] = useState<CompatCartEntry[]>(() => loadCompatCart())
   const [selectedProduct, setSelectedProduct] = useState<CompatStorefrontProduct | null>(null)
 
   useEffect(() => {
@@ -46,7 +46,6 @@ export function ShopLandingPage() {
     }).catch(() => {
       if (active) setUser(null)
     })
-    setCart(loadCompatCart())
     return () => {
       active = false
     }
@@ -56,10 +55,9 @@ export function ShopLandingPage() {
     saveCompatCart(cart)
   }, [cart])
 
-  const products = summary?.products || []
-  const proofs = summary?.proofs || []
-  const categories = summary?.categories || []
-  const bestSellerIds = new Set(summary?.bestSellerIds || [])
+  const products = useMemo(() => summary?.products || [], [summary])
+  const proofs = useMemo(() => summary?.proofs || [], [summary])
+  const categories = useMemo(() => summary?.categories || [], [summary])
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       const byCategory = category === 'all' || product.categorySlug === category
@@ -67,7 +65,10 @@ export function ShopLandingPage() {
       return byCategory && bySearch
     })
   }, [category, products, search])
-  const bestSellers = useMemo(() => products.filter((product) => bestSellerIds.has(product.id)).slice(0, 6), [bestSellerIds, products])
+  const bestSellers = useMemo(() => {
+    const bestSellerIds = new Set(summary?.bestSellerIds || [])
+    return products.filter((product) => bestSellerIds.has(product.id)).slice(0, 6)
+  }, [products, summary])
 
   if (error) {
     return <section className="page-section"><div className="panel"><h1>Compat storefront</h1><p>{error}</p></div></section>
@@ -93,7 +94,7 @@ export function ShopLandingPage() {
 
   return (
     <div className="page-section compat-storefront">
-      <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} />
+      <ProductModal key={selectedProduct?.id || 'empty'} product={selectedProduct} onClose={() => setSelectedProduct(null)} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} />
       <section className="panel compat-nav">
         <div className="compat-nav-brand">
           <span className="eyebrow">Compat shop</span>

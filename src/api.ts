@@ -28,25 +28,45 @@ function canCache(path: string, options: RequestInit) {
   )
 }
 
+function fallbackApiMessage(status: number, path: string) {
+  if (status === 0 || status === 502 || status === 503 || status === 504) {
+    return `Khong ket noi duoc backend API cho ${path}. Hay chay server o cong 4000 roi thu lai.`
+  }
+  if (status === 404) {
+    return `API ${path} khong ton tai tren backend hien tai.`
+  }
+  return 'Co loi xay ra, vui long thu lai.'
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (canCache(path, options)) {
     const cached = publicCache.get(path)
     if (cached && cached.expiresAt > Date.now()) return cached.data as T
   }
-  const response = await fetch(`${apiBaseUrl}/api${path}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${apiBaseUrl}/api${path}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+      ...options,
+    })
+  } catch (error) {
+    throw new ApiError(
+      fallbackApiMessage(0, path),
+      0,
+      'NETWORK_ERROR',
+      { cause: error instanceof Error ? error.message : String(error) },
+    )
+  }
 
   const contentType = response.headers.get('content-type')
   const data = contentType?.includes('application/json') ? await response.json() : null
 
   if (!response.ok) {
-    throw new ApiError(data?.message || 'Co loi xay ra, vui long thu lai.', response.status, data?.code, data)
+    throw new ApiError(data?.message || fallbackApiMessage(response.status, path), response.status, data?.code, data)
   }
 
   if (canCache(path, options)) {
