@@ -112,6 +112,22 @@ async function fetchDiscordIdentity(accessToken) {
   return data;
 }
 
+async function getGuildMember({ guildId, userDiscordId, botToken }) {
+  return discordRequestJson(`/guilds/${guildId}/members/${userDiscordId}`, {
+    token: botToken,
+  });
+}
+
+async function isDiscordGuildMember({ guildId, userDiscordId, botToken }) {
+  if (!normalizeValue(guildId) || !normalizeValue(userDiscordId) || !normalizeValue(botToken)) return false;
+  try {
+    await getGuildMember({ guildId: normalizeValue(guildId), userDiscordId: normalizeValue(userDiscordId), botToken: normalizeValue(botToken) });
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
 async function getBotIdentity(botToken) {
   return discordRequestJson('/users/@me', { token: botToken.replace(/^Bot\s+/i, '') });
 }
@@ -167,6 +183,8 @@ module.exports = {
   createDiscordTicketChannel,
   exchangeDiscordCode,
   fetchDiscordIdentity,
+  getGuildMember,
+  isDiscordGuildMember,
   shouldRequireDiscordLink,
   signDiscordState,
   verifyDiscordState,

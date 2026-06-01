@@ -118,8 +118,14 @@ function clearDiscordCheckout() {
   window.sessionStorage.removeItem(discordCheckoutStorageKey)
 }
 
-function isDiscordLinkError(error: unknown) {
-  return error instanceof ApiError && error.code === 'DISCORD_LINK_REQUIRED'
+function isDiscordGateError(error: unknown) {
+  return error instanceof ApiError && (error.code === 'DISCORD_LINK_REQUIRED' || error.code === 'DISCORD_GUILD_REQUIRED' || error.code === 'DISCORD_CONFIG_REQUIRED')
+}
+
+function discordInviteUrlFromError(error: unknown) {
+  if (!(error instanceof ApiError) || !error.data || typeof error.data !== 'object') return ''
+  const value = (error.data as { inviteUrl?: unknown }).inviteUrl
+  return typeof value === 'string' ? value : ''
 }
 
 function discordLinkUrl() {
@@ -210,15 +216,16 @@ function LoadingButton({ loading, children, className = '', disabled = false, ty
   )
 }
 
-function DiscordLinkModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function DiscordLinkModal({ open, inviteUrl, onClose }: { open: boolean; inviteUrl?: string; onClose: () => void }) {
   if (!open) return null
   return (
     <div className="toast-backdrop" role="dialog" aria-modal="true" aria-label="Liên kết Discord">
       <div className="toast discord-link-modal" style={{ width: 'min(92vw, 520px)' }}>
-        <h3>Liên kết Discord</h3>
-        <p>Đơn hàng sẽ được hoàn tất sau khi bạn liên kết Discord.</p>
-        <div className="discord-link-actions">
-          <button className="primary" type="button" onClick={() => { window.location.href = discordLinkUrl() }}>Liên kết ngay</button>
+        <h3>Liên kết Discord & Join Server</h3>
+        <p>Để mua hàng, bạn cần liên kết Discord và join server Discord của shop.</p>
+        <div className="discord-link-actions" style={{ display: 'grid', gap: '0.6rem' }}>
+          <button className="primary" type="button" onClick={() => { window.location.href = discordLinkUrl() }}>Liên kết Discord</button>
+          {inviteUrl && <button className="secondary" type="button" onClick={() => { window.open(inviteUrl, '_blank') }}>Join Server Discord</button>}
           <button className="ghost" type="button" onClick={onClose}>Đóng</button>
         </div>
       </div>
@@ -750,7 +757,8 @@ function ItemDetail({
   const [item, setItem] = useState<Item | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
   const [form, setForm] = useState<{ quantity: number | ''; robloxUsername: string; customerNote: string }>({ quantity: 1, robloxUsername: '', customerNote: '' })
-  const [discordLinkOpen, setDiscordLinkOpen] = useState(false)
+  const [discordGateOpen, setDiscordGateOpen] = useState(false)
+  const [discordInviteUrl, setDiscordInviteUrl] = useState('')
   const lastResumeToken = useRef(0)
 
   useEffect(() => {
@@ -781,10 +789,11 @@ function ItemDetail({
       clearDiscordCheckout()
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
-      setDiscordLinkOpen(false)
+      setDiscordGateOpen(false)
       go('order', String(data.order.id))
     } catch (error) {
-      if (isDiscordLinkError(error)) {
+      if (isDiscordGateError(error)) {
+        setDiscordInviteUrl(discordInviteUrlFromError(error))
         saveDiscordCheckout({
           kind: 'item',
           page: 'item',
@@ -794,7 +803,7 @@ function ItemDetail({
           robloxUsername: purchase.robloxUsername,
           customerNote: purchase.customerNote,
         })
-        setDiscordLinkOpen(true)
+        setDiscordGateOpen(true)
         return
       }
       setNotice(messageFromError(error))
@@ -825,7 +834,7 @@ function ItemDetail({
 
   return (
     <>
-      <DiscordLinkModal open={discordLinkOpen} onClose={() => setDiscordLinkOpen(false)} />
+      <DiscordLinkModal open={discordGateOpen} inviteUrl={discordInviteUrl} onClose={() => setDiscordGateOpen(false)} />
       <section className="page-section detail-layout">
         <div className="gallery">
           <img src={assetUrl(item.image) || placeholderImage} alt={item.name} loading="lazy" decoding="async" onLoad={applyNaturalImageRatio} onError={(event) => { event.currentTarget.src = placeholderImage }} />
@@ -865,7 +874,8 @@ function ItemDetail({
 function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0 }: { user: User | null; cart: CartItem[]; setCart: (cart: CartItem[]) => void; go: (page: Page, id?: string) => void; setUser: (user: User | null) => void; setNotice: (message: string) => void; resumeToken?: number }) {
   const [form, setForm] = useState({ robloxUsername: '', customerNote: '' })
   const [submitting, setSubmitting] = useState(false)
-  const [discordLinkOpen, setDiscordLinkOpen] = useState(false)
+  const [discordGateOpen, setDiscordGateOpen] = useState(false)
+  const [discordInviteUrl, setDiscordInviteUrl] = useState('')
   const lastResumeToken = useRef(0)
   const total = cart.reduce((sum, entry) => sum + entry.item.current_price * safeQuantity(entry.quantity), 0)
   function updateQuantity(itemId: number, quantity: number | '') {
@@ -897,10 +907,11 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0
       const me = await api<{ user: User }>('/auth/me')
       setUser(me.user)
       setCart([])
-      setDiscordLinkOpen(false)
+      setDiscordGateOpen(false)
       go('order', String(data.order.id))
     } catch (error) {
-      if (isDiscordLinkError(error)) {
+      if (isDiscordGateError(error)) {
+        setDiscordInviteUrl(discordInviteUrlFromError(error))
         saveDiscordCheckout({
           kind: 'cart',
           page: 'cart',
@@ -909,7 +920,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0
           customerNote: purchase.customerNote,
           items: purchase.items,
         })
-        setDiscordLinkOpen(true)
+        setDiscordGateOpen(true)
         return
       }
       setNotice(messageFromError(error))
@@ -937,7 +948,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0
   }, [resumeToken, submitCheckout])
   return (
     <>
-      <DiscordLinkModal open={discordLinkOpen} onClose={() => setDiscordLinkOpen(false)} />
+      <DiscordLinkModal open={discordGateOpen} inviteUrl={discordInviteUrl} onClose={() => setDiscordGateOpen(false)} />
       <section className="page-section two-col">
         <div className="panel">
           <h1>Gi? h?ng</h1>

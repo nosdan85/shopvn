@@ -1,0 +1,195 @@
+============================================
+     NOSMARKET - HUONG DAN DEPLOY
+============================================
+
+CAU TRUC PROJECT
+----------------
+shoptay/
++-- web/          -> Next.js Web App (deploy len Vercel)
++-- bot/          -> Discord Bot (deploy len Render)
++-- DEPLOY.txt    -> Huong dan nay
+
+
+============================================
+1. PUSH CODE LEN GITHUB
+============================================
+
+Buoc 1.1: Tao repository tren GitHub
+--------------------------------------
+1. Mo: https://github.com/new
+2. Dat ten: shoptay (hoac ten ban muon)
+3. Chon Private hoac Public
+4. KHONG tick "Add a README", ".gitignore", "License"
+5. Click "Create repository"
+
+
+Buoc 1.2: Push code tu local len GitHub
+--------------------------------------
+Mo terminal tai: C:\Users\shhshs\Documents\shoptay
+
+Chay cac lenh sau:
+
+git remote set-url origin https://github.com/<USERNAME>/shoptay.git
+git add .
+git commit -m "Initial commit: NosMarket web + Discord bot"
+git branch -M main
+git push -u origin main
+
+
+============================================
+2. DEPLOY WEB LEN VERCEL
+============================================
+
+Buoc 2.1: Dang ky Vercel
+------------------------
+1. Mo: https://vercel.com
+2. Click "Sign Up" -> "Continue with GitHub"
+3. Cap quyen truy cap GitHub
+
+
+Buoc 2.2: Import project
+------------------------
+1. Sau khi dang nhap, click "Add New..." -> "Project"
+2. Tim repo "shoptay"
+3. Click "Import"
+
+
+Buoc 2.3: Cau hinh deploy
+--------------------------
+| Setting           | Gia tri              |
+|-------------------|----------------------|
+| Framework         | Next.js (auto)       |
+| Root Directory    | web                  |
+| Build Command     | npm run build        |
+| Output Dir        | .next                |
+
+QUAN TRONG: 
+- Click "Edit" o phan Root Directory
+- Nhap: web
+
+
+Buoc 2.4: Deploy
+----------------
+1. Click "Deploy"
+2. Cho 1-2 phut
+3. Vercel se cap URL: https://shoptay-xxx.vercel.app
+4. Click URL de xem web
+
+
+TU DONG DEPLOY
+--------------
+Moi khi git push len branch main, Vercel tu dong build + deploy
+
+
+============================================
+3. DEPLOY DISCORD BOT LEN RENDER
+============================================
+
+Buoc 3.1: Tao Discord Bot
+--------------------------
+1. Mo: https://discord.com/developers/applications
+2. Click "New Application" -> Dat ten -> "Create"
+3. Vao tab "Bot":
+   - Click "Reset Token" -> Copy token (LUU BI MAT!)
+   - Bat: MESSAGE CONTENT INTENT
+   - Bat: SERVER MEMBERS INTENT
+   - Bat: PRESENCE INTENT
+4. Vao tab "OAuth2" -> "URL Generator":
+   - Scopes: bot, applications.commands
+   - Bot Permissions: Manage Channels, Send Messages, Embed Links, 
+     Attach Files, Read Message History, Add Reactions
+   - Copy URL va invite bot vao server
+
+
+Buoc 3.2: Dang ky Render
+------------------------
+1. Mo: https://render.com
+2. Click "Get Started" -> Dang ky bang GitHub
+3. Cap quyen truy cap GitHub
+
+
+Buoc 3.3: Tao Web Service
+--------------------------
+1. Vao Dashboard -> "New +" -> "Web Service"
+2. Chon repo "shoptay"
+3. Cau hinh:
+
+| Setting             | Gia tri                        |
+|---------------------|--------------------------------|
+| Name                | nosmarket-bot                  |
+| Root Directory      | bot                            |
+| Runtime             | Node                           |
+| Build Command       | npm install && npm run build   |
+| Start Command       | npm start                      |
+| Instance Type       | Free (hoac Starter /thang)  |
+
+
+Buoc 3.4: Them Environment Variables
+-------------------------------------
+Click "Add Environment Variable" va them:
+
+DISCORD_TOKEN=your-bot-token-from-step-3.1
+DISCORD_CLIENT_ID=your-bot-client-id
+DISCORD_GUILD_ID=your-server-id
+API_BASE_URL=https://your-app.vercel.app/api
+OWNER_ROLE_ID=your-owner-role-id
+TICKET_CATEGORY_ID=your-ticket-category-id
+VOUCH_CHANNEL_ID=your-vouch-channel-id
+
+
+Buoc 3.5: Deploy
+----------------
+1. Click "Create Web Service"
+2. Render tu dong build + start bot
+3. Kiem tra log: Logs tab -> tim "Bot is online!"
+4. Vao Discord server -> kiem tra bot online
+
+
+TU DONG DEPLOY
+--------------
+Moi khi git push len branch main, Render tu dong build + restart
+
+
+============================================
+4. WORKFLOW KHI CAP NHAT CODE
+============================================
+
+git add .
+git commit -m "mo ta thay doi"
+git push
+
+-> Vercel va Render tu dong deploy
+
+
+============================================
+5. TONG KET
+============================================
+
+| Thanh phan    | Platform | URL / Cach truy cap              |
+|---------------|----------|----------------------------------|
+| Web Frontend  | Vercel   | https://your-app.vercel.app      |
+| Web API       | Vercel   | https://your-app.vercel.app/api  |
+| Discord Bot   | Render   | Render Dashboard -> Logs         |
+
+
+Luu y quan trong:
+------------------
+1. Render Free Plan se sleep sau 15phut inactivity
+   - Goi Starter (/thang) de giu bot 24/7
+
+2. Vercel Free Plan: 100GB bandwidth/thang
+   - Du cho web nho/vua
+
+3. KHONG bao gio push .env len GitHub
+   - Luon giu DISCORD_TOKEN bi mat
+
+4. Kiem tra bot/.env.example de xem day du bien can thiet
+
+
+============================================
+KET THUC
+============================================
+
+Chuc ban deploy thanh cong!
+
+Co van de: xem lai DEPLOY.txt hoac lien he.

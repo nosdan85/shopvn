@@ -17,6 +17,7 @@ const {
   createDiscordTicketChannel,
   exchangeDiscordCode,
   fetchDiscordIdentity,
+  isDiscordGuildMember,
   shouldRequireDiscordLink,
   signDiscordState,
   verifyDiscordState,
@@ -208,10 +209,45 @@ function discordLinkStatusQuery(url, status, message) {
   return `${next.pathname}${next.search}${next.hash}`;
 }
 
+function discordConfig() {
+  return {
+    guildId: String(process.env.DISCORD_GUILD_ID || '').trim(),
+    botToken: String(process.env.DISCORD_BOT_TOKEN || '').trim(),
+    categoryId: String(process.env.DISCORD_TICKET_CATEGORY_ID || '').trim(),
+    inviteUrl: String(process.env.DISCORD_INVITE_URL || process.env.VITE_DISCORD_INVITE_URL || '').trim(),
+  };
+}
+
+async function requireDiscordReady(user) {
+  if (shouldRequireDiscordLink(user)) {
+    return {
+      ok: false,
+      code: 'DISCORD_LINK_REQUIRED',
+      message: 'Vui lòng liên kết Discord trước khi hoàn tất đơn.',
+    };
+  }
+  const { guildId, botToken, inviteUrl } = discordConfig();
+  if (!guildId || !botToken) {
+    return {
+      ok: false,
+      code: 'DISCORD_CONFIG_REQUIRED',
+      message: 'Shop chưa cấu hình DISCORD_GUILD_ID hoặc DISCORD_BOT_TOKEN để kiểm tra server Discord.',
+    };
+  }
+  const joined = await isDiscordGuildMember({ guildId, userDiscordId: user.discord_id, botToken });
+  if (!joined) {
+    return {
+      ok: false,
+      code: 'DISCORD_GUILD_REQUIRED',
+      message: 'Bạn cần join server Discord của shop trước khi mua hàng.',
+      inviteUrl,
+    };
+  }
+  return { ok: true };
+}
+
 async function createDiscordTicketForOrder({ order, user }) {
-  const guildId = String(process.env.DISCORD_GUILD_ID || '').trim();
-  const botToken = String(process.env.DISCORD_BOT_TOKEN || '').trim();
-  const categoryId = String(process.env.DISCORD_TICKET_CATEGORY_ID || '').trim();
+  const { guildId, botToken, categoryId } = discordConfig();
   if (!guildId || !botToken) {
     return { ok: false, error: 'Discord bot chưa cấu hình.' };
   }
@@ -1678,11 +1714,9 @@ app.post('/api/orders/buy', requireAuth, purchaseLimiter, async (req, res) => {
     res.status(403).json({ message: 'Website Ä‘ang táº¯t mua hÃ ng.' });
     return;
   }
-  if (shouldRequireDiscordLink(req.user)) {
-    res.status(409).json({
-      code: 'DISCORD_LINK_REQUIRED',
-      message: 'Vui lÃ²ng liÃªn káº¿t Discord trÆ°á»›c khi hoÃ n táº¥t Ä‘Æ¡n.',
-    });
+  const discordGate = await requireDiscordReady(req.user);
+  if (!discordGate.ok) {
+    res.status(409).json(discordGate);
     return;
   }
   const { itemId, quantity } = req.body;
