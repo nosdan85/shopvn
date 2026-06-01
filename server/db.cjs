@@ -308,12 +308,6 @@ const schemaSql = `
     CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at);
     CREATE INDEX IF NOT EXISTS idx_game_categories_slug ON game_categories(slug);
     CREATE INDEX IF NOT EXISTS idx_game_categories_status ON game_categories(status, sort_order);
-    CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id);
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
-    CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users(referred_by_user_id);
-    CREATE INDEX IF NOT EXISTS idx_orders_discord_ticket_status ON orders(discord_ticket_status);
-    CREATE INDEX IF NOT EXISTS idx_referral_rewards_referrer_user_id ON referral_rewards(referrer_user_id);
-    CREATE INDEX IF NOT EXISTS idx_referral_rewards_referred_user_id ON referral_rewards(referred_user_id);
   `;
 function migrate() {
   db.exec(schemaSql);

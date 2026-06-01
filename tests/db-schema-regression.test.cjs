@@ -13,3 +13,10 @@ test('schemaSql includes referral fields and referral_rewards table for fresh an
   assert.match(schemaSql, /referral_linked_at TEXT/i)
   assert.match(schemaSql, /CREATE TABLE IF NOT EXISTS referral_rewards/i)
 })
+
+test('schemaSql does not create additive indexes before legacy tables are altered', () => {
+  assert.doesNotMatch(schemaSql, /idx_users_discord_id/i)
+  assert.doesNotMatch(schemaSql, /idx_users_referral_code/i)
+  assert.doesNotMatch(schemaSql, /idx_users_referred_by_user_id/i)
+  assert.doesNotMatch(schemaSql, /idx_orders_discord_ticket_status/i)
+})
