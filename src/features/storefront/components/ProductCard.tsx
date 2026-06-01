@@ -9,15 +9,17 @@ export function ProductCard({
   onOpen: (product: CompatStorefrontProduct) => void
 }) {
   return (
-    <button className="compat-product-card" type="button" onClick={() => onOpen(product)}>
-      <div className="compat-product-image">
-        {product.image ? <img src={assetUrl(product.image)} alt={product.name} /> : <div className="hero-banner-fallback">No image</div>}
+    <button className="compat-product-card shoptay-product-card" type="button" onClick={() => onOpen(product)}>
+      <div className="compat-product-image shoptay-product-image">
+        {product.image ? <img src={assetUrl(product.image)} alt={product.name} /> : <div className="shoptay-image-fallback">NOS</div>}
       </div>
-      <div className="compat-product-body">
-        <small>{product.categoryName || 'Imported catalog'}</small>
+      <div className="compat-product-body shoptay-product-body">
         <h3>{product.name}</h3>
-        <p>{product.shortDescription || 'Compat storefront item.'}</p>
-        <strong>{money(product.price)}</strong>
+        <p>{product.shortDescription || product.categoryName || 'Roblox item'}</p>
+        <div className="shoptay-card-foot">
+          <strong>{money(product.price)}</strong>
+          <span>View</span>
+        </div>
       </div>
     </button>
   )
