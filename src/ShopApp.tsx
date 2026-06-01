@@ -760,7 +760,7 @@ function ItemDetail({
     })
   }, [slug])
 
-  async function submitPurchase(event?: FormEvent, override?: { quantity: number; robloxUsername: string; customerNote: string }) {
+  const submitPurchase = useCallback(async (event?: FormEvent, override?: { quantity: number; robloxUsername: string; customerNote: string }) => {
     if (event) event.preventDefault()
     if (!user) {
       setNotice('Vui l?ng ??ng nh?p tr??c khi mua.')
@@ -799,7 +799,7 @@ function ItemDetail({
       }
       setNotice(messageFromError(error))
     }
-  }
+  }, [form.customerNote, form.quantity, form.robloxUsername, go, item, setNotice, setUser, slug, user])
 
   useEffect(() => {
     if (!resumeToken || lastResumeToken.current === resumeToken || !item || !user) return
@@ -819,7 +819,7 @@ function ItemDetail({
       })
     }, 0)
     return () => window.clearTimeout(resumeTimer)
-  }, [item, resumeToken, slug, user])
+  }, [item, resumeToken, slug, submitPurchase, user])
 
   if (!item) return <section className="page-section">?ang t?i item...</section>
 
@@ -871,7 +871,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0
   function updateQuantity(itemId: number, quantity: number | '') {
     setCart(cart.map((entry) => entry.item.id === itemId ? { ...entry, quantity: quantity === '' ? '' : Math.max(1, Math.min(entry.item.stock, quantity)) } : entry))
   }
-  async function submitCheckout(event?: FormEvent, override?: { robloxUsername: string; customerNote: string; items: Array<{ itemId: number; quantity: number }> }) {
+  const submitCheckout = useCallback(async (event?: FormEvent, override?: { robloxUsername: string; customerNote: string; items: Array<{ itemId: number; quantity: number }> }) => {
     if (event) event.preventDefault()
     if (!user) {
       setNotice('Vui l?ng ??ng nh?p tr??c khi mua.')
@@ -916,7 +916,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0
     } finally {
       setSubmitting(false)
     }
-  }
+  }, [cart, form.customerNote, form.robloxUsername, go, setCart, setNotice, setUser, user])
   useEffect(() => {
     if (!resumeToken || lastResumeToken.current === resumeToken) return
     const pending = loadDiscordCheckout()
@@ -934,7 +934,7 @@ function CartPage({ user, cart, setCart, go, setUser, setNotice, resumeToken = 0
       })
     }, 0)
     return () => window.clearTimeout(resumeTimer)
-  }, [resumeToken])
+  }, [resumeToken, submitCheckout])
   return (
     <>
       <DiscordLinkModal open={discordLinkOpen} onClose={() => setDiscordLinkOpen(false)} />
@@ -1389,19 +1389,19 @@ function ChatPage({ user, go, setNotice, locationId = '' }: { user: User | null;
   const [message, setMessage] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [orderDetail, setOrderDetail] = useState<{ order: Order; items: OrderItem[]; logs: Array<{ old_status?: string | null; new_status: string; note?: string | null; created_at: string }>; messages: ChatMessage[] } | null>(null)
-  const load = () => {
+  const load = useCallback(() => {
     if (locationId) {
       return api<{ order: Order; items: OrderItem[]; logs: Array<{ old_status?: string | null; new_status: string; note?: string | null; created_at: string }>; messages: ChatMessage[] }>('/orders/' + locationId).then((data) => setOrderDetail(data))
     }
     return api<{ messages: ChatMessage[] }>('/chat').then((data) => setMessages(data.messages))
-  }
+  }, [locationId])
   useEffect(() => {
     if (!user) return
     load()
     if (locationId) window.setTimeout(() => document.querySelector('.order-header')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
     const timer = window.setInterval(load, 5000)
     return () => window.clearInterval(timer)
-  }, [locationId, user])
+  }, [load, locationId, user])
   async function uploadChatImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return

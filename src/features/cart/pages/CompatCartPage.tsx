@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError, api, backendUrl, money } from '../../../api'
 import { appRoutes } from '../../../app/routes'
@@ -84,7 +84,7 @@ export function CompatCartPage() {
     }
   }
 
-  async function submitCheckout(payloadOverride?: { robloxUsername: string; customerNote: string; items: Array<{ itemId: number; quantity: number }> }) {
+  const submitCheckout = useCallback(async (payloadOverride?: { robloxUsername: string; customerNote: string; items: Array<{ itemId: number; quantity: number }> }) => {
     const payload = payloadOverride || {
       robloxUsername,
       customerNote,
@@ -115,7 +115,7 @@ export function CompatCartPage() {
     } finally {
       setSubmitting(false)
     }
-  }
+  }, [cart, customerNote, navigate, robloxUsername])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -129,7 +129,7 @@ export function CompatCartPage() {
     params.delete('discord_linked')
     window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`)
     return () => window.clearTimeout(resumeTimer)
-  }, [user])
+  }, [submitCheckout, user])
 
   return (
     <div className="page-section compat-cart-page">
