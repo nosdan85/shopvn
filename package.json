@@ -1,61 +1,20 @@
 {
-  "name": "sailor-piece-shop",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "shoptay",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "dev": "node server/dev.cjs",
-    "server": "node server/index.cjs",
-    "dev:api": "node server/index.cjs",
-    "bot": "node server/sepay-worker.cjs",
-    "bot:once": "node server/sepay-worker.cjs --once",
-    "card:bot": "node server/card-worker.cjs",
-    "card:bot:once": "node server/card-worker.cjs --once",
-    "discord:bot": "node server/discord-bot.cjs",
-    "import:shoptay": "node server/import-shoptay-catalog.cjs",
-    "seed": "node server/seed.cjs",
-    "test": "node --test tests/*.test.cjs",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "node server/index.cjs"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "dependencies": {
-    "@libsql/client": "^0.15.15",
-    "@vitejs/plugin-react": "^6.0.1",
-    "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.9.0",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6",
-    "discord.js": "^14.16.3",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.4.1",
-    "helmet": "^8.1.0",
-    "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.1",
-    "nodemailer": "^7.0.10",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "react-router-dom": "^7.9.1",
-    "redis": "^4.7.1",
-    "typescript": "~6.0.2",
-    "vite": "^8.0.10"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nosdan85/shoptay.git"
   },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/cookie-parser": "^1.4.10",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/multer": "^2.1.0",
-    "@types/node": "^24.12.2",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "eslint": "^10.2.1",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.5.0",
-    "typescript-eslint": "^8.58.2"
-  }
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nosdan85/shoptay/issues"
+  },
+  "homepage": "https://github.com/nosdan85/shoptay#readme"
 }
