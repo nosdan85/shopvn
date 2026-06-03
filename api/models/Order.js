@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 /**
  * Don hang - Refactored for Vietnamese shop
@@ -101,7 +101,7 @@ orderSchema.index({ createdAt: -1 });
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ status: 1, paymentStatus: 1, createdAt: -1 });
 orderSchema.index({ discordId: 1, ticketStatus: 1 });
-orderSchema.index({ referralCode: 1 });
+// referralCode already indexed at field level
 
 // Sync cac field cu sang gia tri moi (backward compatibility)
 orderSchema.pre('validate', function syncPaymentAliases(next) {

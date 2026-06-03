@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const taiKhoanSchema = new mongoose.Schema({
@@ -100,7 +100,7 @@ taiKhoanSchema.pre('save', function(next) {
 });
 
 // Index
-taiKhoanSchema.index({ discordId: 1 });
+// discordId already indexed at field level
 taiKhoanSchema.index({ email: 1 });
 
 module.exports = mongoose.model('TaiKhoan', taiKhoanSchema);
