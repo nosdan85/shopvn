@@ -14,3 +14,9 @@ test('signup page no longer offers Discord registration in the web-account flow'
 test('account menu includes a Discord account-link entry', () => {
   assert.match(navbarSource, /Lien Ket Discord|Discord:/);
 });
+
+const discordCallbackSource = fs.readFileSync(path.join(__dirname, '..', 'app', 'lien-ket-discord', 'callback', 'page.tsx'), 'utf8');
+
+test('discord callback no longer blocks linking with a frontend login-required guard', () => {
+  assert.doesNotMatch(discordCallbackSource, /Bạn cần đăng nhập để liên kết Discord|Ban can dang nhap de lien ket Discord/);
+});

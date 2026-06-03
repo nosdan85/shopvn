@@ -9,28 +9,24 @@ import { getDiscordLinkRedirectUri } from "@/lib/discordOAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
+function getStoredWebToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return localStorage.getItem("webToken");
+}
+
 function LinkDiscordCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { daDangNhap, isLoading, layThongTin } = useAuthViet();
+  const { layThongTin } = useAuthViet();
   const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
   const [message, setMessage] = useState<string>("Đang liên kết Discord...");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleLinkDiscord = async () => {
-      if (isLoading) {
-        return;
-      }
-
-      if (!daDangNhap) {
-        setStatus("error");
-        setMessage("Lỗi xác thực");
-        setError("Bạn cần đăng nhập để liên kết Discord.");
-        setTimeout(() => router.push("/dang-nhap"), 2000);
-        return;
-      }
-
       const code = searchParams.get("code");
       const oauthError = searchParams.get("error");
 
@@ -49,12 +45,17 @@ function LinkDiscordCallbackContent() {
       }
 
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("webToken") : null;
+        const token = getStoredWebToken();
+
+        if (!token) {
+          throw new Error("Phiên đăng nhập đã hết hạn. Hãy vào lại tài khoản rồi liên kết Discord thêm lần nữa.");
+        }
+
         const response = await fetch(`${API_URL}/api/tai-khoan/lien-ket-discord`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             code,
@@ -68,7 +69,11 @@ function LinkDiscordCallbackContent() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.message || "Lỗi liên kết Discord.");
+          throw new Error(
+            data?.thongBao ||
+            data?.message ||
+            "Lỗi liên kết Discord."
+          );
         }
 
         await layThongTin();
@@ -85,7 +90,7 @@ function LinkDiscordCallbackContent() {
     };
 
     handleLinkDiscord();
-  }, [searchParams, daDangNhap, isLoading, layThongTin, router]);
+  }, [searchParams, layThongTin, router]);
 
   return (
     <div className="max-w-lg w-full rounded-2xl border border-[#1E1E1E] bg-[#111111] p-8 text-center shadow-xl animate-fade-in-up">
@@ -124,7 +129,7 @@ function LinkDiscordCallbackContent() {
 
 export default function LinkDiscordCallbackPage() {
   return (
-    <div className="min-h-screen bg-[#050505] px-4 text-white flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-[#050505] px-4 text-white">
       <div className="absolute left-4 top-4">
         <BackButton href="/shop" label="Cửa Hàng" variant="back" />
       </div>
