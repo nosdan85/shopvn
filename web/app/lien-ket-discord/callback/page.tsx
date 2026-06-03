@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthViet } from "@/app/context/AuthVietContext";
 import BackButton from "../../components/BackButton";
@@ -24,8 +24,15 @@ function LinkDiscordCallbackContent() {
   const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
   const [message, setMessage] = useState<string>("Đang liên kết Discord...");
   const [error, setError] = useState<string | null>(null);
+  const daXuLyRef = useRef(false);
 
   useEffect(() => {
+    if (daXuLyRef.current) {
+      return;
+    }
+
+    daXuLyRef.current = true;
+
     const handleLinkDiscord = async () => {
       const code = searchParams.get("code");
       const oauthError = searchParams.get("error");

@@ -135,19 +135,31 @@ async function layThongTinTaiKhoan(userId) {
  * @param {string} discordTenHienThi - Ten hien thi tren Discord
  * @returns {Promise<Object>}
  */
-async function capNhatLienKetDiscord(userId, discordId, discordTenHienThi) {
+async function capNhatLienKetDiscord(userId, discordData, discordTenHienThi) {
     const taiKhoan = await TaiKhoan.findById(userId);
     if (!taiKhoan) {
         throw new Error('Khong tim thay tai khoan');
     }
 
-    taiKhoan.discordId = discordId;
-    taiKhoan.discordTenHienThi = discordTenHienThi;
+    const duLieuDiscord = (discordData && typeof discordData === 'object')
+        ? discordData
+        : {
+            discordId: discordData,
+            discordTenHienThi,
+            vaiTro: undefined
+        };
+
+    taiKhoan.discordId = duLieuDiscord.discordId || '';
+    taiKhoan.discordTenHienThi = duLieuDiscord.discordTenHienThi || '';
     taiKhoan.discordDaLienKetLuc = new Date();
+
+    if (duLieuDiscord.vaiTro) {
+        taiKhoan.vaiTro = duLieuDiscord.vaiTro;
+    }
 
     await taiKhoan.save();
 
-    return taiKhoan;
+    return { taiKhoan };
 }
 
 /**

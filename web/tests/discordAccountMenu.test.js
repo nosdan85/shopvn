@@ -20,3 +20,7 @@ const discordCallbackSource = fs.readFileSync(path.join(__dirname, '..', 'app', 
 test('discord callback no longer blocks linking with a frontend login-required guard', () => {
   assert.doesNotMatch(discordCallbackSource, /Bạn cần đăng nhập để liên kết Discord|Ban can dang nhap de lien ket Discord/);
 });
+
+test('discord callback only processes the OAuth code once', () => {
+  assert.match(discordCallbackSource, /daXuLyRef/);
+});
