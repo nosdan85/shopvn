@@ -66,7 +66,14 @@ async function goiApi<T>(
   const duLieu = await phanHoi.json();
 
   if (!phanHoi.ok) {
-    throw new Error(duLieu.message || "Loi cua may chu");
+    // Ưu tiên hiển thị message từ backend
+    const errorMessage =
+      duLieu.thongBao ||
+      duLieu.message ||
+      duLieu.chiTiet?.message ||
+      `Lỗi ${phanHoi.status}: ${phanHoi.statusText}`;
+
+    throw new Error(errorMessage);
   }
 
   return duLieu;

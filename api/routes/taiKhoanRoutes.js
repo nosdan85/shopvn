@@ -19,7 +19,7 @@ const signupLimiter = (() => {
         max: 5, // 5 lan dang ky moi IP trong 1 gio
         standardHeaders: true,
         legacyHeaders: false,
-        message: { thongBao: 'Qua so lan yeu cau. Vui long thu lai sau 1 gio.' }
+        message: { thongBao: 'Quá số lần yêu cầu. Vui lòng thử lại sau 1 giờ.' }
     });
 })();
 
@@ -31,7 +31,7 @@ const loginLimiter = (() => {
         max: 10, // 10 lan thu trong 15 phut
         standardHeaders: true,
         legacyHeaders: false,
-        message: { thongBao: 'Qua so lan thu dang nhap. Vui long thu lai sau 15 phut.' }
+        message: { thongBao: 'Quá số lần thử đăng nhập. Vui lòng thử lại sau 15 phút.' }
     });
 })();
 
@@ -50,32 +50,32 @@ function layToken(req) {
 // Xu ly xac thuc - middleware function
 async function xacThuc(req, res, next) {
     if (!process.env.JWT_SECRET) {
-        return res.status(500).json({ thongBao: 'Server chua cau hinh xac thuc' });
+        return res.status(500).json({ thongBao: 'Server chưa cấu hình xác thực' });
     }
 
     const token = layToken(req);
     if (!token) {
-        return res.status(401).json({ thongBao: 'Vui long dang nhap de tiep tuc' });
+        return res.status(401).json({ thongBao: 'Vui lòng đăng nhập để tiếp tục' });
     }
 
     let decoded = null;
     try {
         decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
-        return res.status(401).json({ thongBao: 'Token khong hop le hoac da het han' });
+        return res.status(401).json({ thongBao: 'Token không hợp lệ hoặc đã hết hạn' });
     }
 
     // Kiem tra co taiKhoanService khong
     if (taiKhoanService?.xacthucToken) {
         const ketQua = await taiKhoanService.xacthucToken(token);
         if (!ketQua || !ketQua.hopLe) {
-            return res.status(401).json({ thongBao: 'Token khong hop le hoac da het han' });
+            return res.status(401).json({ thongBao: 'Token không hợp lệ hoặc đã hết hạn' });
         }
         req.nguoiDung = ketQua.taiKhoan;
     } else {
         // Fallback: tim kiem theo thong tin trong token
         if (!decoded?._id && !decoded?.tenDangNhap) {
-            return res.status(401).json({ thongBao: 'Token khong hop le' });
+            return res.status(401).json({ thongBao: 'Token không hợp lệ' });
         }
 
         // Tim tai khoan trong database
@@ -87,11 +87,11 @@ async function xacThuc(req, res, next) {
         });
 
         if (!taiKhoan) {
-            return res.status(401).json({ thongBao: 'Tai khoan khong ton tai' });
+            return res.status(401).json({ thongBao: 'Tài khoản không tồn tại' });
         }
 
         if (!taiKhoan.dangHoatDong) {
-            return res.status(401).json({ thongBao: 'Tai khoan da bi khoa' });
+            return res.status(401).json({ thongBao: 'Tài khoản đã bị khóa' });
         }
 
         req.nguoiDung = taiKhoan;
@@ -110,12 +110,12 @@ router.post('/dang-ky', signupLimiter, async (req, res) => {
         // Kiem tra cac truong bat buoc
         if (!tenDangNhap || !email || !matKhau || !xacNhanMatKhau) {
             return res.status(400).json({
-                thongBao: 'Vui long dien day du thong tin',
+                thongBao: 'Vui lòng điền đầy đủ thông tin',
                 chiTiet: {
-                    tenDangNhap: !tenDangNhap ? 'Bat buoc' : undefined,
-                    email: !email ? 'Bat buoc' : undefined,
-                    matKhau: !matKhau ? 'Bat buoc' : undefined,
-                    xacNhanMatKhau: !xacNhanMatKhau ? 'Bat buoc' : undefined
+                    tenDangNhap: !tenDangNhap ? 'Bắt buộc' : undefined,
+                    email: !email ? 'Bắt buộc' : undefined,
+                    matKhau: !matKhau ? 'Bắt buộc' : undefined,
+                    xacNhanMatKhau: !xacNhanMatKhau ? 'Bắt buộc' : undefined
                 }
             });
         }
@@ -123,40 +123,40 @@ router.post('/dang-ky', signupLimiter, async (req, res) => {
         // Kiem tra dinh dang ten dang nhap
         const tenDangNhapClean = String(tenDangNhap).trim();
         if (tenDangNhapClean.length < 3 || tenDangNhapClean.length > 30) {
-            return res.status(400).json({ thongBao: 'Ten dang nhap phai tu 3 den 30 ky tu' });
+            return res.status(400).json({ thongBao: 'Tên đăng nhập phải từ 3 đến 30 ký tự' });
         }
         if (!/^[a-zA-Z0-9_]+$/.test(tenDangNhapClean)) {
             return res.status(400).json({
-                thongBao: 'Ten dang nhap chi duoc chua chu cai, so va dau gach duoi'
+                thongBao: 'Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới'
             });
         }
 
         // Kiem tra mat khau khong trung nhau
         if (matKhau !== xacNhanMatKhau) {
-            return res.status(400).json({ thongBao: 'Mat khau khong khop' });
+            return res.status(400).json({ thongBao: 'Mật khẩu không khớp' });
         }
 
         // Kiem tra do dai mat khau
         if (matKhau.length < 6) {
-            return res.status(400).json({ thongBao: 'Mat khau phai co it nhat 6 ky tu' });
+            return res.status(400).json({ thongBao: 'Mật khẩu phải có ít nhất 6 ký tự' });
         }
 
         // Kiem tra email hop le
         const emailClean = String(email).trim().toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailClean)) {
-            return res.status(400).json({ thongBao: 'Email khong hop le' });
+            return res.status(400).json({ thongBao: 'Email không hợp lệ' });
         }
 
         // Kiem tra ten dang nhap da ton tai
         const tonTai = await TaiKhoan.findOne({ tenDangNhap: tenDangNhapClean });
         if (tonTai) {
-            return res.status(400).json({ thongBao: 'Ten dang nhap da ton tai' });
+            return res.status(400).json({ thongBao: 'Tên đăng nhập đã tồn tại' });
         }
 
         // Kiem tra email da ton tai
         const emailTonTai = await TaiKhoan.findOne({ email: emailClean });
         if (emailTonTai) {
-            return res.status(400).json({ thongBao: 'Email da duoc su dung' });
+            return res.status(400).json({ thongBao: 'Email đã được sử dụng' });
         }
 
         // Goi service neu co
@@ -201,14 +201,14 @@ router.post('/dang-ky', signupLimiter, async (req, res) => {
         };
 
         res.status(201).json({
-            thongBao: 'Dang ky thanh cong',
-            taiKhoan: thongTin,
+            thongBao: 'Đăng ký thành công',
+            user: thongTin,
             token: token
         });
 
     } catch (err) {
         console.error('Loi dang ky:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        res.status(500).json({ thongBao: 'Lỗi hệ thống. Vui lòng thử lại sau.' });
     }
 });
 
@@ -220,10 +220,10 @@ router.post('/dang-nhap', loginLimiter, async (req, res) => {
         // Kiem tra cac truong bat buoc
         if (!tenDangNhap || !matKhau) {
             return res.status(400).json({
-                thongBao: 'Vui long dien day du thong tin',
+                thongBao: 'Vui lòng điền đầy đủ thông tin',
                 chiTiet: {
-                    tenDangNhap: !tenDangNhap ? 'Bat buoc' : undefined,
-                    matKhau: !matKhau ? 'Bat buoc' : undefined
+                    tenDangNhap: !tenDangNhap ? 'Bắt buộc' : undefined,
+                    matKhau: !matKhau ? 'Bắt buộc' : undefined
                 }
             });
         }
@@ -233,18 +233,18 @@ router.post('/dang-nhap', loginLimiter, async (req, res) => {
         const taiKhoan = await TaiKhoan.findOne({ tenDangNhap: tenDangNhapClean });
 
         if (!taiKhoan) {
-            return res.status(401).json({ thongBao: 'Ten dang nhap hoac mat khau khong dung' });
+            return res.status(401).json({ thongBao: 'Tên đăng nhập hoặc mật khẩu không đúng' });
         }
 
         // Kiem tra mat khau
         const matKhauDung = await taiKhoan.kiemTraMatKhau(matKhau);
         if (!matKhauDung) {
-            return res.status(401).json({ thongBao: 'Ten dang nhap hoac mat khau khong dung' });
+            return res.status(401).json({ thongBao: 'Tên đăng nhập hoặc mật khẩu không đúng' });
         }
 
         // Kiem tra tai khoan con hoat dong
         if (!taiKhoan.dangHoatDong) {
-            return res.status(401).json({ thongBao: 'Tai khoan da bi khoa' });
+            return res.status(401).json({ thongBao: 'Tài khoản đã bị khóa' });
         }
 
         // Goi service neu co
@@ -255,8 +255,8 @@ router.post('/dang-nhap', loginLimiter, async (req, res) => {
             });
 
             return res.json({
-                thongBao: 'Dang nhap thanh cong',
-                taiKhoan: ketQua.taiKhoan,
+                thongBao: 'Đăng nhập thành công',
+                user: ketQua.taiKhoan,
                 token: ketQua.token
             });
         }
@@ -283,14 +283,14 @@ router.post('/dang-nhap', loginLimiter, async (req, res) => {
         };
 
         res.json({
-            thongBao: 'Dang nhap thanh cong',
-            taiKhoan: thongTin,
+            thongBao: 'Đăng nhập thành công',
+            user: thongTin,
             token: token
         });
 
     } catch (err) {
         console.error('Loi dang nhap:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        res.status(500).json({ thongBao: 'Lỗi hệ thống. Vui lòng thử lại sau.' });
     }
 });
 
@@ -299,7 +299,7 @@ router.get('/thong-tin', xacThuc, async (req, res) => {
     try {
         // Da duoc xac thuc boi middleware
         if (!req.nguoiDung) {
-            return res.status(401).json({ thongBao: 'Khong lay duoc thong tin tai khoan' });
+            return res.status(401).json({ thongBao: 'Không lấy được thông tin tài khoản' });
         }
 
         const taiKhoan = req.nguoiDung;
@@ -317,7 +317,7 @@ router.get('/thong-tin', xacThuc, async (req, res) => {
 
     } catch (err) {
         console.error('Loi lay thong tin:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        res.status(500).json({ thongBao: 'Lỗi hệ thống. Vui lòng thử lại sau.' });
     }
 });
 
@@ -327,7 +327,7 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
         const { maDiscord } = req.body;
 
         if (!maDiscord || typeof maDiscord !== 'string') {
-            return res.status(400).json({ thongBao: 'Vui long cung cap ma xac thuc Discord' });
+            return res.status(400).json({ thongBao: 'Vui lòng cung cấp mã xác thực Discord' });
         }
 
         // Client gui authorization code tu Discord OAuth
@@ -336,7 +336,7 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
         const { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI, JWT_SECRET } = process.env;
 
         if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
-            return res.status(500).json({ thongBao: 'Chua cau hinh Discord OAuth' });
+            return res.status(500).json({ thongBao: 'Chưa cấu hình Discord OAuth' });
         }
 
         // DOI: doi authorization code lay access token
@@ -372,11 +372,11 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
 
         } catch (err) {
             console.error('Loi lay Discord token:', err.response?.data || err.message);
-            return res.status(400).json({ thongBao: 'Ma xac thuc khong hop le hoac da het han' });
+            return res.status(400).json({ thongBao: 'Mã xác thực không hợp lệ hoặc đã hết hạn' });
         }
 
         if (!discordUserInfo || !discordUserInfo.id) {
-            return res.status(400).json({ thongBao: 'Khong lay duoc thong tin Discord' });
+            return res.status(400).json({ thongBao: 'Không lấy được thông tin Discord' });
         }
 
         // Kiem tra Discord da duoc lien ket voi tai khoan khac chua
@@ -387,7 +387,7 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
 
         if (daCo) {
             return res.status(400).json({
-                thongBao: 'Discord nay da duoc lien ket voi tai khoan khac'
+                thongBao: 'Discord này đã được liên kết với tài khoản khác'
             });
         }
 
@@ -413,13 +413,13 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
         }
 
         res.json({
-            thongBao: 'Lien ket Discord thanh cong',
+            thongBao: 'Liên kết Discord thành công',
             discordTenHienThi: taiKhoanCapNhat.discordTenHienThi
         });
 
     } catch (err) {
         console.error('Loi lien ket Discord:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        res.status(500).json({ thongBao: 'Lỗi hệ thống. Vui lòng thử lại sau.' });
     }
 });
 
@@ -438,7 +438,7 @@ router.get('/kiem-tra-discord', xacThuc, async (req, res) => {
 
     } catch (err) {
         console.error('Loi kiem tra Discord:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        res.status(500).json({ thongBao: 'Lỗi hệ thống. Vui lòng thử lại sau.' });
     }
 });
 
@@ -455,7 +455,7 @@ router.post('/dang-xuat', xacThuc, async (req, res) => {
             });
         }
 
-        res.json({ thongBao: 'Dang xuat thanh cong' });
+        res.json({ thongBao: 'Đăng xuất thành công' });
 
     } catch (err) {
         console.error('Loi dang xuat:', err);
