@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, Lock, Mail, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, Lock, Mail, Eye, EyeOff, Loader2, Home } from "lucide-react";
 import { useAuthViet } from "../context/AuthVietContext";
 
 export default function DangKyPage() {
@@ -22,31 +22,31 @@ export default function DangKyPage() {
 
   const kiemTra = (): string | null => {
     if (!tenDangNhap.trim()) {
-      return "Vui long nhap ten dang nhap";
+      return "Vui lòng nhập tên đăng nhập";
     }
     if (tenDangNhap.trim().length < 3 || tenDangNhap.trim().length > 30) {
-      return "Ten dang nhap phai tu 3 den 30 ky tu";
+      return "Tên đăng nhập phải từ 3 đến 30 ký tự";
     }
     if (!/^[a-zA-Z0-9_]+$/.test(tenDangNhap.trim())) {
-      return "Ten dang nhap chi duoc chua chu cai, so va dau gach duoi";
+      return "Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới";
     }
     if (!email.trim()) {
-      return "Vui long nhap email";
+      return "Vui lòng nhập email";
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      return "Email khong hop le";
+      return "Email không hợp lệ";
     }
     if (!matKhau) {
-      return "Vui long nhap mat khau";
+      return "Vui lòng nhập mật khẩu";
     }
     if (matKhau.length < 6) {
-      return "Mat khau phai co it nhat 6 ky tu";
+      return "Mật khẩu phải có ít nhất 6 ký tự";
     }
     if (!xacNhanMatKhau) {
-      return "Vui long xac nhan mat khau";
+      return "Vui lòng xác nhận mật khẩu";
     }
     if (matKhau !== xacNhanMatKhau) {
-      return "Mat khau xac nhan khong khop";
+      return "Mật khẩu xác nhận không khớp";
     }
     return null;
   };
@@ -71,10 +71,10 @@ export default function DangKyPage() {
         xacNhanMatKhau,
       });
       setThanhCong(true);
-      router.push("/shop");
+      router.push("/cua-hang");
       router.refresh();
     } catch (err) {
-      setLoi(err instanceof Error ? err.message : "Dang ky that bai");
+      setLoi(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {
       setDangTai(false);
     }
@@ -94,15 +94,24 @@ export default function DangKyPage() {
         <span className="text-2xl font-bold text-white">NOSMarket</span>
       </div>
 
+      {/* Back to Home Button */}
+      <Link
+        href="/cua-hang"
+        className="mb-4 flex items-center gap-2 text-sm text-[#B5B5B5] hover:text-white transition-colors"
+      >
+        <Home className="h-4 w-4" />
+        Quay về Cửa Hàng
+      </Link>
+
       {/* Form Card */}
       <div className="w-full max-w-[380px] rounded-[22px] border border-[#1E1E1E] bg-[#111111] p-6 sm:p-8">
-        <h1 className="mb-6 text-center text-xl font-semibold text-white">Dang Ky</h1>
+        <h1 className="mb-6 text-center text-xl font-semibold text-white">Đăng Ký</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username Input */}
           <div className="space-y-2">
             <label htmlFor="tenDangNhap" className="block text-sm font-medium text-[#B5B5B5]">
-              Ten Dang Nhap
+              Tên Đăng Nhập
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
@@ -113,7 +122,7 @@ export default function DangKyPage() {
                 type="text"
                 value={tenDangNhap}
                 onChange={(e) => setTenDangNhap(e.target.value)}
-                placeholder="3-30 ky tu, chu cai, so, dau gach duoi"
+                placeholder="3-30 ký tự, chữ cái, số, dấu gạch dưới"
                 className="w-full rounded-[12px] border border-[#1E1E1E] bg-[#0A0A0A] py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-[#6B6B6B] focus:border-[#2F9BE6]"
                 autoComplete="username"
               />
@@ -144,7 +153,7 @@ export default function DangKyPage() {
           {/* Password Input */}
           <div className="space-y-2">
             <label htmlFor="matKhau" className="block text-sm font-medium text-[#B5B5B5]">
-              Mat Khau
+              Mật Khẩu
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
@@ -155,7 +164,7 @@ export default function DangKyPage() {
                 type={hienMatKhau ? "text" : "password"}
                 value={matKhau}
                 onChange={(e) => setMatKhau(e.target.value)}
-                placeholder="Toi thieu 6 ky tu"
+                placeholder="Tối thiểu 6 ký tự"
                 className="w-full rounded-[12px] border border-[#1E1E1E] bg-[#0A0A0A] py-3 pl-10 pr-12 text-sm text-white outline-none placeholder:text-[#6B6B6B] focus:border-[#2F9BE6]"
                 autoComplete="new-password"
               />
@@ -172,7 +181,7 @@ export default function DangKyPage() {
           {/* Confirm Password Input */}
           <div className="space-y-2">
             <label htmlFor="xacNhanMatKhau" className="block text-sm font-medium text-[#B5B5B5]">
-              Xac Nhan Mat Khau
+              Xác Nhận Mật Khẩu
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
@@ -183,7 +192,7 @@ export default function DangKyPage() {
                 type={hienXacNhanMatKhau ? "text" : "password"}
                 value={xacNhanMatKhau}
                 onChange={(e) => setXacNhanMatKhau(e.target.value)}
-                placeholder="Nhap lai mat khau"
+                placeholder="Nhập lại mật khẩu"
                 className="w-full rounded-[12px] border border-[#1E1E1E] bg-[#0A0A0A] py-3 pl-10 pr-12 text-sm text-white outline-none placeholder:text-[#6B6B6B] focus:border-[#2F9BE6]"
                 autoComplete="new-password"
               />
@@ -207,7 +216,7 @@ export default function DangKyPage() {
           {/* Success Message */}
           {thanhCong && (
             <div className="rounded-[10px] bg-[#3DDC84]/10 p-3 text-sm text-[#3DDC84]">
-              Dang ky thanh cong! Dang chuyen huong...
+              Đăng ký thành công! Đang chuyển hướng...
             </div>
           )}
 
@@ -220,19 +229,19 @@ export default function DangKyPage() {
             {dangTai ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Dang xu ly...
+                Đang xử lý...
               </span>
             ) : (
-              "Dang Ky"
+              "Đăng Ký"
             )}
           </button>
         </form>
 
         {/* Login Link */}
         <div className="mt-6 text-center text-sm text-[#B5B5B5]">
-          Da co tai khoan?{" "}
+          Đã có tài khoản?{" "}
           <Link href="/dang-nhap" className="font-medium text-[#2F9BE6] hover:text-[#49B6FF]">
-            Dang nhap
+            Đăng nhập
           </Link>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, Lock, Eye, EyeOff, Loader2, Home } from "lucide-react";
 import { useAuthViet } from "../context/AuthVietContext";
 
 export default function DangNhapPage() {
@@ -23,11 +23,11 @@ export default function DangNhapPage() {
     setThanhCong(false);
 
     if (!tenDangNhap.trim()) {
-      setLoi("Vui long nhap ten dang nhap");
+      setLoi("Vui lòng nhập tên đăng nhập");
       return;
     }
     if (!matKhau) {
-      setLoi("Vui long nhap mat khau");
+      setLoi("Vui lòng nhập mật khẩu");
       return;
     }
 
@@ -35,10 +35,10 @@ export default function DangNhapPage() {
     try {
       await dangNhap({ tenDangNhap: tenDangNhap.trim(), matKhau });
       setThanhCong(true);
-      router.push("/shop");
+      router.push("/cua-hang");
       router.refresh();
     } catch (err) {
-      setLoi(err instanceof Error ? err.message : "Dang nhap that bai");
+      setLoi(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
       setDangTai(false);
     }
@@ -58,15 +58,24 @@ export default function DangNhapPage() {
         <span className="text-2xl font-bold text-white">NOSMarket</span>
       </div>
 
+      {/* Back to Home Button */}
+      <Link
+        href="/cua-hang"
+        className="mb-4 flex items-center gap-2 text-sm text-[#B5B5B5] hover:text-white transition-colors"
+      >
+        <Home className="h-4 w-4" />
+        Quay về Cửa Hàng
+      </Link>
+
       {/* Form Card */}
       <div className="w-full max-w-[380px] rounded-[22px] border border-[#1E1E1E] bg-[#111111] p-6 sm:p-8">
-        <h1 className="mb-6 text-center text-xl font-semibold text-white">Dang Nhap</h1>
+        <h1 className="mb-6 text-center text-xl font-semibold text-white">Đăng Nhập</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username Input */}
           <div className="space-y-2">
             <label htmlFor="tenDangNhap" className="block text-sm font-medium text-[#B5B5B5]">
-              Ten Dang Nhap
+              Tên Đăng Nhập
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
@@ -77,7 +86,7 @@ export default function DangNhapPage() {
                 type="text"
                 value={tenDangNhap}
                 onChange={(e) => setTenDangNhap(e.target.value)}
-                placeholder="Nhập ten dang nhap"
+                placeholder="Vui lòng nhập tên đăng nhập"
                 className="w-full rounded-[12px] border border-[#1E1E1E] bg-[#0A0A0A] py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-[#6B6B6B] focus:border-[#2F9BE6]"
                 autoComplete="username"
               />
@@ -87,7 +96,7 @@ export default function DangNhapPage() {
           {/* Password Input */}
           <div className="space-y-2">
             <label htmlFor="matKhau" className="block text-sm font-medium text-[#B5B5B5]">
-              Mat Khau
+              Mật Khẩu
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
@@ -98,7 +107,7 @@ export default function DangNhapPage() {
                 type={hienMatKhau ? "text" : "password"}
                 value={matKhau}
                 onChange={(e) => setMatKhau(e.target.value)}
-                placeholder="Nhập mat khau"
+                placeholder="Vui lòng nhập mật khẩu"
                 className="w-full rounded-[12px] border border-[#1E1E1E] bg-[#0A0A0A] py-3 pl-10 pr-12 text-sm text-white outline-none placeholder:text-[#6B6B6B] focus:border-[#2F9BE6]"
                 autoComplete="current-password"
               />
@@ -122,7 +131,7 @@ export default function DangNhapPage() {
           {/* Success Message */}
           {thanhCong && (
             <div className="rounded-[10px] bg-[#3DDC84]/10 p-3 text-sm text-[#3DDC84]">
-              Dang nhap thanh cong! Dang chuyen huong...
+              Đăng nhập thành công! Đang chuyển hướng...
             </div>
           )}
 
@@ -135,19 +144,19 @@ export default function DangNhapPage() {
             {dangTai ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Dang xu ly...
+                Đang xử lý...
               </span>
             ) : (
-              "Dang Nhap"
+              "Đăng Nhập"
             )}
           </button>
         </form>
 
         {/* Register Link */}
         <div className="mt-6 text-center text-sm text-[#B5B5B5]">
-          Chua co tai khoan?{" "}
+          Chưa có tài khoản?{" "}
           <Link href="/dang-ky" className="font-medium text-[#2F9BE6] hover:text-[#49B6FF]">
-            Dang ky ngay
+            Đăng ký ngay
           </Link>
         </div>
       </div>
