@@ -15,30 +15,42 @@ const getAdminJwtSecret = () => process.env.JWT_ADMIN_SECRET || process.env.JWT_
 
 router.post('/login', adminLoginLimiter, (req, res) => {
     try {
-        const { password } = req.body;
+        const { username, password } = req.body;
         const adminJwtSecret = getAdminJwtSecret();
-        if (!adminJwtSecret) return res.status(500).json({ message: 'JWT admin secret missing' });
-        if (!process.env.ADMIN_PASSWORD) return res.status(500).json({ message: 'ADMIN_PASSWORD missing' });
 
-        // ADD VALIDATION:
-        if (!password) {
-            return res.status(400).json({ error: 'Mật khẩu là bắt buộc' });
+        // Check env vars
+        if (!adminJwtSecret) {
+            return res.status(500).json({ error: 'JWT admin secret chưa được cấu hình' });
+        }
+        if (!process.env.ADMIN_USERNAME) {
+            return res.status(500).json({ error: 'ADMIN_USERNAME chưa được cấu hình' });
+        }
+        if (!process.env.ADMIN_PASSWORD) {
+            return res.status(500).json({ error: 'ADMIN_PASSWORD chưa được cấu hình' });
         }
 
-        if (typeof password !== 'string' || password.length < 8) {
-            return res.status(400).json({ error: 'Mật khẩu không hợp lệ' });
+        // Validate input
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin' });
         }
 
+        // Check username
+        if (username !== process.env.ADMIN_USERNAME) {
+            return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
+        }
+
+        // Check password
         if (password !== process.env.ADMIN_PASSWORD) {
-            return res.status(400).json({ message: 'Wrong Password' });
+            return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
         }
 
+        // Generate token
         const token = jwt.sign({ role: 'admin', type: 'admin' }, adminJwtSecret, { expiresIn: '1d' });
         return res.json({ token });
     } catch (err) {
         console.error('[ADMIN_LOGIN] Error:', err);
         res.status(500).json({
-            message: 'Login failed',
+            error: 'Lỗi hệ thống',
             chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
