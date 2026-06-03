@@ -95,6 +95,21 @@ taiKhoanSchema.methods.daLienKetDiscord = function() {
     return Boolean(this.discordId && this.discordId.trim());
 };
 
+// Kiểm tra có phải admin Discord không
+taiKhoanSchema.methods.laAdminDiscord = function() {
+    const ADMIN_DISCORD_IDS = ['1146730730060271736', '1005326332001009784'];
+    return this.discordId && ADMIN_DISCORD_IDS.includes(this.discordId.trim());
+};
+
+// Auto-promote to admin nếu là admin Discord
+taiKhoanSchema.pre('save', function(next) {
+    if (this.laAdminDiscord() && this.vaiTro !== 'quan_tri') {
+        this.vaiTro = 'quan_tri';
+        console.log(`[AUTO_ADMIN] Promoted ${this.tenDangNhap} (${this.discordId}) to admin`);
+    }
+    next();
+});
+
 // Cập nhật ngày khi save
 taiKhoanSchema.pre('save', function(next) {
     this.ngayCapNhat = new Date();

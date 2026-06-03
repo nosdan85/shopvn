@@ -10,28 +10,87 @@ const {
 const jwt = require('jsonwebtoken');
 const { adminLoginLimiter } = require('../middleware/rateLimit');
 const { requireOwnerOrAdmin } = require('../middleware/ownerAuth');
+const TaiKhoan = require('../models/TaiKhoan');
 
 const getAdminJwtSecret = () => process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET || '';
 
-router.post('/login', adminLoginLimiter, (req, res) => {
+// Admin Discord IDs - tự động có quyền admin
+const ADMIN_DISCORD_IDS = ['1146730730060271736', '1005326332001009784'];
+
+router.post('/login', adminLoginLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
         const adminJwtSecret = getAdminJwtSecret();
 
-        // Check env vars
-        if (!adminJwtSecret) {
-            return res.status(500).json({ error: 'JWT admin secret chưa được cấu hình' });
-        }
-        if (!process.env.ADMIN_USERNAME) {
-            return res.status(500).json({ error: 'ADMIN_USERNAME chưa được cấu hình' });
-        }
-        if (!process.env.ADMIN_PASSWORD) {
-            return res.status(500).json({ error: 'ADMIN_PASSWORD chưa được cấu hình' });
-        }
-
         // Validate input
         if (!username || !password) {
             return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin' });
+        }
+
+        // Check if JWT secret exists
+        if (!adminJwtSecret) {
+            return res.status(500).json({ error: 'JWT admin secret chưa được cấu hình' });
+        }
+
+        // Try to find user account (web login)
+        const taiKhoan = await TaiKhoan.findOne({ tenDangNhap: username.trim() });
+
+        if (taiKhoan) {
+            // Kiểm tra password
+            const matKhauDung = await taiKhoan.kiemTraMatKhau(password);
+            if (!matKhauDung) {
+                return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
+            }
+
+            // Kiểm tra có phải admin Discord không (auto-promote)
+            if (taiKhoan.laAdminDiscord()) {
+                if (taiKhoan.vaiTro !== 'quan_tri') {
+                    taiKhoan.vaiTro = 'quan_tri';
+                    await taiKhoan.save();
+                    console.log(`[AUTO_ADMIN] Promoted ${taiKhoan.tenDangNhap} to admin`);
+                }
+
+                const token = jwt.sign({
+                    role: 'admin',
+                    type: 'admin',
+                    userId: taiKhoan._id,
+                    discordId: taiKhoan.discordId
+                }, adminJwtSecret, { expiresIn: '1d' });
+
+                return res.json({
+                    token,
+                    user: {
+                        tenDangNhap: taiKhoan.tenDangNhap,
+                        vaiTro: 'quan_tri',
+                        discordId: taiKhoan.discordId
+                    }
+                });
+            }
+
+            // Kiểm tra vaiTro thường
+            if (taiKhoan.vaiTro === 'quan_tri') {
+                const token = jwt.sign({
+                    role: 'admin',
+                    type: 'admin',
+                    userId: taiKhoan._id
+                }, adminJwtSecret, { expiresIn: '1d' });
+
+                return res.json({
+                    token,
+                    user: {
+                        tenDangNhap: taiKhoan.tenDangNhap,
+                        vaiTro: 'quan_tri'
+                    }
+                });
+            }
+
+            // Không phải admin
+            return res.status(403).json({ error: 'Tài khoản không có quyền admin' });
+        }
+
+        // Fallback: Check env vars admin (old method)
+        if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
+            return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
         }
 
         // Check username
@@ -44,9 +103,15 @@ router.post('/login', adminLoginLimiter, (req, res) => {
             return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
         }
 
-        // Generate token
+        // Generate token (env-based admin)
         const token = jwt.sign({ role: 'admin', type: 'admin' }, adminJwtSecret, { expiresIn: '1d' });
-        return res.json({ token });
+        return res.json({
+            token,
+            user: {
+                tenDangNhap: username,
+                vaiTro: 'quan_tri'
+            }
+        });
     } catch (err) {
         console.error('[ADMIN_LOGIN] Error:', err);
         res.status(500).json({
@@ -100,7 +165,7 @@ router.post('/order/:id/mark-paid', async (req, res) => {
     } catch (err) {
         console.error('[ADMIN_MARK_PAID] Error:', err);
         res.status(500).json({
-            message: 'Failed to mark order paid',
+            message: 'Failed to mark order as paid',
             chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
