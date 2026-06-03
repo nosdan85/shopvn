@@ -37,6 +37,7 @@ const { authRequired, getBearerToken, verifyAnyJwtToken } = require('../middlewa
 const { checkoutLimiter, discordAuthLimiter, ticketCreateLimiter, cartSyncLimiter } = require('../middleware/rateLimit');
 const { getDiscordGatewayStatus } = require('../config/discordGateway');
 const { encryptSecret } = require('../utils/tokenCrypto');
+const { resolveDiscordRedirectUri } = require('../utils/discordOauth');
 const {
     normalizeCouponCode,
     isSupportedCouponCode,
@@ -409,11 +410,10 @@ const getDiscordOauthConfigError = () => {
     if (!getDiscordOauthClientSecret()) return 'DISCORD_CLIENT_SECRET is missing';
     return '';
 };
-const resolveDiscordAuthRedirectUri = (frontendRedirectUri) => {
-    const configured = getConfiguredDiscordRedirectUri();
-    if (configured) return configured;
-    return String(frontendRedirectUri || '').trim();
-};
+const resolveDiscordAuthRedirectUri = (frontendRedirectUri) => resolveDiscordRedirectUri({
+    requestRedirectUri: frontendRedirectUri,
+    configuredRedirectUri: getConfiguredDiscordRedirectUri()
+});
 const getDiscordTicketConfigError = () => {
     if (!normalizeEnvValue(process.env.DISCORD_BOT_TOKEN)) return 'DISCORD_BOT_TOKEN is missing';
     if (!normalizeEnvValue(process.env.DISCORD_GUILD_ID)) return 'DISCORD_GUILD_ID is missing';
@@ -5518,7 +5518,6 @@ router.put('/owner/config/featured', authRequired, async (req, res) => {
         return res.status(500).json({ error: 'Could not update featured products.' });
     }
 });
-
 
 
 

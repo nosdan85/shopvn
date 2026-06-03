@@ -1,8 +1,10 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
 const TaiKhoan = require('../models/TaiKhoan');
 const { xacThuc } = require('../middleware/auth');
+const { resolveDiscordRedirectUri } = require('../utils/discordOauth');
 
 // Service chua ton tai - se duoc Tao sau
 let taiKhoanService;
@@ -262,25 +264,34 @@ router.get('/thong-tin', xacThuc, async (req, res) => {
 // POST /lien-ket-discord - Lien ket tai khoan voi Discord
 router.post('/lien-ket-discord', xacThuc, async (req, res) => {
     try {
-        const { maDiscord } = req.body;
+        const { maDiscord, code, redirect_uri: requestRedirectUri } = req.body;
+        const authCode = typeof code === 'string' && code.trim()
+            ? code.trim()
+            : (typeof maDiscord === 'string' ? maDiscord.trim() : '');
 
-        if (!maDiscord || typeof maDiscord !== 'string') {
+        if (!authCode) {
             return res.status(400).json({ thongBao: 'Vui lòng cung cấp mã xác thực Discord' });
         }
 
         // Client gui authorization code tu Discord OAuth
         // Can goi Discord API de lay thong tin user
 
-        const { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI, JWT_SECRET } = process.env;
+        const {
+            DISCORD_CLIENT_ID,
+            DISCORD_CLIENT_SECRET,
+            DISCORD_REDIRECT_URI,
+            DISCORD_LINK_REDIRECT_URI
+        } = process.env;
 
         if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
             return res.status(500).json({ thongBao: 'Chưa cấu hình Discord OAuth' });
         }
 
-        // DOI: doi authorization code lay access token
-        const axios = require('axios');
-
         let discordUserInfo = null;
+        const redirectUri = resolveDiscordRedirectUri({
+            requestRedirectUri,
+            configuredRedirectUri: DISCORD_LINK_REDIRECT_URI || DISCORD_REDIRECT_URI
+        });
 
         try {
             const tokenResponse = await axios.post('https://discord.com/api/oauth2/token',
@@ -288,8 +299,8 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
                     client_id: DISCORD_CLIENT_ID,
                     client_secret: DISCORD_CLIENT_SECRET,
                     grant_type: 'authorization_code',
-                    code: maDiscord,
-                    redirect_uri: DISCORD_REDIRECT_URI || 'http://localhost:3000/callback/discord'
+                    code: authCode,
+                    redirect_uri: redirectUri
                 }), {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
@@ -352,6 +363,7 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
 
         res.json({
             thongBao: 'Liên kết Discord thành công',
+            daLienKetDiscord: true,
             discordTenHienThi: taiKhoanCapNhat.discordTenHienThi
         });
 
@@ -370,6 +382,7 @@ router.get('/kiem-tra-discord', xacThuc, async (req, res) => {
 
         res.json({
             daLienKet: daLienKet,
+            daLienKetDiscord: daLienKet,
             discordId: daLienKet ? taiKhoan.discordId : null,
             discordTenHienThi: daLienKet ? taiKhoan.discordTenHienThi : null
         });

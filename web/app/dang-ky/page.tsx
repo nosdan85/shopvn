@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Lock, Mail, Eye, EyeOff, Loader2, Home } from "lucide-react";
 import { useAuthViet } from "../context/AuthVietContext";
+import { getDiscordAuthRedirectUri } from "@/lib/discordOAuth";
 
 export default function DangKyPage() {
   const router = useRouter();
@@ -82,7 +83,10 @@ export default function DangKyPage() {
 
   const handleDiscordSignup = () => {
     const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/discord/callback`;
+    const redirectUri = getDiscordAuthRedirectUri({
+      envRedirectUri: process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI,
+      origin: window.location.origin,
+    });
 
     if (!DISCORD_CLIENT_ID) {
       setLoi("Discord OAuth chưa được cấu hình");

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthViet } from "../context/AuthVietContext";
 import BackButton from "../components/BackButton";
+import { getDiscordLinkRedirectUri } from "@/lib/discordOAuth";
 import {
   ChevronDown,
   ChevronUp,
@@ -101,7 +102,7 @@ const API_URL = typeof window !== "undefined" ? process.env.NEXT_PUBLIC_API_URL 
 function DonHangPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading: authLoading, getDiscordOAuthUrl, layThongTin } = useAuthViet();
+  const { user, isLoading: authLoading, layThongTin } = useAuthViet();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -193,20 +194,6 @@ function DonHangPage() {
     setSubmitting(orderId);
     setError(null);
 
-  const handleLinkDiscord = () => {
-    const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/lien-ket-discord/callback`;
-
-    if (!DISCORD_CLIENT_ID) {
-      setError("Discord OAuth chưa được cấu hình");
-      return;
-    }
-
-    const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20email`;
-
-    window.location.href = discordAuthUrl;
-  };
-
     try {
       const res = await fetch(`${API_URL}/api/don-hang/don-hang/${orderId}/huy`, {
         method: "POST",
@@ -249,12 +236,24 @@ function DonHangPage() {
   };
 
   const handleLinkDiscord = () => {
-    const url = getDiscordOAuthUrl();
-    if (url && url !== "#discord-env-missing") {
-      window.location.href = url;
-    } else {
+    const clientId = String(process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || "").trim();
+    const redirectUri = getDiscordLinkRedirectUri({
+      envRedirectUri: process.env.NEXT_PUBLIC_DISCORD_LINK_REDIRECT_URI,
+      origin: window.location.origin,
+    });
+
+    if (!clientId || !redirectUri) {
       setError("Cau hinh Discord chua san sang.");
+      return;
     }
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "identify email",
+    });
+    window.location.href = `https://discord.com/api/oauth2/authorize?${params.toString()}`;
   };
 
   const handleJoinServer = () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { getDiscordLinkRedirectUri } from "@/lib/discordOAuth";
 
 interface ThongTinNguoiDung {
   _id: string;
@@ -232,9 +233,10 @@ export function AuthVietProvider({ children }: { children: ReactNode }) {
     const clientId = String(
       process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || ""
     ).trim();
-    const redirectUri =
-      process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI ||
-      `${window.location.origin}/auth/callback`;
+    const redirectUri = getDiscordLinkRedirectUri({
+      envRedirectUri: process.env.NEXT_PUBLIC_DISCORD_LINK_REDIRECT_URI,
+      origin: window.location.origin,
+    });
 
     if (!clientId) {
       return "#discord-env-missing";

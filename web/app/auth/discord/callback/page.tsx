@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthViet } from "@/app/context/AuthVietContext";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { getDiscordAuthRedirectUri } from "@/lib/discordOAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -45,7 +46,10 @@ function DiscordCallbackContent() {
           credentials: "include",
           body: JSON.stringify({
             code,
-            redirect_uri: `${window.location.origin}/auth/discord/callback`,
+            redirect_uri: getDiscordAuthRedirectUri({
+              envRedirectUri: process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI,
+              origin: window.location.origin,
+            }),
           }),
         });
 

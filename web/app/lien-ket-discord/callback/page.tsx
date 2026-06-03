@@ -5,6 +5,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthViet } from "@/app/context/AuthVietContext";
 import BackButton from "../../components/BackButton";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { getDiscordLinkRedirectUri } from "@/lib/discordOAuth";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 function LinkDiscordCallbackContent() {
   const searchParams = useSearchParams();
@@ -42,12 +45,15 @@ function LinkDiscordCallbackContent() {
       }
 
       try {
-        const response = await fetch("/api/tai-khoan/lien-ket-discord", {
+        const response = await fetch(`${API_URL}/api/tai-khoan/lien-ket-discord`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             code,
-            redirect_uri: `${window.location.origin}/lien-ket-discord/callback`,
+            redirect_uri: getDiscordLinkRedirectUri({
+              envRedirectUri: process.env.NEXT_PUBLIC_DISCORD_LINK_REDIRECT_URI,
+              origin: window.location.origin,
+            }),
           }),
         });
 
