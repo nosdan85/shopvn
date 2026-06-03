@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useAuthViet } from "../../../context/AuthVietContext";
+import { useAuthViet } from "@/app/context/AuthVietContext";
 import BackButton from "../../components/BackButton";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -127,6 +127,8 @@ export default function LinkDiscordCallbackPage() {
     </div>
   );
 }
+
+
 
 
 

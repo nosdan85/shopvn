@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useAuthViet } from "../../../context/AuthVietContext";
+import { useAuthViet } from "@/app/context/AuthVietContext";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -10,7 +10,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 function DiscordCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setNguoiDung } = useAuthViet();
+  const { layThongTin } = useAuthViet();
   const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
   const [message, setMessage] = useState<string>("Đang xử lý...");
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +57,7 @@ function DiscordCallbackContent() {
 
         // Discord OAuth successful - user is now logged in
         if (data.user) {
-          setNguoiDung(data.user);
+          await layThongTin();
           localStorage.removeItem('discord_flow');
 
           setStatus("success");
@@ -77,7 +77,7 @@ function DiscordCallbackContent() {
     };
 
     handleCallback();
-  }, [searchParams, router, setNguoiDung]);
+  }, [searchParams, router, layThongTin]);
 
   return (
     <div className="max-w-lg w-full bg-[#111111] border border-[#1E1E1E] rounded-2xl p-8 text-center shadow-xl animate-fade-in-up">
@@ -130,6 +130,10 @@ export default function DiscordCallbackPage() {
     </div>
   );
 }
+
+
+
+
 
 
 
