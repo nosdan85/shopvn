@@ -1,3 +1,9 @@
+/**
+ * Discord Bot Integration
+ * Handles Discord client setup and basic bot functionality
+ * Note: Main bot code is in /bot folder
+ */
+
 const {
     Client,
     GatewayIntentBits,

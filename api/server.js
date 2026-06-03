@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const { client } = require('./bot');
+const { client } = require('./discordIntegration');
 const { getDiscordGatewayStatus } = require('./config/discordGateway');
 const { apiLimiter } = require('./middleware/rateLimit');
 const { log, createRequestLogger, createErrorLogger, logEnvCheck } = require('./utils/loggingService');

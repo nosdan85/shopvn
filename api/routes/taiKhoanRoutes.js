@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 
 const TaiKhoan = require('../models/TaiKhoan');
+const { xacThuc } = require('../middleware/auth');
 
 // Service chua ton tai - se duoc Tao sau
 let taiKhoanService;
@@ -36,69 +37,6 @@ const loginLimiter = (() => {
 })();
 
 const router = express.Router();
-
-// ============ AUTH MIDDLEWARE ============
-// Lay Bearer token tu Authorization header
-function layToken(req) {
-    const authHeader = req.headers.authorization || '';
-    if (authHeader.startsWith('Bearer ')) {
-        return authHeader.slice('Bearer '.length).trim();
-    }
-    return req.header('x-auth-token') || '';
-}
-
-// Xu ly xac thuc - middleware function
-async function xacThuc(req, res, next) {
-    if (!process.env.JWT_SECRET) {
-        return res.status(500).json({ thongBao: 'Server chưa cấu hình xác thực' });
-    }
-
-    const token = layToken(req);
-    if (!token) {
-        return res.status(401).json({ thongBao: 'Vui lòng đăng nhập để tiếp tục' });
-    }
-
-    let decoded = null;
-    try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-        return res.status(401).json({ thongBao: 'Token không hợp lệ hoặc đã hết hạn' });
-    }
-
-    // Kiem tra co taiKhoanService khong
-    if (taiKhoanService?.xacthucToken) {
-        const ketQua = await taiKhoanService.xacthucToken(token);
-        if (!ketQua || !ketQua.hopLe) {
-            return res.status(401).json({ thongBao: 'Token không hợp lệ hoặc đã hết hạn' });
-        }
-        req.nguoiDung = ketQua.taiKhoan;
-    } else {
-        // Fallback: tim kiem theo thong tin trong token
-        if (!decoded?._id && !decoded?.tenDangNhap) {
-            return res.status(401).json({ thongBao: 'Token không hợp lệ' });
-        }
-
-        // Tim tai khoan trong database
-        const taiKhoan = await TaiKhoan.findOne({
-            $or: [
-                { _id: decoded._id },
-                { tenDangNhap: decoded.tenDangNhap }
-            ]
-        });
-
-        if (!taiKhoan) {
-            return res.status(401).json({ thongBao: 'Tài khoản không tồn tại' });
-        }
-
-        if (!taiKhoan.dangHoatDong) {
-            return res.status(401).json({ thongBao: 'Tài khoản đã bị khóa' });
-        }
-
-        req.nguoiDung = taiKhoan;
-    }
-
-    next();
-}
 
 // ============ ROUTES ============
 
@@ -174,7 +112,7 @@ router.post('/dang-ky', signupLimiter, async (req, res) => {
                 tenDangNhap: tenDangNhapClean,
                 email: emailClean,
                 matKhauHash: matKhau,
-                soDuVi: 0,
+                soDuVnd: 0,
                 vaiTro: 'khach_hang'
             });
         }
@@ -195,7 +133,7 @@ router.post('/dang-ky', signupLimiter, async (req, res) => {
             _id: taiKhoanMoi._id,
             tenDangNhap: taiKhoanMoi.tenDangNhap,
             email: taiKhoanMoi.email,
-            soDuVi: taiKhoanMoi.soDuVi || 0,
+            soDuVnd: taiKhoanMoi.soDuVnd || 0,
             vaiTro: taiKhoanMoi.vaiTro,
             ngayTao: taiKhoanMoi.ngayTao
         };
@@ -277,7 +215,7 @@ router.post('/dang-nhap', loginLimiter, async (req, res) => {
             _id: taiKhoan._id,
             tenDangNhap: taiKhoan.tenDangNhap,
             email: taiKhoan.email,
-            soDuVi: taiKhoan.soDuVi || 0,
+            soDuVnd: taiKhoan.soDuVnd || 0,
             vaiTro: taiKhoan.vaiTro,
             ngayTao: taiKhoan.ngayTao
         };
@@ -308,7 +246,7 @@ router.get('/thong-tin', xacThuc, async (req, res) => {
             _id: taiKhoan._id,
             tenDangNhap: taiKhoan.tenDangNhap,
             email: taiKhoan.email,
-            soDuVi: taiKhoan.soDuVi || 0,
+            soDuVnd: taiKhoan.soDuVnd || 0,
             vaiTro: taiKhoan.vaiTro,
             daLienKetDiscord: Boolean(taiKhoan.discordId && taiKhoan.discordId.trim()),
             discordTenHienThi: taiKhoan.discordTenHienThi || '',
@@ -464,4 +402,3 @@ router.post('/dang-xuat', xacThuc, async (req, res) => {
 });
 
 module.exports = router;
-module.exports.xacThuc = xacThuc;

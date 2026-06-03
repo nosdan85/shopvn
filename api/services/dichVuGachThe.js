@@ -3,6 +3,7 @@
  */
 const axios = require('axios');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 
 const TaiKhoan = require('../models/TaiKhoan');
 const WalletTransaction = require('../models/WalletTransaction');
@@ -202,7 +203,7 @@ async function gachThe({ userId, nhaMang, menhGia, serial, maThe }) {
         discordUsername: taiKhoan.tenDangNhap,
         type: 'topup',
         direction: 'credit',
-        amountCents: menhGiaSo,
+        amountVnd: menhGiaSo,
         currency: 'VND',
         method: 'gachthefast',
         status: 'pending',
@@ -265,10 +266,10 @@ async function gachThe({ userId, nhaMang, menhGia, serial, maThe }) {
             const updatedTaiKhoan = await TaiKhoan.findOneAndUpdate(
                 {
                     _id: taiKhoan._id,
-                    soDuVi: { $gte: 0 }
+                    soDuVnd: { $gte: 0 }
                 },
                 {
-                    $inc: { soDuVi: menhGiaSo }
+                    $inc: { soDuVnd: menhGiaSo }
                 },
                 { new: true }
             );
@@ -289,7 +290,7 @@ async function gachThe({ userId, nhaMang, menhGia, serial, maThe }) {
             giaoDich.status = 'completed';
             giaoDich.providerPaymentId = data?.trans_id || data?.transaction_id || maGiaoDich;
             giaoDich.txnId = data?.trans_id || data?.transaction_id || maGiaoDich;
-            giaoDich.balanceAfterCents = updatedTaiKhoan.soDuVi;
+            giaoDich.balanceAfterVnd = updatedTaiKhoan.soDuVnd;
             giaoDich.reviewedAt = new Date();
             giaoDich.reviewedBy = 'gachthefast_auto';
 
@@ -379,8 +380,8 @@ async function kiemTraTrangThai(maGiaoDich) {
             thanhCong: true,
             thongBao: 'Giao dịch đã hoàn thành',
             trangThai: 'completed',
-            soTien: giaoDich.amountCents,
-            soDuVi: giaoDich.balanceAfterCents || 0
+            soTien: giaoDich.amountVnd,
+            soDuVnd: giaoDich.balanceAfterVnd || 0
         };
     }
 
@@ -390,7 +391,7 @@ async function kiemTraTrangThai(maGiaoDich) {
             thanhCong: false,
             thongBao: giaoDich.adminNotes || 'Giao dịch bị từ chối',
             trangThai: giaoDich.status,
-            soTien: giaoDich.amountCents
+            soTien: giaoDich.amountVnd
         };
     }
 
@@ -431,13 +432,14 @@ async function kiemTraTrangThai(maGiaoDich) {
 
         if (trangThaiProvider || maLoi === '1' || maLoi === 'success') {
             // Thanh cong - tien ngay vao vi
+            const taiKhoanId = mongoose.Types.ObjectId(giaoDich.discordId);
             const updatedTaiKhoan = await TaiKhoan.findOneAndUpdate(
                 {
-                    _id: giaoDich.discordId,
-                    soDuVi: { $gte: 0 }
+                    _id: taiKhoanId,
+                    soDuVnd: { $gte: 0 }
                 },
                 {
-                    $inc: { soDuVi: giaoDich.amountCents }
+                    $inc: { soDuVnd: giaoDich.amountVnd }
                 },
                 { new: true }
             );
@@ -452,7 +454,7 @@ async function kiemTraTrangThai(maGiaoDich) {
             }
 
             giaoDich.status = 'completed';
-            giaoDich.balanceAfterCents = updatedTaiKhoan.soDuVi;
+            giaoDich.balanceAfterVnd = updatedTaiKhoan.soDuVnd;
             giaoDich.reviewedAt = new Date();
             giaoDich.reviewedBy = 'gachthefast_check';
 
@@ -462,8 +464,8 @@ async function kiemTraTrangThai(maGiaoDich) {
                 thanhCong: true,
                 thongBao: mapLoiNhaCungCap('1'),
                 trangThai: 'completed',
-                soTien: giaoDich.amountCents,
-                soDuVi: updatedTaiKhoan.soDuVi
+                soTien: giaoDich.amountVnd,
+                soDuVnd: updatedTaiKhoan.soDuVnd
             };
 
         } else if (maLoi === '7' || maLoi === 'timeout') {
@@ -488,7 +490,7 @@ async function kiemTraTrangThai(maGiaoDich) {
                 thanhCong: false,
                 thongBao: mapLoiNhaCungCap(maLoi),
                 trangThai: 'rejected',
-                soTien: giaoDich.amountCents
+                soTien: giaoDich.amountVnd
             };
         }
 

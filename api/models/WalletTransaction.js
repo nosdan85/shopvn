@@ -27,6 +27,7 @@ const walletTransactionSchema = new mongoose.Schema({
         required: true
     },
     // So tien VND (integer, khong phai cents)
+    // Renamed from amountCents to amountVnd for clarity
     amountVnd: { type: Number, required: true, min: 1 },
     currency: { type: String, default: 'VND', trim: true },
 
@@ -87,6 +88,12 @@ const walletTransactionSchema = new mongoose.Schema({
 walletTransactionSchema.index({ userId: 1, createdAt: -1 });
 walletTransactionSchema.index({ status: 1, type: 1, createdAt: -1 });
 walletTransactionSchema.index({ providerPaymentId: 1, status: 1 });
+
+// Performance indexes
+walletTransactionSchema.index({ discordId: 1, createdAt: -1 });
+walletTransactionSchema.index({ status: 1, createdAt: -1 });
+walletTransactionSchema.index({ type: 1, createdAt: -1 });
+walletTransactionSchema.index({ referenceCode: 1 });
 
 // Tao webhook hash de chan xu ly trung lap
 walletTransactionSchema.pre('save', function(next) {

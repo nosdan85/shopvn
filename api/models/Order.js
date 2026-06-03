@@ -103,6 +103,11 @@ orderSchema.index({ status: 1, paymentStatus: 1, createdAt: -1 });
 orderSchema.index({ discordId: 1, ticketStatus: 1 });
 // referralCode already indexed at field level
 
+// Performance indexes
+orderSchema.index({ discordId: 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ paymentStatus: 1 });
+
 // Sync cac field cu sang gia tri moi (backward compatibility)
 orderSchema.pre('validate', function syncPaymentAliases(next) {
     // Neu co totalAmount (USD cu) thi tinh lai subtotalAmount/total (convert hoac giu nguyen)

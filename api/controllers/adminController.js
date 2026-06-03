@@ -6,7 +6,7 @@ const {
     reprocessLatestIpnForOrder
 } = require('../services/paypalFfService');
 
-const ORDER_STATUS_VALUES = new Set(['Pending', 'Waiting Payment', 'Completed', 'Cancelled']);
+const ORDER_STATUS_VALUES = new Set(['cho_xu_ly', 'da_thanh_toan', 'hoan_thanh', 'huy']);
 
 const log = require('../utils/loggingService').log;
 
@@ -24,7 +24,7 @@ exports.getStats = async (req, res) => {
     logAdminAction('GET_STATS', req);
     try {
         const totalRevenue = await Order.aggregate([
-            { $match: { $or: [{ status: 'Completed' }, { paymentStatus: 'paid' }] } },
+            { $match: { $or: [{ status: 'hoan_thanh' }, { paymentStatus: 'paid' }] } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]);
         const totalOrders = await Order.countDocuments();
@@ -112,9 +112,9 @@ exports.updateOrderStatus = async (req, res) => {
             return res.status(400).json({ message: 'Invalid order status' });
         }
 
-        const paymentStatus = nextStatus === 'Completed'
+        const paymentStatus = nextStatus === 'hoan_thanh'
             ? 'paid'
-            : (nextStatus === 'Cancelled' ? 'cancelled' : 'pending');
+            : (nextStatus === 'huy' ? 'cancelled' : 'pending');
         const update = { status: nextStatus, paymentStatus };
         if (paymentStatus !== 'paid') {
             update.paidAt = null;

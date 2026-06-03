@@ -2,6 +2,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClientProviders } from "./providers";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -91,7 +92,11 @@ export default function RootLayout({
         <meta name="theme-color" content="#050505" />
       </head>
       <body className="min-h-full flex flex-col bg-[#050505] text-white">
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders>
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
+        </ClientProviders>
       </body>
     </html>
   );

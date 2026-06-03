@@ -23,15 +23,24 @@ type Order = {
 
 const statusTone = (status?: string) => {
   switch (status) {
-    case "Hoàn Thành":
+    case "hoan_thanh":
       return "bg-[#3DDC84]/15 text-[#3DDC84] border-green-500/30";
-    case "Đã Hủy":
+    case "huy":
       return "bg-[#FF4D4F]/15 text-[#FF4D4F] border-red-500/30";
-    case "Chờ Thanh Toán":
+    case "da_thanh_toan":
       return "bg-[#2F9BE6]/15 text-[#2F9BE6] border-amber-500/30";
     default:
       return "bg-[#2F9BE6]/15 text-[#2F9BE6] border-blue-500/30";
   }
+};
+
+const statusLabels = {
+  "cho_xu_ly": "Chờ xử lý",
+  "da_thanh_toan": "Đã thanh toán",
+  "da_tao_ticket": "Đã tạo ticket",
+  "dang_giao": "Đang giao",
+  "hoan_thanh": "Hoàn thành",
+  "huy": "Đã hủy",
 };
 
 const formatOrderItem = (item: { name?: string; quantity?: number; packQuantity?: number }) => {
@@ -84,7 +93,7 @@ export default function AdminOrdersPage() {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return orders.filter((order) => {
-      const statusOk = status === "All" || (order.status || "Chờ Xử Lý") === status;
+      const statusOk = status === "All" || (order.status || "cho_xu_ly") === status;
       if (!statusOk) return false;
       if (!needle) return true;
       return [
@@ -192,10 +201,10 @@ export default function AdminOrdersPage() {
             className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] px-4 py-3 text-sm outline-none"
           >
             <option value="All">Tất cả trạng thái</option>
-            <option value="Chờ Xử Lý">Chờ Xử Lý</option>
-            <option value="Chờ Thanh Toán">Chờ Thanh Toán</option>
-            <option value="Hoàn Thành">Hoàn Thành</option>
-            <option value="Đã Hủy">Đã Hủy</option>
+            <option value="cho_xu_ly">Chờ xử lý</option>
+            <option value="da_thanh_toan">Đã thanh toán</option>
+            <option value="hoan_thanh">Hoàn thành</option>
+            <option value="huy">Đã hủy</option>
           </select>
         </div>
 
@@ -236,13 +245,13 @@ export default function AdminOrdersPage() {
                 </div>
                 <div>
                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${statusTone(order.status)}`}>
-                    {order.status || "Chờ Xử Lý"}
+                    {statusLabels[order.status as keyof typeof statusLabels] || "Chờ xử lý"}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     disabled={mutatingId === order._id}
-                    onClick={() => void updateStatus(order._id, "Hoàn Thành")}
+                    onClick={() => void updateStatus(order._id, "hoan_thanh")}
                     className="inline-flex items-center gap-1 rounded-[14px] bg-[#3DDC84]/15 px-2.5 py-1.5 text-xs text-[#3DDC84]"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -250,7 +259,7 @@ export default function AdminOrdersPage() {
                   </button>
                   <button
                     disabled={mutatingId === order._id}
-                    onClick={() => void updateStatus(order._id, "Chờ Thanh Toán")}
+                    onClick={() => void updateStatus(order._id, "da_thanh_toan")}
                     className="inline-flex items-center gap-1 rounded-[14px] bg-[#2F9BE6]/15 px-2.5 py-1.5 text-xs text-[#2F9BE6]"
                   >
                     <Clock3 className="h-3.5 w-3.5" />
@@ -258,7 +267,7 @@ export default function AdminOrdersPage() {
                   </button>
                   <button
                     disabled={mutatingId === order._id}
-                    onClick={() => void updateStatus(order._id, "Đã Hủy")}
+                    onClick={() => void updateStatus(order._id, "huy")}
                     className="inline-flex items-center gap-1 rounded-[14px] bg-[#FF4D4F]/15 px-2.5 py-1.5 text-xs text-[#FF4D4F]"
                   >
                     <XCircle className="h-3.5 w-3.5" />

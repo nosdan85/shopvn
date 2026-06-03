@@ -70,7 +70,7 @@ async function taoMaNapTien({ userId, tenDangNhap, soTienVnd }) {
         discordUsername: tenDangNhap,
         type: 'topup',
         direction: 'credit',
-        amountCents: soTienVnd, // Su dung soTienVnd truc tiep (khong quy doi sang cents)
+        amountVnd: soTienVnd, // Su dung soTienVnd truc tiep (don vi VND)
         currency: 'VND',
         method: 'sepay_mb_bank',
         status: 'pending',
@@ -182,10 +182,10 @@ async function xuLyWebhook(payload, signature) {
     }
 
     // Kiem tra so tien khop
-    if (giaoDich.amountCents !== soTien) {
+    if (giaoDich.amountVnd !== soTien) {
         return {
             thanhCong: false,
-            thongBao: `So tien khong khop. Yeu cau: ${giaoDich.amountCents} VND, Nhan duoc: ${soTien} VND`
+            thongBao: `So tien khong khop. Yeu cau: ${giaoDich.amountVnd} VND, Nhan duoc: ${soTien} VND`
         };
     }
 
@@ -227,7 +227,7 @@ async function xuLyWebhook(payload, signature) {
         giaoDich.status = 'completed';
         giaoDich.providerPaymentId = maGiaoDichSepay;
         giaoDich.txnId = maGiaoDichSepay;
-        giaoDich.balanceAfterCents = updatedTaiKhoan.soDuVi;
+        giaoDich.balanceAfterVnd = updatedTaiKhoan.soDuVnd;
         giaoDich.reviewedAt = new Date();
         giaoDich.reviewedBy = 'sepay_webhook';
 
@@ -270,11 +270,11 @@ async function layThongTinNapTien(maGiaoDich) {
     }
 
     // Lay thong tin vi hien tai
-    let soDuViHienTai = 0;
+    let soDuVndHienTai = 0;
     try {
         const taiKhoan = await TaiKhoan.findById(giaoDich.discordId);
         if (taiKhoan) {
-            soDuViHienTai = taiKhoan.soDuVi || 0;
+            soDuVndHienTai = taiKhoan.soDuVnd || 0;
         }
     } catch (err) {
         // Bo qua loi lay so du
@@ -283,12 +283,12 @@ async function layThongTinNapTien(maGiaoDich) {
     return {
         thanhCong: true,
         maGiaoDich: giaoDich.referenceCode,
-        soTien: giaoDich.amountCents,
+        soTien: giaoDich.amountVnd,
         trangThai: giaoDich.status,
         phuongThuc: giaoDich.method,
         ngayTao: giaoDich.createdAt,
         ngayCapNhat: giaoDich.updatedAt,
-        soDuVi: soDuViHienTai
+        soDuVnd: soDuVndHienTai
     };
 }
 

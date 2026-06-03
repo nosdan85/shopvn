@@ -123,7 +123,7 @@ const ensurePayPalFfInstructions = async (order, { sendEmail = false } = {}) => 
     order.products = Array.isArray(order.products) && order.products.length > 0 ? order.products : buildProductsSnapshot(order);
     if (order.paymentStatus !== 'paid') {
         order.paymentStatus = 'pending';
-        if (order.status !== 'Completed' && order.status !== 'Cancelled') order.status = 'Waiting Payment';
+        if (order.status !== 'hoan_thanh' && order.status !== 'huy') order.status = 'da_thanh_toan';
     }
     await order.save();
     const paypalEmail = getPayPalPaymentEmail();
@@ -146,10 +146,10 @@ const sendReminderForOrder = async (order) => {
 
 const markOrderPaid = async (order, { txnId = '', source = 'paypal_ipn', logId = null, manualNote = '', confirmedBy = '' } = {}) => {
     if (!order) return null;
-    const wasPaid = order.paymentStatus === 'paid' || order.status === 'Completed';
+    const wasPaid = order.paymentStatus === 'paid' || order.status === 'hoan_thanh';
     const safeTxnId = normalizeText(txnId);
     order.paymentStatus = 'paid';
-    order.status = 'Completed';
+    order.status = 'hoan_thanh';
     order.paymentMethod = order.paymentMethod || 'paypal_ff';
     if (safeTxnId) order.txnId = safeTxnId;
     if (!order.paidAt) order.paidAt = new Date();
@@ -245,7 +245,7 @@ const processPayPalIpnRaw = async ({ rawBody, payload, req = null, source = 'pay
     const expectedAmount = roundMoney(order.totalAmount || order.total || 0);
     if (paidAmount + 0.009 < expectedAmount) return updateLogAndReturn(log, { processingStatus: 'amount_mismatch', message: `Expected at least ${expectedAmount.toFixed(2)}, received ${paidAmount.toFixed(2)}.` }, { ok: false, status: 'amount_mismatch', log, order });
 
-    const wasAlreadyPaid = order.paymentStatus === 'paid' || order.status === 'Completed';
+    const wasAlreadyPaid = order.paymentStatus === 'paid' || order.status === 'hoan_thanh';
     const paidOrder = await markOrderPaid(order, { txnId, source, logId: log._id });
     return updateLogAndReturn(log, { processingStatus: wasAlreadyPaid ? 'duplicate' : 'paid', message: wasAlreadyPaid ? `Order ${paidOrder.orderId} was already paid.` : `Order ${paidOrder.orderId} marked paid.` }, { ok: true, status: 'paid', log, order: paidOrder });
 };

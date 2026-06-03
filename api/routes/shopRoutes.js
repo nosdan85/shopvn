@@ -950,7 +950,7 @@ const validateCouponCode = async (couponCodeRaw, discordId = null, subtotalAmoun
         // Check if user has ever created a ticket (completed order)
         const hasCompletedOrder = await Order.findOne({
             discordId,
-            status: { $in: ['Completed', 'Waiting Payment', 'Pending'] }
+            status: { $in: ['hoan_thanh', 'da_thanh_toan', 'cho_xu_ly'] }
         }).select('_id').lean();
 
         if (hasCompletedOrder) {
@@ -996,7 +996,7 @@ const validateCouponCode = async (couponCodeRaw, discordId = null, subtotalAmoun
 
         const existingGeneratedCouponOrder = await Order.findOne({
             couponCode,
-            status: { $ne: 'Cancelled' }
+            status: { $ne: 'huy' }
         }).select('_id').lean();
         if (existingGeneratedCouponOrder) {
             return {
@@ -1324,7 +1324,7 @@ const findUserCreatingTicketOrder = async (discordId, excludeOrderId = '') => {
 
     const query = {
         discordId: cleanDiscordId,
-        status: { $nin: ['Completed', 'Cancelled'] },
+        status: { $nin: ['hoan_thanh', 'huy'] },
         paymentStatus: { $ne: 'cancelled' },
         $or: [
             { ticketStatus: 'creating' },
@@ -1419,7 +1419,7 @@ const acquireOrderTicketLock = async ({ orderId, discordId }) => {
         {
             orderId,
             discordId,
-            status: { $ne: 'Cancelled' },
+            status: { $ne: 'huy' },
             $and: [
                 {
                     $or: [
@@ -1475,7 +1475,7 @@ const acquirePayPalTicketLock = async ({ orderId, discordId }) => {
         {
             orderId,
             discordId,
-            status: { $ne: 'Cancelled' },
+            status: { $ne: 'huy' },
             $and: [
                 {
                     $or: [
@@ -1531,7 +1531,7 @@ const acquireLtcTicketLock = async ({ orderId, discordId }) => {
         {
             orderId,
             discordId,
-            status: { $ne: 'Cancelled' },
+            status: { $ne: 'huy' },
             $and: [
                 {
                     $or: [
@@ -1834,7 +1834,11 @@ router.get('/products', async (req, res) => {
         res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         return res.json(normalizedProducts);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        console.error('[GET_PRODUCTS] Error:', err);
+        return res.status(500).json({
+            error: 'Failed to fetch products',
+            chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
@@ -1870,8 +1874,11 @@ router.get('/proofs', async (req, res) => {
             }))
         });
     } catch (error) {
-        console.error('Proofs fetch error:', error);
-        return res.status(500).json({ error: 'Failed to fetch proofs' });
+        console.error('[GET_PROOFS] Error:', error);
+        return res.status(500).json({
+            error: 'Failed to fetch proofs',
+            chiTiet: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -1931,8 +1938,11 @@ router.get('/proofs/:proofId/images/:imageIndex', async (req, res) => {
 
         return res.status(404).json({ error: 'Proof image is no longer available' });
     } catch (error) {
-        console.error('Proof image fetch error:', error);
-        return res.status(500).json({ error: 'Failed to fetch proof image' });
+        console.error('[GET_PROOF_IMAGE] Error:', error);
+        return res.status(500).json({
+            error: 'Failed to fetch proof image',
+            chiTiet: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -1962,8 +1972,11 @@ router.delete('/proofs/:proofId', authRequired, async (req, res) => {
 
         return res.json({ success: true, id: proofId });
     } catch (error) {
-        console.error('Delete proof error:', error);
-        return res.status(500).json({ error: 'Failed to delete proof' });
+        console.error('[DELETE_PROOF] Error:', error);
+        return res.status(500).json({
+            error: 'Failed to delete proof',
+            chiTiet: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -2039,8 +2052,11 @@ router.patch('/proofs/:proofId', authRequired, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Edit proof error:', error);
-        return res.status(500).json({ error: 'Failed to edit proof' });
+        console.error('[EDIT_PROOF] Error:', error);
+        return res.status(500).json({
+            error: 'Failed to edit proof',
+            chiTiet: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -2105,8 +2121,11 @@ router.post('/proofs/:proofId/images', authRequired, uploadProofImage.single('im
             imageUrls: proof.imageUrls.map((_, index) => `/api/shop/proofs/${encodeURIComponent(proofId)}/images/${index}`)
         });
     } catch (error) {
-        console.error('Upload proof image error:', error);
-        return res.status(500).json({ error: error.message || 'Failed to upload proof image' });
+        console.error('[UPLOAD_PROOF_IMAGE] Error:', error);
+        return res.status(500).json({
+            error: 'Failed to upload proof image',
+            chiTiet: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -2152,8 +2171,11 @@ router.delete('/proofs/:proofId/images/:imageIndex', authRequired, async (req, r
             imageUrls: proof.imageUrls.map((_, index) => `/api/shop/proofs/${encodeURIComponent(proofId)}/images/${index}`)
         });
     } catch (error) {
-        console.error('Delete proof image error:', error);
-        return res.status(500).json({ error: 'Failed to delete proof image' });
+        console.error('[DELETE_PROOF_IMAGE] Error:', error);
+        return res.status(500).json({
+            error: 'Failed to delete proof image',
+            chiTiet: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -2192,8 +2214,11 @@ router.post('/fingerprint', authRequired, async (req, res) => {
             flags: Array.isArray(record?.flags) ? record.flags : []
         });
     } catch (error) {
-        console.error('Fingerprint error:', error);
-        return res.status(500).json({ error: 'Could not save fingerprint.' });
+        console.error('[FINGERPRINT] Error:', error);
+        return res.status(500).json({
+            error: 'Could not save fingerprint.',
+            chiTiet: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -2216,8 +2241,11 @@ router.get('/my-referral-code', authRequired, async (req, res) => {
             referralApplied: Boolean(me?.referralAppliedCode)
         });
     } catch (error) {
-        console.error('My referral code error:', error);
-        return res.status(500).json({ error: 'Could not load referral code.' });
+        console.error('[MY_REFERRAL_CODE] Error:', error);
+        return res.status(500).json({
+            error: 'Could not load referral code.',
+            chiTiet: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 router.get('/my-coupons', authRequired, async (req, res) => {
@@ -3091,7 +3119,7 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
                     memoExpected: buildMemoExpected({ orderId }),
                     txnId: '',
                     paidAt: null,
-                    status: 'Waiting Payment',
+                    status: 'da_thanh_toan',
                     ticketStatus: 'pending',
                     ticketError: ''
                 });
@@ -3217,9 +3245,9 @@ router.get('/order-payment-info', async (req, res) => {
                 : [],
             status: order.status,
             paymentMethod: order.paymentMethod || 'paypal_ff',
-            paymentStatus: order.paymentStatus || (order.status === 'Completed' ? 'paid' : 'pending'),
+            paymentStatus: order.paymentStatus || (order.status === 'hoan_thanh' ? 'paid' : 'pending'),
             memoExpected: order.memoExpected || buildMemoExpected(order),
-            isPaid: order.status === 'Completed' || order.paymentStatus === 'paid',
+            isPaid: order.status === 'hoan_thanh' || order.paymentStatus === 'paid',
             discordId: order.discordId || '',
             discordUsername: order.discordUsername || '',
             robloxUserId: order.robloxUserId || '',
@@ -3295,7 +3323,7 @@ router.post('/create-payment', async (req, res) => {
             return res.status(status).json({ error });
         }
 
-        if (order.status === 'Completed') {
+        if (order.status === 'hoan_thanh') {
             log.warn('[CREATE_PAYMENT] Order already completed', { requestId: req.requestId, orderId });
             return res.status(400).json({ error: 'Order is already paid' });
         }
@@ -3419,7 +3447,7 @@ router.post('/paypal/capture-ajax', authRequired, async (req, res) => {
         }
 
         await Order.findByIdAndUpdate(order._id, {
-            status: 'Completed',
+            status: 'hoan_thanh',
             paymentStatus: 'paid',
             txnId: summary.txnId || order.txnId || '',
             paidAt: new Date(),
@@ -3460,7 +3488,7 @@ router.get('/paypal/capture', async (req, res) => {
         }
 
         await Order.findByIdAndUpdate(order._id, {
-            status: 'Completed',
+            status: 'hoan_thanh',
             paymentStatus: 'paid',
             txnId: summary.txnId || order.txnId || '',
             paidAt: new Date(),
@@ -3526,7 +3554,7 @@ router.post('/webhook/nowpayments', async (req, res) => {
             await Order.findOneAndUpdate(
                 { orderId },
                 {
-                    status: 'Completed',
+                    status: 'hoan_thanh',
                     paymentStatus: 'paid',
                     txnId: providerPaymentId,
                     paidAt: new Date(),
@@ -4479,7 +4507,7 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
 
         if (isPanelTicketMode()) {
             await Order.findByIdAndUpdate(order._id, {
-                status: order.status === 'Pending' ? 'Waiting Payment' : order.status
+        status: order.status === 'cho_xu_ly' ? 'da_thanh_toan' : order.status
             });
             return res.json({
                 mode: 'panel',
@@ -4577,7 +4605,7 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
                     ticketStatus: 'created',
                     ticketError: '',
                     paymentMethod: 'cashapp',
-                    status: lockedOrder.status === 'Pending' ? 'Waiting Payment' : lockedOrder.status
+        status: lockedOrder.status === 'cho_xu_ly' ? 'da_thanh_toan' : lockedOrder.status
                 },
                 $unset: { ticketLockUntil: 1 }
             }
@@ -4612,7 +4640,7 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
                         ticketStatus: 'created',
                         ticketError: '',
                         paymentMethod: 'cashapp',
-                        status: lockedOrder.status === 'Pending' ? 'Waiting Payment' : lockedOrder.status
+            status: lockedOrder.status === 'cho_xu_ly' ? 'da_thanh_toan' : lockedOrder.status
                     },
                     $unset: { ticketLockUntil: 1 }
                 }
@@ -4677,13 +4705,13 @@ router.get('/orders', authRequired, async (req, res) => {
             discordUsername: order.discordUsername,
             totalAmount: order.totalAmount,
             paymentMethod: order.paymentMethod || '-',
-            paymentStatus: order.paymentStatus || (order.status === 'Completed' ? 'paid' : 'pending'),
+            paymentStatus: order.paymentStatus || (order.status === 'hoan_thanh' ? 'paid' : 'pending'),
             memoExpected: order.memoExpected || '',
             txnId: order.txnId || '',
             status: order.status,
             ticketStatus: order.ticketStatus || '',
             channelId: order.channelId || '',
-            isPaid: order.status === 'Completed' || order.paymentStatus === 'paid',
+            isPaid: order.status === 'hoan_thanh' || order.paymentStatus === 'paid',
             items: order.items,
         })));
     } catch (err) {
@@ -5203,6 +5231,24 @@ const maskUsername = (username) => {
 
 // --- PUBLIC SHOP ENDPOINTS ----------------------------------------------------
 
+// GET /api/shop/payment-config - Get payment configuration
+router.get('/payment-config', (req, res) => {
+    try {
+        res.json({
+            paypalEmail: process.env.PAYPAL_EMAIL || '',
+            ltcAddress: process.env.LTC_PAY_ADDRESS || '',
+            cashappHandle: process.env.CASHAPP_HANDLE || '',
+            bankInfo: {
+                name: process.env.BANK_NAME || 'MB Bank',
+                accountNumber: process.env.BANK_ACCOUNT_NUMBER || '',
+                accountName: process.env.BANK_ACCOUNT_NAME || ''
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Lỗi khi lấy cấu hình thanh toán' });
+    }
+});
+
 // GET /api/shop/games ï¿½ list active games
 router.get('/games', async (req, res) => {
     try {
@@ -5236,7 +5282,7 @@ router.get('/recent-purchases', async (req, res) => {
         const limit = Math.min(Math.max(Number(req.query?.limit) || 7, 1), 10);
         const orders = await Order.find({
             $or: [
-                { status: 'Completed' },
+                { status: 'hoan_thanh' },
                 { paymentStatus: 'paid' }
             ]
         })

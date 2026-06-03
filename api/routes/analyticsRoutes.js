@@ -17,7 +17,7 @@ const getPeriodStarts = () => {
 };
 
 const paidMatch = {
-    $or: [{ status: 'Completed' }, { paymentStatus: 'paid' }]
+    $or: [{ status: 'hoan_thanh' }, { paymentStatus: 'paid' }]
 };
 
 const sumSales = async (startDate) => {

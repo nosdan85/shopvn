@@ -447,6 +447,7 @@ export default function ShopPage() {
   const [bestSellerPage, setBestSellerPage] = useState(0);
   const [welcomeVoucherVisible, setWelcomeVoucherVisible] = useState(true);
   const [copiedWelcomeCode, setCopiedWelcomeCode] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState<any>(null);
   const WELCOME_VOUCHER_CODE = "WELCOME20";
   const remoteCartHydratedRef = useRef(false);
   const skipNextRemoteCartSyncRef = useRef(false);
@@ -563,6 +564,20 @@ export default function ShopPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/shop/payment-config`, { cache: "no-store" });
+        const data = await res.json();
+        if (res.ok) {
+          setPaymentConfig(data);
+        }
+      } catch (err) {
+        console.error('Failed to load payment config:', err);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -1948,9 +1963,9 @@ export default function ShopPage() {
                             <div>
                               <p className="mb-2 text-sm text-[#B5B5B5]">Send to</p>
                               <div className="flex gap-2">
-                                <div className="min-w-0 flex-1 break-all rounded-[14px] border border-[#1E1E1E] bg-[#111111] px-3 py-3 font-mono text-sm text-white">{PAYPAL_EMAIL}</div>
-                                <button type="button" onClick={() => void copyPaymentValue(PAYPAL_EMAIL)} className="rounded-[14px] bg-[#1E1E1E] px-3 text-white">
-                                  {copiedPaymentValue === PAYPAL_EMAIL ? <CheckCircle2 className="h-4 w-4 text-[#3DDC84]" /> : <Copy className="h-4 w-4" />}
+                                <div className="min-w-0 flex-1 break-all rounded-[14px] border border-[#1E1E1E] bg-[#111111] px-3 py-3 font-mono text-sm text-white">{paymentConfig?.paypalEmail || PAYPAL_EMAIL}</div>
+                                <button type="button" onClick={() => void copyPaymentValue(paymentConfig?.paypalEmail || PAYPAL_EMAIL)} className="rounded-[14px] bg-[#1E1E1E] px-3 text-white">
+                                  {copiedPaymentValue === (paymentConfig?.paypalEmail || PAYPAL_EMAIL) ? <CheckCircle2 className="h-4 w-4 text-[#3DDC84]" /> : <Copy className="h-4 w-4" />}
                                 </button>
                               </div>
                             </div>
@@ -1974,9 +1989,9 @@ export default function ShopPage() {
                             <div>
                               <p className="mb-2 text-sm text-[#B5B5B5]">Payment Address</p>
                               <div className="flex gap-2">
-                                <div className="min-w-0 flex-1 break-all rounded-[14px] border border-[#1E1E1E] bg-[#111111] px-3 py-3 font-mono text-sm text-white">{LTC_ADDRESS}</div>
-                                <button type="button" onClick={() => void copyPaymentValue(LTC_ADDRESS)} className="rounded-[14px] bg-[#1E1E1E] px-3 text-white">
-                                  {copiedPaymentValue === LTC_ADDRESS ? <CheckCircle2 className="h-4 w-4 text-[#3DDC84]" /> : <Copy className="h-4 w-4" />}
+                                <div className="min-w-0 flex-1 break-all rounded-[14px] border border-[#1E1E1E] bg-[#111111] px-3 py-3 font-mono text-sm text-white">{paymentConfig?.ltcAddress || LTC_ADDRESS}</div>
+                                <button type="button" onClick={() => void copyPaymentValue(paymentConfig?.ltcAddress || LTC_ADDRESS)} className="rounded-[14px] bg-[#1E1E1E] px-3 text-white">
+                                  {copiedPaymentValue === (paymentConfig?.ltcAddress || LTC_ADDRESS) ? <CheckCircle2 className="h-4 w-4 text-[#3DDC84]" /> : <Copy className="h-4 w-4" />}
                                 </button>
                               </div>
                             </div>

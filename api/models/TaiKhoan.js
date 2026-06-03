@@ -21,7 +21,9 @@ const taiKhoanSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    soDuVi: {
+    // Renamed from soDuVi to soDuVnd for clarity (Vietnamese + currency unit)
+    // amountVnd = amount in Vietnamese Dong (integer, not cents)
+    soDuVnd: {
         type: Number,
         default: 0,
         min: 0
@@ -99,8 +101,17 @@ taiKhoanSchema.pre('save', function(next) {
     next();
 });
 
+// Virtual field for backward compatibility: soDuVi → soDuVnd
+taiKhoanSchema.virtual('soDuVi').get(function() {
+    return this.soDuVnd;
+}).set(function(value) {
+    this.soDuVnd = value;
+});
+
 // Index
 // discordId already indexed at field level
 taiKhoanSchema.index({ email: 1 });
+taiKhoanSchema.index({ discordId: 1 });
+taiKhoanSchema.index({ tenDangNhap: 1 });
 
 module.exports = mongoose.model('TaiKhoan', taiKhoanSchema);

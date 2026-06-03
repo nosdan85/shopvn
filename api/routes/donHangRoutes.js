@@ -6,13 +6,8 @@ const TaiKhoan = require('../models/TaiKhoan');
 const WalletTransaction = require('../models/WalletTransaction');
 const GeneratedCoupon = require('../models/GeneratedCoupon');
 
-// Import auth middleware from taiKhoanRoutes
-let xacThuc;
-try {
-    xacThuc = require('./taiKhoanRoutes').xacThuc;
-} catch (e) {
-    // Fallback import error handled at runtime
-}
+// Import auth middleware
+const { xacThuc } = require('../middleware/auth');
 
 // Import bot functions for ticket creation
 let botModule = null;
@@ -27,13 +22,9 @@ const router = express.Router();
 // ============ MIDDLEWARE ============
 
 // Authentication middleware for order routes
-// Uses xacThuc from taiKhoanRoutes
+// Uses xacThuc from auth middleware
 async function xacThucDonHang(req, res, next) {
-    if (!xacThuc) {
-        return res.status(500).json({ thongBao: 'Bang xac thuc chua san sang' });
-    }
-
-    // Call the original auth middleware
+    // Call the auth middleware
     await xacThuc(req, res, (err) => {
         if (err) return next(err);
 
@@ -192,17 +183,17 @@ router.post('/dat-hang', xacThucDonHang, async (req, res) => {
             return res.status(404).json({ thongBao: 'Tai khoan khong ton tai' });
         }
 
-        const soDuVi = Number(taiKhoan.soDuVi) || 0;
+        const soDuVnd = Number(taiKhoan.soDuVnd) || 0;
 
         // Check sufficient balance
-        if (soDuVi < totalVnd) {
+        if (soDuVnd < totalVnd) {
             await session.abortTransaction();
             return res.status(400).json({
                 thongBao: 'So du vi khong du',
                 chiTiet: {
                     canThanhToan: totalVnd,
-                    soDuHienTai: soDuVi,
-                    thieu: totalVnd - soDuVi
+                    soDuHienTai: soDuVnd,
+                    thieu: totalVnd - soDuVnd
                 }
             });
         }
@@ -250,7 +241,7 @@ router.post('/dat-hang', xacThucDonHang, async (req, res) => {
 
         // Deduct from wallet
         await TaiKhoan.findByIdAndUpdate(userId, {
-            $inc: { soDuVi: -totalVnd }
+            $inc: { soDuVnd: -totalVnd }
         }, { session: session });
 
         // Mark coupon as used
@@ -296,8 +287,11 @@ router.post('/dat-hang', xacThucDonHang, async (req, res) => {
 
     } catch (err) {
         await session.abortTransaction();
-        console.error('Loi dat hang:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        console.error('[DAT_HANG] Error:', err);
+        res.status(500).json({
+            thongBao: 'Loi he thong. Vui long thu lai sau.',
+            chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     } finally {
         session.endSession();
     }
@@ -332,8 +326,11 @@ router.get('/lich-su', xacThucDonHang, async (req, res) => {
         });
 
     } catch (err) {
-        console.error('Loi lay lich su:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        console.error('[LICH_SU] Error:', err);
+        res.status(500).json({
+            thongBao: 'Loi he thong. Vui long thu lai sau.',
+            chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
@@ -376,8 +373,11 @@ router.get('/:orderId', xacThucDonHang, async (req, res) => {
         });
 
     } catch (err) {
-        console.error('Loi lay chi tiet:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        console.error('[CHI_TIET_DON_HANG] Error:', err);
+        res.status(500).json({
+            thongBao: 'Loi he thong. Vui long thu lai sau.',
+            chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
@@ -489,8 +489,11 @@ router.post('/:orderId/tao-ticket', xacThucDonHang, async (req, res) => {
         });
 
     } catch (err) {
-        console.error('Loi tao ticket:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        console.error('[TAO_TICKET] Error:', err);
+        res.status(500).json({
+            thongBao: 'Loi he thong. Vui long thu lai sau.',
+            chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
@@ -519,8 +522,11 @@ router.get('/:orderId/ticket-trang-thai', xacThucDonHang, async (req, res) => {
         });
 
     } catch (err) {
-        console.error('Loi lay ticket status:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        console.error('[TICKET_TRANG_THAI] Error:', err);
+        res.status(500).json({
+            thongBao: 'Loi he thong. Vui long thu lai sau.',
+            chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
@@ -572,7 +578,7 @@ router.post('/:orderId/huy', xacThucDonHang, async (req, res) => {
             if (taiKhoan) {
                 // Refund balance
                 await TaiKhoan.findByIdAndUpdate(userId, {
-                    $inc: { soDuVi: refundAmount }
+                    $inc: { soDuVnd: refundAmount }
                 }, { session: session });
 
                 // Create refund transaction
@@ -621,8 +627,11 @@ router.post('/:orderId/huy', xacThucDonHang, async (req, res) => {
 
     } catch (err) {
         await session.abortTransaction();
-        console.error('Loi huy don hang:', err);
-        res.status(500).json({ thongBao: 'Loi he thong. Vui long thu lai sau.' });
+        console.error('[HUY_DON_HANG] Error:', err);
+        res.status(500).json({
+            thongBao: 'Loi he thong. Vui long thu lai sau.',
+            chiTiet: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     } finally {
         session.endSession();
     }

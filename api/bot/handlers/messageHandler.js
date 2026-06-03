@@ -72,7 +72,7 @@ const handleMessage = async (message, client) => {
   if (isCloseCommand) {
     try {
       if (order) {
-        await Order.updateOne({ _id: order._id }, { $set: { status: 'Completed', paymentStatus: 'paid', paymentMethod: order.paymentMethod || 'manual', paidAt: new Date() } });
+        await Order.updateOne({ _id: order._id }, { $set: { status: 'hoan_thanh', paymentStatus: 'paid', paymentMethod: order.paymentMethod || 'manual', paidAt: new Date() } });
       }
       await message.reply('Closing ticket in 3 seconds...');
       await sleep(3000);

@@ -7,7 +7,7 @@ const hasValue = (field) => ({
 const buildActiveTicketQuery = (discordId, excludeOrderId = '') => {
     const query = {
         discordId: String(discordId || '').trim(),
-        status: { $nin: ['Completed', 'Cancelled'] },
+        status: { $nin: ['hoan_thanh', 'huy'] },
         paymentStatus: { $ne: 'cancelled' },
         $or: [
             hasValue('channelId'),

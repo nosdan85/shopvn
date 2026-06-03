@@ -92,7 +92,7 @@ router.get('/nap-tien/thong-tin', xacThucViet, async (req, res) => {
         const daLienKetDiscord = Boolean(taiKhoan.discordId && taiKhoan.discordId.trim());
 
         res.json({
-            soDuVnd: taiKhoan.soDuVi || 0,
+            soDuVnd: taiKhoan.soDuVnd || 0,
             daLienKetDiscord: daLienKetDiscord,
             discordId: daLienKetDiscord ? taiKhoan.discordId : null,
             discordTenHienThi: daLienKetDiscord ? taiKhoan.discordTenHienThi : null
@@ -383,7 +383,7 @@ router.post('/admin/vi/cong-tien', xacThucViet, yeuCauQuanTri, async (req, res) 
         // Cong tien vao vi
         const taiKhoanCapNhat = await TaiKhoan.findByIdAndUpdate(
             taiKhoanId,
-            { $inc: { soDuVi: soTien } },
+            { $inc: { soDuVnd: soTien } },
             { new: true }
         );
 
@@ -448,16 +448,16 @@ router.post('/admin/vi/tru-tien', xacThucViet, yeuCauQuanTri, async (req, res) =
         }
 
         // Kiem tra so du du de tru
-        if ((taiKhoan.soDuVi || 0) < soTien) {
+        if ((taiKhoan.soDuVnd || 0) < soTien) {
             return res.status(400).json({
-                thongBao: 'So du khong du. So du hien tai: ' + (taiKhoan.soDuVi || 0) + ' VND'
+                thongBao: 'So du khong du. So du hien tai: ' + (taiKhoan.soDuVnd || 0) + ' VND'
             });
         }
 
         // Tru tien khoi vi
         const taiKhoanCapNhat = await TaiKhoan.findByIdAndUpdate(
             taiKhoanId,
-            { $inc: { soDuVi: -soTien } },
+            { $inc: { soDuVnd: -soTien } },
             { new: true }
         );
 
