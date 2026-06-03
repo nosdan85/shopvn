@@ -1,328 +1,413 @@
-# 🛒 ShopVN - Gaming Shop với Ví VNĐ
+# 🛍️ ShopVN - E-commerce Platform with Discord Integration
 
-Hệ thống shop game tích hợp ví VNĐ, thanh toán tự động qua SePay/Thẻ cào, và Discord bot.
+Full-stack e-commerce platform with Discord authentication, automated payment processing, and ticket system.
 
 ---
 
-## 📁 Cấu Trúc Project
+## 🌟 Features
+
+### 🔐 Authentication
+- Traditional username/password signup
+- **Optional Discord OAuth** on signup
+- Discord auto-linking for order fulfillment
+- Auto-admin promotion for specific Discord IDs
+
+### 💳 Payment System
+- **SePay Auto-Topup Bot** (polls every 5s)
+- MB Bank transfer detection
+- Automatic wallet crediting
+- GachTheFast card payment integration
+- No webhook required!
+
+### 🎫 Order Management
+- Discord ticket creation for orders
+- Order tracking and status updates
+- Wallet-based payments
+- Admin panel for order management
+
+### 👑 Admin Features
+- Discord ID-based admin access (auto-promotion)
+- Order management dashboard
+- User management
+- Payment verification
+
+---
+
+## 🏗️ Architecture
+
+### Frontend (Next.js 16)
+- **Framework**: Next.js 16.2.6 with App Router
+- **Styling**: Tailwind CSS
+- **UI**: Custom components with Lucide icons
+- **Deployment**: Vercel
+
+### Backend (Node.js + Express)
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: MongoDB Atlas
+- **Deployment**: Render
+
+### Bot Services
+- **Discord Bot**: Ticket system, user management
+- **SePay Bot**: Auto-topup polling (no webhook)
+
+---
+
+## 📦 Project Structure
 
 ```
 shopvn-main/
-├── web/                    # Frontend Next.js
+├── web/                    # Frontend (Next.js)
 │   ├── app/
-│   │   ├── components/    # UI components (Navbar, etc.)
-│   │   ├── context/       # Auth contexts (AuthViet)
-│   │   ├── cua-hang/      # Shop page
-│   │   ├── dang-nhap/     # Login page
-│   │   ├── dang-ky/       # Register page
-│   │   ├── nap-tien/      # Topup page
-│   │   ├── don-hang/      # Orders page
-│   │   ├── proofs/        # Reviews page
+│   │   ├── dang-ky/       # Signup (with Discord OAuth)
+│   │   ├── dang-nhap/     # Login
+│   │   ├── don-hang/      # Orders (Discord link enforcement)
+│   │   ├── auth/          # Discord OAuth callback
+│   │   ├── shop/          # Main shop
 │   │   └── admin/         # Admin panel
-│   └── package.json
-│
-├── api/                    # Backend Express/MongoDB
-│   ├── bot/               # Discord bot
-│   ├── models/            # Mongoose models
-│   │   ├── TaiKhoan.js   # Web accounts
-│   │   ├── Order.js       # Orders
-│   │   └── WalletTransaction.js
-│   ├── routes/            # API routes
-│   │   ├── taiKhoanRoutes.js   # Auth
-│   │   ├── viRoutes.js         # Wallet
-│   │   └── donHangRoutes.js    # Orders
-│   ├── services/          # Business logic
-│   │   ├── sepayService.js     # SePay integration
-│   │   └── dichVuGachThe.js    # Card charging
-│   └── server.js
-│
-├── DEPLOYMENT.md          # Hướng dẫn deploy chi tiết
-├── MIGRATION.md           # Chi tiết migration từ Discord OAuth
-└── README.md              # File này
+│   └── ...
+├── api/                   # Backend (Express)
+│   ├── bot/              # Discord bot
+│   │   └── sepayPollingBot.js  # SePay auto-topup
+│   ├── models/           # MongoDB models
+│   ├── routes/           # API routes
+│   ├── controllers/      # Business logic
+│   └── server.js         # Entry point
+└── ...
 ```
 
 ---
 
-## ✨ Tính Năng
+## 🚀 Deployment
 
-### 🔐 Authentication
-- ✅ Đăng ký/Đăng nhập tài khoản web (không cần Discord)
-- ✅ JWT authentication với refresh tokens
-- ✅ Liên kết Discord optional (để tạo ticket)
+### Frontend (Vercel)
 
-### 💰 Ví VNĐ & Nạp Tiền
-- ✅ Ví điện tử VNĐ (không phải USD)
-- ✅ **Nạp tiền tự động qua SePay** (chuyển khoản MB Bank → QR code)
-- ✅ **Gạch thẻ cào** (Viettel/Vina/Mobifone)
-- ✅ Lịch sử giao dịch chi tiết
+1. **Connect GitHub repo to Vercel**
 
-### 🛍️ Shop & Checkout
-- ✅ Browse sản phẩm theo game
-- ✅ Giỏ hàng với coupon discount
-- ✅ **Checkout bằng ví VNĐ** (trừ tiền ngay lập tức)
-- ✅ Không còn PayPal/LTC/CashApp
-- ✅ Không cần nhập Roblox username khi mua
-
-### 📦 Quản Lý Đơn Hàng
-- ✅ Lịch sử đơn hàng
-- ✅ Chi tiết từng đơn
-- ✅ **Tạo ticket Discord** (sau khi liên kết Discord)
-- ✅ Hủy đơn → hoàn tiền tự động
-
-### 🤖 Discord Bot
-- ✅ Tự động tạo ticket channel khi user yêu cầu
-- ✅ Embed đơn hàng với thông tin chi tiết
-- ✅ Admin có thể xử lý trong ticket
-- ✅ Vouch system (đánh giá)
-
-### 👨‍💼 Admin Panel
-- ✅ Quản lý sản phẩm (CRUD)
-- ✅ Quản lý đơn hàng (approve/reject)
-- ✅ Quản lý tài khoản web (xem số dư, cộng/trừ tiền)
-- ✅ Thống kê doanh thu
-- ✅ Quản lý proofs/reviews
-
----
-
-## 🚀 Quick Start (Development)
-
-### Prerequisites
-
-- Node.js 18+
-- MongoDB (local hoặc Atlas)
-- Discord Bot Token
-
-### 1. Clone & Install
-
-```bash
-git clone <repo>
-cd shopvn-main
-
-# Install frontend
-cd web
-npm install
-
-# Install backend
-cd ../api
-npm install
-```
-
-### 2. Setup Environment Variables
-
-**Backend (`api/.env`)**:
+2. **Environment Variables**:
 ```env
-MONGO_URI=mongodb://localhost:27017/shopvn
-JWT_SECRET=your_jwt_secret_min_32_chars
-DISCORD_BOT_TOKEN=your_bot_token
-DISCORD_CLIENT_ID=your_client_id
-DISCORD_CLIENT_SECRET=your_client_secret
-CLIENT_URL=http://localhost:3000
-SEPAY_API_KEY=your_sepay_key
-GACHTHE_API_KEY=your_gachthe_key
+NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
+NEXT_PUBLIC_DISCORD_CLIENT_ID=your_discord_client_id
+NEXT_PUBLIC_DISCORD_SERVER_INVITE=https://discord.gg/your_invite
 ```
 
-**Frontend (`web/.env.local`)**:
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_DISCORD_CLIENT_ID=your_client_id
-NEXT_PUBLIC_DISCORD_REDIRECT_URI=http://localhost:3000/lien-ket-discord/callback
-```
+3. **Build Settings**:
+   - Framework: Next.js
+   - Build Command: `npm run build`
+   - Output Directory: `.next`
+   - Root Directory: `web`
 
-### 3. Run
-
-**Backend**:
-```bash
-cd api
-npm run dev
-# Server chạy tại http://localhost:5000
-```
-
-**Frontend**:
-```bash
-cd web
-npm run dev
-# Frontend chạy tại http://localhost:3000
-```
+4. **Deploy**: Vercel auto-deploys on push to main
 
 ---
 
-## 📚 API Endpoints
+### Backend (Render)
 
-### Auth Routes (`/api/tai-khoan`)
-- `POST /dang-ky` - Đăng ký tài khoản
-- `POST /dang-nhap` - Đăng nhập
-- `POST /dang-xuat` - Đăng xuất
-- `GET /thong-tin` - Lấy thông tin user (auth required)
-- `POST /lien-ket-discord` - Liên kết Discord (auth + OAuth code)
-- `GET /kiem-tra-discord` - Check Discord link status
+1. **Create Web Service** on Render
 
-### Wallet Routes (`/api/vi`)
-- `POST /nap-tien/chuyen-khoan/tao` - Tạo giao dịch SePay
-- `GET /nap-tien/chuyen-khoan/:id` - Check SePay status
-- `POST /nap-tien/the-cao` - Gạch thẻ cào
-- `GET /nap-tien/the-cao/menh-gia` - Lấy mệnh giá thẻ
-- `GET /vi/lich-su` - Lịch sử giao dịch (auth required)
+2. **Settings**:
+   - Build Command: `npm install`
+   - Start Command: `node server.js`
+   - Root Directory: `api`
 
-### Order Routes (`/api/don-hang`)
-- `POST /dat-hang` - Đặt hàng (auth required)
-- `GET /lich-su` - Lịch sử đơn hàng
-- `GET /:orderId` - Chi tiết đơn hàng
-- `POST /:orderId/tao-ticket` - Tạo ticket Discord
-- `POST /:orderId/huy` - Hủy đơn
-
-### Admin Routes (`/api/shop/owner`, `/api/admin`)
-- Products, Games, Config management
-- Order management
-- Web accounts management
-- Analytics & stats
-
----
-
-## 🔄 Migration từ Phiên Bản Cũ
-
-Hệ thống đã được refactor hoàn toàn:
-
-| Trước | Sau |
-|-------|-----|
-| Discord OAuth login | Web accounts (username/password) |
-| PayPal/LTC/CashApp | Ví VNĐ (SePay/Thẻ cào) |
-| Upload payment proof | Thanh toán tự động |
-| USD pricing | VNĐ pricing |
-| Discord required | Discord optional (chỉ để tạo ticket) |
-| Delivery slots (calendar) | Không còn |
-| Nhập Roblox username khi mua | Không cần |
-
-Chi tiết xem `MIGRATION.md`.
-
----
-
-## 🌐 Deployment
-
-Xem hướng dẫn chi tiết trong `DEPLOYMENT.md`.
-
-**TL;DR**:
-- Frontend → Vercel
-- Backend → Render
-- Database → MongoDB Atlas
-- Bot → Render (cùng với API)
-
----
-
-## 🔧 Tech Stack
-
-### Frontend
-- **Next.js 14** (App Router)
-- **React 18**
-- **TypeScript**
-- **Tailwind CSS**
-- **Lucide Icons**
-
-### Backend
-- **Node.js + Express**
-- **MongoDB + Mongoose**
-- **JWT Authentication**
-- **Discord.js v14**
-- **Axios** (API calls)
-
-### Payment Integrations
-- **SePay** (MB Bank transfers)
-- **GachThe** (Card charging)
-
----
-
-## 🎨 Theme & Design
-
-- **Dark Mode**: `#050505` background, `#111111` cards
-- **Accent Color**: `#2F9BE6` (blue)
-- **Success**: `#3DDC84` (green)
-- **Error**: `#FF4D4F` (red)
-- **Typography**: Geist Sans
-
----
-
-## 📝 Environment Variables Reference
-
-### Backend Required
+3. **Environment Variables** (15 required):
 
 ```env
 # Database
-MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/shopvn
+MONGO_URI=mongodb+srv://...
 
-# Auth
-JWT_SECRET=min_32_character_random_string
+# JWT & Auth
+JWT_SECRET=<generate_32_chars>
+JWT_ADMIN_SECRET=<generate_32_chars>
+TOKEN_ENCRYPTION_KEY=<generate_32_chars>
 
-# Discord Bot
-DISCORD_BOT_TOKEN=bot_token_from_developer_portal
-DISCORD_CLIENT_ID=oauth_client_id
-DISCORD_CLIENT_SECRET=oauth_client_secret
-DISCORD_GUILD_ID=your_server_id
-DISCORD_INVITE_LINK=https://discord.gg/yourcode
+# Admin Credentials
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=<your_secure_password>
 
-# CORS
-CLIENT_URL=https://yourshop.com
+# Discord Bot (REQUIRED)
+DISCORD_BOT_TOKEN=<bot_token>
+DISCORD_GUILD_ID=<server_id>
+DISCORD_TICKET_CATEGORY_ID=<category_id>
+DISCORD_OWNER_ID=<your_user_id>
+DISCORD_OWNER_ROLE_ID=<staff_role_id>
 
-# Payment
-SEPAY_API_KEY=sepay_key
-SEPAY_ACCOUNT_NUMBER=mb_bank_account
-GACHTHE_API_KEY=gachthe_key
-GACHTHE_PARTNER_ID=partner_id
+# Discord OAuth
+DISCORD_CLIENT_ID=<oauth_client_id>
+DISCORD_CLIENT_SECRET=<oauth_client_secret>
+
+# SePay Auto-Topup
+SEPAY_BOT_API_KEY=<sepay_api_key>
+SEPAY_BOT_ENABLED=true
+SEPAY_BOT_INTERVAL_MS=5000
+
+# Bank Info
+BANK_ACCOUNT_NAME=YOUR_NAME
+BANK_ACCOUNT_NUMBER=0123456789
+BANK_NAME=MB Bank
+
+# Frontend
+CLIENT_URL=https://your-frontend.vercel.app
+
+# Server
+NODE_ENV=production
+PORT=5000
 ```
 
-### Frontend Required
+4. **Generate Secrets**:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
+---
+
+## 🤖 Discord Bot Setup
+
+### 1. Create Discord Application
+
+1. Go to https://discord.com/developers/applications
+2. Click "New Application"
+3. Name: "ShopVN Bot"
+
+### 2. Configure Bot
+
+1. **Bot Tab**:
+   - Click "Add Bot"
+   - Copy Bot Token → `DISCORD_BOT_TOKEN`
+   - Enable **3 Privileged Gateway Intents**:
+     - ✅ Presence Intent
+     - ✅ Server Members Intent
+     - ✅ Message Content Intent
+
+2. **OAuth2 Tab**:
+   - Copy Client ID → `DISCORD_CLIENT_ID`
+   - Generate Client Secret → `DISCORD_CLIENT_SECRET`
+
+### 3. Invite Bot to Server
+
+1. **OAuth2** → **URL Generator**
+2. **Scopes**: `bot`, `applications.commands`
+3. **Permissions**: 
+   - Manage Channels
+   - Send Messages
+   - Embed Links
+   - Attach Files
+   - Read Message History
+   - Add Reactions
+4. Copy URL → Open in browser → Invite to server
+
+### 4. Get Discord IDs
+
+**Enable Developer Mode**:
+- Discord Settings → Advanced → ✅ Developer Mode
+
+**Copy IDs** (right-click → Copy ID):
+- Server → `DISCORD_GUILD_ID`
+- Ticket Category → `DISCORD_TICKET_CATEGORY_ID`
+- Your Username → `DISCORD_OWNER_ID`
+- Staff Role → `DISCORD_OWNER_ROLE_ID`
+
+---
+
+## 🔐 Discord Admin Auto-Promotion
+
+Accounts with these Discord IDs automatically become admin:
+- `1146730730060271736`
+- `1005326332001009784`
+
+**To add more admins**:
+Edit `api/models/TaiKhoan.js` line ~100:
+```javascript
+const ADMIN_DISCORD_IDS = ['1146730730060271736', '1005326332001009784', 'NEW_ID_HERE'];
+```
+
+---
+
+## 💰 SePay Setup
+
+1. **Get SePay Account**:
+   - Register at SePay platform
+   - Link your MB Bank account
+
+2. **Get API Key**:
+   - Dashboard → API Settings
+   - Copy API Key → `SEPAY_BOT_API_KEY`
+
+3. **Configure Bot**:
 ```env
-NEXT_PUBLIC_API_URL=https://your-api.onrender.com
-NEXT_PUBLIC_SITE_URL=https://yourshop.com
-NEXT_PUBLIC_DISCORD_CLIENT_ID=same_as_backend
-NEXT_PUBLIC_DISCORD_REDIRECT_URI=https://yourshop.com/lien-ket-discord/callback
+SEPAY_BOT_ENABLED=true
+SEPAY_BOT_INTERVAL_MS=5000  # Poll every 5 seconds
+```
+
+4. **Test**:
+   - Make a test transfer to your MB Bank
+   - Check logs: `✅ Nạp XXX VND thành công!`
+
+---
+
+## 📝 Usage Flows
+
+### Flow 1: Signup with Discord (Recommended)
+
+```
+1. Visit /dang-ky
+2. Click "Đăng ký bằng Discord"
+3. Authorize on Discord
+4. Auto-create account + login
+5. Discord already linked ✅
+```
+
+### Flow 2: Traditional Signup + Link Later
+
+```
+1. Visit /dang-ky
+2. Fill username/password form
+3. Shop and purchase items
+4. Pay with wallet/card
+5. Go to /don-hang
+6. Modal appears: "Liên Kết Discord Để Nhận Hàng"
+7. Click "Liên Kết Ngay"
+8. Authorize on Discord
+9. Discord linked ✅
+10. Create ticket to receive items
+```
+
+### Flow 3: Admin Access
+
+```
+1. Link Discord account (ID: 1146730730060271736)
+2. Auto-promoted to admin ✅
+3. Login with username/password
+4. Access /admin panel
 ```
 
 ---
 
 ## 🧪 Testing
 
-### Test User Flow
+### Local Development
 
-1. Đăng ký tài khoản: `/dang-ky`
-2. Đăng nhập: `/dang-nhap`
-3. Nạp tiền: `/nap-tien` → chọn SePay hoặc Thẻ cào
-4. Mua sản phẩm: `/cua-hang` → add to cart → checkout
-5. Xem đơn hàng: `/don-hang`
-6. Liên kết Discord: Click "Liên Kết Discord" trong trang đơn hàng
-7. Tạo ticket: Click "Tạo Ticket" sau khi liên kết
+**Frontend**:
+```bash
+cd web
+npm install
+npm run dev
+# Visit http://localhost:3000
+```
 
-### Test Admin Flow
+**Backend**:
+```bash
+cd api
+npm install
+node server.js
+# Runs on http://localhost:5000
+```
 
-1. Login với admin account (`vaiTro: 'quan_tri'`)
-2. Quản lý sản phẩm: `/admin`
-3. Xem đơn hàng: `/admin/orders`
-4. Thống kê: `/admin/analytics`
+### Test Checklist
+
+- [ ] Signup with Discord works
+- [ ] Traditional signup works
+- [ ] Discord link modal appears after purchase
+- [ ] Modal redirects to OAuth correctly
+- [ ] Admin login works (Discord ID)
+- [ ] SePay transfer auto-credits wallet
+- [ ] Order ticket creation works
+
+---
+
+## 🐛 Troubleshooting
+
+### Frontend Build Fails
+```bash
+cd web
+rm -rf .next node_modules package-lock.json
+npm install
+npm run build
+```
+
+### Backend Won't Start
+- Check all 15 env vars are set
+- Verify MongoDB connection string
+- Check Discord bot token is valid
+
+### SePay Bot Not Working
+- Verify `SEPAY_BOT_ENABLED=true`
+- Check API key is correct
+- Check logs: `[SEPAY_BOT] ✅ Bot đã khởi động`
+
+### Discord OAuth Fails
+- Verify `DISCORD_CLIENT_ID` matches in frontend & backend
+- Check redirect URI: `https://your-domain.com/auth/discord/callback`
+- Ensure redirect URI is added in Discord app settings
+
+---
+
+## 📚 Documentation
+
+- `COMPLETE_ENV_CHECKLIST.md` - All env vars guide
+- `SEPAY_BOT_SETUP.md` - SePay bot setup
+- `DISCORD_ADMIN_FEATURE.md` - Admin auto-promotion
+- `DISCORD_OAUTH_IMPLEMENTATION.md` - OAuth flow details
+- `ENV_SETUP.md` - Deployment guide
+
+---
+
+## 🔒 Security Notes
+
+1. **Never commit `.env` files** (already in .gitignore)
+2. **Use strong passwords** for admin (min 12 chars)
+3. **Rotate secrets regularly** (JWT_SECRET, etc.)
+4. **Keep Discord bot token private**
+5. **Use HTTPS** in production (Vercel/Render auto-provide)
+
+---
+
+## 📈 Monitoring
+
+### Backend Logs (Render)
+```
+[DISCORD] Bot login thanh cong
+[SEPAY_BOT] ✅ Bot đã khởi động thành công!
+[AUTO_ADMIN] Promoted username (discordId) to admin
+```
+
+### Frontend Errors (Vercel)
+- Check Vercel dashboard → Logs
+- Check browser console for errors
 
 ---
 
 ## 🤝 Contributing
 
-Khi contribute code:
-
-1. Giữ code style nhất quán
-2. Comment bằng tiếng Việt hoặc tiếng Anh
-3. Test kỹ trước khi commit
-4. Không commit `.env` files
-5. Không commit `node_modules/`
+1. Fork the repo
+2. Create feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -m 'Add feature'`
+4. Push to branch: `git push origin feature-name`
+5. Open Pull Request
 
 ---
 
 ## 📄 License
 
-Private project - All rights reserved.
+Private project - All rights reserved
+
+---
+
+## 🙏 Credits
+
+- Built with Next.js, Express, MongoDB
+- Discord bot powered by discord.js
+- UI components: Tailwind CSS + Lucide Icons
+- Payment: SePay, GachTheFast
 
 ---
 
 ## 📞 Support
 
-Issues? Contact qua Discord server hoặc tạo GitHub issue.
+For issues or questions:
+- Discord: [Your Discord Server]
+- Email: [Your Email]
 
 ---
 
-**Happy Coding!** 🎉
+**2026 ShopVN. All rights reserved.**

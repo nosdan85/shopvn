@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useAuthViet } from "../../context/AuthVietContext";
+import { useAuthViet } from "../../../context/AuthVietContext";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -130,3 +130,4 @@ export default function DiscordCallbackPage() {
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuthViet } from "../../context/AuthVietContext";
+import { useAuthViet } from "../../../context/AuthVietContext";
 import Navbar from "../../components/Navbar";
 import BackButton from "../../components/BackButton";
 import { TrendingUp, Package, ShoppingCart, ImageIcon, Loader2, RefreshCw } from "lucide-react";
@@ -221,3 +221,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
