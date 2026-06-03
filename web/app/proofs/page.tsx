@@ -17,7 +17,6 @@ import {
   Check,
   Upload,
 } from "lucide-react"
-import { formatPrice } from "@/lib/timezones"
 
 interface ProofItem {
   name: string
@@ -39,8 +38,15 @@ interface ProofsResponse {
   items: Proof[]
 }
 
+interface WebUser {
+  vaiTro?: string
+}
+
 const ITEMS_PER_PAGE = 12
-const ADMIN_IDS = ["1146730730060271736", "1005326332001009784"]
+
+const formatPriceVND = (amount: number): string => {
+  return amount.toLocaleString('vi-VN') + ' VND'
+}
 
 export default function ProofsPage() {
   const [proofs, setProofs] = useState<Proof[]>([])
@@ -75,12 +81,11 @@ export default function ProofsPage() {
 
   const detectAdmin = useCallback(() => {
     try {
-      const token = localStorage.getItem("discordToken")
-      const rawUser = localStorage.getItem("discordUser")
+      const token = localStorage.getItem("webToken")
+      const rawUser = localStorage.getItem("webUser")
       if (!rawUser || !token) return
-      const user = JSON.parse(rawUser)
-      const discordId = String(user?.discordId || "").trim()
-      if (ADMIN_IDS.includes(discordId)) {
+      const user: WebUser = JSON.parse(rawUser)
+      if (user?.vaiTro === 'admin') {
         setIsAdmin(true)
         setAdminToken(token)
       }
@@ -187,7 +192,7 @@ export default function ProofsPage() {
   }
 
   const deleteProof = async (proofId: string) => {
-    if (!adminToken || !confirm("Xóa proof này?")) return
+    if (!adminToken || !confirm("Xóa đánh giá này?")) return
     try {
       const res = await fetch(`/api/shop/proofs/${proofId}`, {
         method: "DELETE",
@@ -223,7 +228,7 @@ export default function ProofsPage() {
   }
 
   const deleteProofImage = async (proofId: string, imageIndex: number) => {
-    if (!adminToken || !confirm("Delete this proof image?")) return
+    if (!adminToken || !confirm("Xóa ảnh này?")) return
     setUploadingImage(`${proofId}:${imageIndex}`)
     try {
       const res = await fetch(`/api/shop/proofs/${proofId}/images/${imageIndex}`, {
@@ -260,16 +265,16 @@ export default function ProofsPage() {
         <div className="mb-8 flex items-center justify-between animate-fade-in-up">
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/cua-hang"
               className="flex items-center gap-2 rounded-[14px] bg-[#111111] px-4 py-2 transition-colors hover:bg-[#1E1E1E]"
             >
               <Home className="h-5 w-5" />
-              <span className="font-medium">Home</span>
+              <span className="font-medium">Trang Chủ</span>
             </Link>
 
             <h1 className="flex items-center gap-3 text-3xl font-bold text-white">
               <ShieldCheck className="h-8 w-8 text-[#3DDC84]" />
-              Proofs
+              Đánh Giá
             </h1>
           </div>
 
@@ -280,7 +285,7 @@ export default function ProofsPage() {
             className="flex items-center gap-2 rounded-[14px] bg-[#2F9BE6] px-4 py-2 font-medium text-white transition-colors hover:bg-[#49B6FF]"
           >
             <ExternalLink className="h-5 w-5" />
-            Vouch Channel
+            Kênh Đánh Giá
           </a>
         </div>
 
@@ -293,7 +298,7 @@ export default function ProofsPage() {
         {!loading && proofs.length === 0 && (
           <div className="animate-fade-in py-20 text-center">
             <ImageIcon className="mx-auto mb-4 h-16 w-16 text-[#B5B5B5]/50" />
-            <p className="text-xl text-[#B5B5B5]/80">No proofs yet</p>
+            <p className="text-xl text-[#B5B5B5]/80">Chưa có đánh giá nào</p>
           </div>
         )}
 
@@ -390,7 +395,7 @@ export default function ProofsPage() {
                               <span className="text-[#B5B5B5]">{item.name}</span>
                               <p className="mt-1 text-xs text-[#2F9BE6]">Qty: {item.deliveredLabel}</p>
                             </div>
-                            <span className="text-[#B5B5B5]/80">{formatPrice(item.lineTotal, "USD")}</span>
+                            <span className="text-[#B5B5B5]/80">{formatPriceVND(item.lineTotal)}</span>
                           </div>
                         )
                       )}
@@ -398,14 +403,14 @@ export default function ProofsPage() {
 
                     <div className="flex items-center justify-between border-t border-[#1E1E1E] pt-3">
                       <span className="text-lg font-bold text-[#3DDC84]">
-                        {formatPrice(currentTotal, "USD")}
+                        {formatPriceVND(currentTotal)}
                       </span>
 
                       {isAdmin && (
                         <div className="flex gap-1.5">
                           <label className="inline-flex cursor-pointer items-center gap-1 rounded bg-[#1E1E1E] px-2 py-1.5 text-xs text-white transition-colors hover:bg-[#2F9BE6]" title="Add proof image">
                             {uploadingImage === `${proof.id}:add` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                            Add
+                            Thêm
                             <input
                               type="file"
                               accept="image/*"
@@ -471,7 +476,7 @@ export default function ProofsPage() {
                 className="flex items-center gap-2 rounded-[14px] bg-[#111111] px-4 py-2 font-medium text-white transition-colors hover:bg-[#1E1E1E] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft className="h-5 w-5" />
-                Previous
+                Trước
               </button>
 
               <span className="font-medium text-[#B5B5B5]/80">{pageLabel}</span>
@@ -481,7 +486,7 @@ export default function ProofsPage() {
                 disabled={!hasMore || loading}
                 className="flex items-center gap-2 rounded-[14px] bg-[#111111] px-4 py-2 font-medium text-white transition-colors hover:bg-[#1E1E1E] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Next
+                Tiếp
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>

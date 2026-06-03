@@ -2,14 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Navbar from "../../components/Navbar";
-import { useAuth } from "../../context/AuthContext";
+import { useAuthViet } from "../../context/AuthVietContext";
 import { AlertCircle, CheckCircle2, Clock3, RefreshCcw, Search, ShieldAlert, XCircle } from "lucide-react";
 
 type Order = {
   _id: string;
   orderId?: string;
-  discordUsername?: string;
-  discordId?: string;
+  tenDangNhap?: string;
+  userId?: string;
+  email?: string;
+  soDuVnd?: number;
   totalAmount?: number;
   status?: string;
   paymentStatus?: string;
@@ -20,11 +22,11 @@ type Order = {
 
 const statusTone = (status?: string) => {
   switch (status) {
-    case "Completed":
+    case "Hoàn Thành":
       return "bg-[#3DDC84]/15 text-[#3DDC84] border-green-500/30";
-    case "Cancelled":
+    case "Đã Hủy":
       return "bg-[#FF4D4F]/15 text-[#FF4D4F] border-red-500/30";
-    case "Waiting Payment":
+    case "Chờ Thanh Toán":
       return "bg-[#2F9BE6]/15 text-[#2F9BE6] border-amber-500/30";
     default:
       return "bg-[#2F9BE6]/15 text-[#2F9BE6] border-blue-500/30";
@@ -37,8 +39,12 @@ const formatOrderItem = (item: { name?: string; quantity?: number; packQuantity?
   return `${item.name || "Item"} (x${packQty * orderQty})`;
 };
 
+const formatPrice = (amount: number): string => {
+  return Number(amount || 0).toLocaleString("vi-VN") + " VND";
+};
+
 export default function AdminOrdersPage() {
-  const { user, token, isLoading, getOAuthUrl } = useAuth();
+  const { user, token, isLoading } = useAuthViet();
   const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
@@ -66,24 +72,25 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => {
-    if (token && user?.isOwner) {
+    if (token && user?.vaiTro === "admin") {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       void loadOrders();
     } else {
       setLoading(false);
     }
-  }, [token, user?.isOwner]);
+  }, [token, user?.vaiTro]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return orders.filter((order) => {
-      const statusOk = status === "All" || (order.status || "Pending") === status;
+      const statusOk = status === "All" || (order.status || "Chờ Xử Lý") === status;
       if (!statusOk) return false;
       if (!needle) return true;
       return [
         order.orderId,
-        order.discordUsername,
-        order.discordId,
+        order.tenDangNhap,
+        order.userId,
+        order.email,
         order.txnId,
         ...(order.items || []).map((item) => item.name || ""),
       ]
@@ -123,9 +130,9 @@ export default function AdminOrdersPage() {
         <div className="mx-auto max-w-md px-4 py-24">
           <div className="rounded-[18px] border border-[#1E1E1E] bg-[#111111] p-8 text-center">
             <AlertCircle className="mx-auto mb-4 h-10 w-10 text-[#2F9BE6]" />
-            <h1 className="text-2xl font-semibold">Admin login required</h1>
-            <a href={getOAuthUrl()} className="mt-6 inline-flex rounded-[14px] bg-[#5865F2] px-5 py-3 font-medium">
-              Login with Discord
+            <h1 className="text-2xl font-semibold">Yêu cầu đăng nhập admin</h1>
+            <a href="/login" className="mt-6 inline-flex rounded-[14px] bg-[#2F9BE6] px-5 py-3 font-medium">
+              Đăng Nhập
             </a>
           </div>
         </div>
@@ -133,14 +140,14 @@ export default function AdminOrdersPage() {
     );
   }
 
-  if (user && !user.isOwner) {
+  if (user && user.vaiTro !== "admin") {
     return (
       <div className="min-h-screen bg-[#050505] text-white">
         <Navbar />
         <div className="mx-auto max-w-md px-4 py-24">
           <div className="rounded-[18px] border border-red-500/20 bg-[#111111] p-8 text-center">
             <ShieldAlert className="mx-auto mb-4 h-10 w-10 text-[#FF4D4F]" />
-            <h1 className="text-2xl font-semibold">Access denied</h1>
+            <h1 className="text-2xl font-semibold">Bạn không có quyền truy cập</h1>
           </div>
         </div>
       </div>
@@ -153,15 +160,15 @@ export default function AdminOrdersPage() {
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold">Orders</h1>
-            <p className="mt-1 text-sm text-[#B5B5B5]/80">Real orders. No mock stats.</p>
+            <h1 className="text-3xl font-semibold">Đơn Hàng</h1>
+            <p className="mt-1 text-sm text-[#B5B5B5]/80">Đơn hàng thực. Không phải dữ liệu giả.</p>
           </div>
           <button
             onClick={() => void loadOrders()}
             className="inline-flex items-center gap-2 rounded-[14px] border border-[#1E1E1E] bg-[#111111] px-4 py-2 text-sm"
           >
             <RefreshCcw className="h-4 w-4" />
-            Refresh
+            Làm Mới
           </button>
         </div>
 
@@ -171,7 +178,7 @@ export default function AdminOrdersPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search order / user / item / txn"
+              placeholder="Tìm kiếm đơn hàng / người dùng / mục / giao dịch"
               className="w-full bg-transparent text-sm outline-none placeholder:text-[#B5B5B5]/60"
             />
           </label>
@@ -180,11 +187,11 @@ export default function AdminOrdersPage() {
             onChange={(e) => setStatus(e.target.value)}
             className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] px-4 py-3 text-sm outline-none"
           >
-            <option value="All">All statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Waiting Payment">Waiting Payment</option>
-            <option value="Completed">Completed</option>
-            <option value="Cancelled">Cancelled</option>
+            <option value="All">Tất cả trạng thái</option>
+            <option value="Chờ Xử Lý">Chờ Xử Lý</option>
+            <option value="Chờ Thanh Toán">Chờ Thanh Toán</option>
+            <option value="Hoàn Thành">Hoàn Thành</option>
+            <option value="Đã Hủy">Đã Hủy</option>
           </select>
         </div>
 
@@ -192,64 +199,66 @@ export default function AdminOrdersPage() {
 
         <div className="overflow-hidden rounded-[18px] border border-[#1E1E1E] bg-[#111111]">
           <div className="grid grid-cols-[1.1fr_1fr_140px_140px_180px] gap-4 border-b border-[#1E1E1E] px-5 py-4 text-xs uppercase tracking-wide text-[#B5B5B5]/60">
-            <div>Order</div>
-            <div>Customer</div>
-            <div>Total</div>
-            <div>Status</div>
-            <div>Actions</div>
+            <div>Đơn Hàng</div>
+            <div>Khách Hàng</div>
+            <div>Tổng</div>
+            <div>Trạng Thái</div>
+            <div>Thao Tác</div>
           </div>
           {loading ? (
-            <div className="px-5 py-10 text-sm text-[#B5B5B5]/80">Loading orders...</div>
+            <div className="px-5 py-10 text-sm text-[#B5B5B5]/80">Đang tải đơn hàng...</div>
           ) : filtered.length === 0 ? (
-            <div className="px-5 py-10 text-sm text-[#B5B5B5]/80">No orders found.</div>
+            <div className="px-5 py-10 text-sm text-[#B5B5B5]/80">Không tìm thấy đơn hàng.</div>
           ) : (
             filtered.map((order) => (
               <div key={order._id} className="grid grid-cols-[1.1fr_1fr_140px_140px_180px] gap-4 border-b border-[#1E1E1E] px-5 py-4 last:border-b-0">
                 <div>
                   <div className="font-medium text-white">{order.orderId || order._id}</div>
                   <div className="mt-1 text-xs text-[#B5B5B5]/60">
-                    {(order.items || []).map(formatOrderItem).join(", ") || "No items"}
+                    {(order.items || []).map(formatOrderItem).join(", ") || "Không có mục"}
                   </div>
                   <div className="mt-1 text-xs text-[#B5B5B5]/50">
-                    {order.createdAt ? new Date(order.createdAt).toLocaleString() : "-"}
+                    {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "-"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-white">{order.discordUsername || "Unknown user"}</div>
-                  <div className="text-xs text-[#B5B5B5]/60">{order.discordId || "-"}</div>
+                  <div className="text-sm text-white">{order.tenDangNhap || "Người dùng không xác định"}</div>
+                  <div className="text-xs text-[#B5B5B5]/60">{order.userId || "-"}</div>
+                  {order.email && <div className="text-xs text-[#B5B5B5]/50">{order.email}</div>}
+                  {order.soDuVnd !== undefined && <div className="text-xs text-[#B5B5B5]/50">Ví: {formatPrice(order.soDuVnd)}</div>}
                 </div>
                 <div className="text-sm font-medium text-emerald-300">
-                  ${Number(order.totalAmount || 0).toFixed(2)}
+                  {formatPrice(order.totalAmount || 0)}
                 </div>
                 <div>
                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${statusTone(order.status)}`}>
-                    {order.status || "Pending"}
+                    {order.status || "Chờ Xử Lý"}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     disabled={mutatingId === order._id}
-                    onClick={() => void updateStatus(order._id, "Completed")}
+                    onClick={() => void updateStatus(order._id, "Hoàn Thành")}
                     className="inline-flex items-center gap-1 rounded-[14px] bg-[#3DDC84]/15 px-2.5 py-1.5 text-xs text-[#3DDC84]"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Approve
+                    Duyệt
                   </button>
                   <button
                     disabled={mutatingId === order._id}
-                    onClick={() => void updateStatus(order._id, "Waiting Payment")}
+                    onClick={() => void updateStatus(order._id, "Chờ Thanh Toán")}
                     className="inline-flex items-center gap-1 rounded-[14px] bg-[#2F9BE6]/15 px-2.5 py-1.5 text-xs text-[#2F9BE6]"
                   >
                     <Clock3 className="h-3.5 w-3.5" />
-                    Hold
+                    Giữ
                   </button>
                   <button
                     disabled={mutatingId === order._id}
-                    onClick={() => void updateStatus(order._id, "Cancelled")}
+                    onClick={() => void updateStatus(order._id, "Đã Hủy")}
                     className="inline-flex items-center gap-1 rounded-[14px] bg-[#FF4D4F]/15 px-2.5 py-1.5 text-xs text-[#FF4D4F]"
                   >
                     <XCircle className="h-3.5 w-3.5" />
-                    Reject
+                    Từ Chối
                   </button>
                 </div>
               </div>

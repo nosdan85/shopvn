@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "../components/Navbar";
-import { useAuth } from "../context/AuthContext";
+import { useAuthViet } from "../context/AuthContext";
 import { resolveImageUrl } from "@/lib/imageUrl";
 import {
   AlertCircle, Loader2, Plus, Edit2, Trash2, RefreshCcw, ChevronLeft, ChevronRight
@@ -47,18 +47,14 @@ interface Game { _id: string; name: string; slug: string; image?: string; active
 interface Slot { _id: string; ownerTimezone: string; startAt: string; endAt: string; active: boolean; note?: string }
 interface LinkedUser {
   _id: string;
-  discordId: string;
-  discordUsername: string;
-  hasAccessToken: boolean;
-  hasRefreshToken: boolean;
-  tokenExpiresAt?: string | null;
-  scopes?: string[];
+  tenDangNhap: string;
+  email: string;
+  soDuVnd: number;
+  daLienKetDiscord: boolean;
+  discordTenHienThi?: string | null;
   cartItemsCount: number;
   cartUpdatedAt?: string | null;
-  joinedAt?: string | null;
-  luckyWheelTickets?: number;
-  luckyWheelTicketsGrantedByAdmin?: number;
-  luckyWheelFirstLinkAwardedAt?: string | null;
+  taoLucTruocDo?: string | null;
 }
 
 interface LuckyWheelSlice { label: string; type: "empty" | "discount"; discountPercent: number | "" }
@@ -153,8 +149,8 @@ function getNextVietnamHourlySlot(now = new Date()): { date: string; month: stri
 }
 
 export default function AdminPage() {
-  const { user, token, isLoading, getOAuthUrl } = useAuth();
-  const [tab, setTab] = useState<"sản phẩm" | "khung giờ" | "game" | "cấu hình" | "liên kết">("sản phẩm");
+  const { user, token, isLoading } = useAuthViet();
+  const [tab, setTab] = useState<"Sản Phẩm" | "Khung Giờ Giao Hàng" | "Game" | "Cấu Hình" | "Tài Khoản Web">("Sản Phẩm");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -279,7 +275,7 @@ export default function AdminPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!isLoading && user?.isOwner && token) {
+    if (!isLoading && user?.vaiTro === 'admin' && token) {
       void fetchAll();
     }
   }, [isLoading, user, token]);
@@ -564,20 +560,20 @@ export default function AdminPage() {
     } catch { /* silent */ }
   };
 
-  const clearLinkedUserCart = async (discordId: string) => {
-    if (!token || !confirm(`Clear saved cart for ${discordId}?`)) return;
+  const clearLinkedUserCart = async (userId: string) => {
+    if (!token || !confirm(`Xóa giỏ hàng cho người dùng?`)) return;
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/shop/owner/linked-users/${discordId}/cart`, {
+      const res = await fetch(`/api/shop/owner/web-accounts/${userId}/cart`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Clear cart failed");
+      if (!res.ok) throw new Error(data?.error || "Xóa giỏ hàng thất bại");
       await fetchLinkedUsers(linkedUsersPage, linkedUsersSearch);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Clear cart failed");
+      setError(err instanceof Error ? err.message : "Xóa giỏ hàng thất bại");
     }
     setSubmitting(false);
   };
@@ -633,53 +629,35 @@ export default function AdminPage() {
     }));
   };
 
-  const grantLuckyWheelTicket = async (discordId: string) => {
+  const grantLuckyWheelTicket = async (userId: string) => {
     if (!token) return;
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/shop/owner/linked-users/${discordId}/lucky-wheel-ticket`, {
+      const res = await fetch(`/api/shop/owner/web-accounts/${userId}/lucky-wheel-ticket`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ count: 1 }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Grant spin failed");
+      if (!res.ok) throw new Error(data?.error || "Cấp vòng quay thất bại");
       await fetchLinkedUsers(linkedUsersPage, linkedUsersSearch);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Grant spin failed");
+      setError(err instanceof Error ? err.message : "Cấp vòng quay thất bại");
     }
     setSubmitting(false);
   };
 
-  const unlinkUser = async (discordId: string) => {
-    if (!token || !confirm(`Xóa liên kết Discord cho ${discordId}? User vẫn ở trong server.`)) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/shop/owner/linked-users/${discordId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Unlink failed");
-      await fetchLinkedUsers(linkedUsersPage, linkedUsersSearch);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unlink failed");
-    }
-    setSubmitting(false);
-  };
 
   if (isLoading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#2F9BE6]" /></div>;
 
-  if (!user?.isOwner) {
+  if (!user || user.vaiTro !== 'admin') {
     return (
       <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full rounded-[18px] border border-red-500/20 bg-[#111111] p-8 text-center">
           <AlertCircle className="mx-auto mb-4 h-12 w-12 text-[#FF4D4F]" />
-          <h1 className="text-xl font-semibold">Không có quyền truy cập</h1>
-          <p className="mt-2 text-[#B5B5B5]/80 text-sm">Yêu cầu đăng nhập bằng Discord tài khoản owner.</p>
-          <a href={getOAuthUrl()} className="mt-4 inline-block bg-[#5865F2] px-6 py-2.5 rounded-[14px] text-sm font-medium">Login with Discord</a>
+          <h1 className="text-xl font-semibold">Bạn không có quyền truy cập</h1>
+          <p className="mt-2 text-[#B5B5B5]/80 text-sm">Yêu cầu đăng nhập bằng tài khoản quản trị viên.</p>
         </div>
       </div>
     );
@@ -692,8 +670,8 @@ export default function AdminPage() {
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-8 flex flex-wrap gap-4 items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Quản lý cửa hàng</h1>
-            <p className="text-[#B5B5B5]/80 text-sm">Quản lý sản phẩm, khung giờ giao hàng, game, banner và tài khoản đã liên kết.</p>
+            <h1 className="text-2xl font-bold">Quản Trị</h1>
+            <p className="text-[#B5B5B5]/80 text-sm">Quản lý sản phẩm, khung giờ giao hàng, game, banner và tài khoản web.</p>
           </div>
           <div className="flex gap-3">
             <a href="/shop" className="flex items-center gap-2 rounded-[14px] bg-[#111111] border border-[#1E1E1E] px-4 py-2 text-sm text-[#B5B5B5] hover:text-white hover:border-[#2F9BE6]/30 transition-all">← Về cửa hàng</a>
@@ -702,8 +680,8 @@ export default function AdminPage() {
         </div>
 
         <div className="mb-6 flex gap-2 border-b border-[#1E1E1E] pb-3">
-          {(["sản phẩm", "khung giờ", "game", "cấu hình", "liên kết"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={"rounded-[14px] px-4 py-2 text-sm font-medium " + (tab === t ? "bg-[#2F9BE6] text-white" : "bg-[#111111] text-[#B5B5B5]/80 hover:text-[#B5B5B5]")}>
+          {(["Sản Phẩm", "Khung Giờ Giao Hàng", "Game", "Cấu Hình", "Tài Khoản Web"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t as typeof tab)} className={"rounded-[14px] px-4 py-2 text-sm font-medium " + (tab === t ? "bg-[#2F9BE6] text-white" : "bg-[#111111] text-[#B5B5B5]/80 hover:text-[#B5B5B5]")}>
               {t}
             </button>
           ))}
@@ -712,11 +690,11 @@ export default function AdminPage() {
         {error && <div className="mb-4 rounded-[16px] border border-red-500/20 bg-[#FF4D4F]/10 px-4 py-3 text-sm text-[#FF4D4F]">{error}</div>}
 
         {/* ─── TAB: PRODUCTS ─── */}
-        {tab === "sản phẩm" && (
+        {tab === "Sản Phẩm" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between border border-[#1E1E1E] bg-[#111111] p-4 rounded-[16px]">
               <div><h2 className="font-semibold text-lg">Danh sách mặt hàng</h2><p className="text-xs text-[#B5B5B5]/80">Thêm, sửa, hoặc xóa mặt hàng.</p></div>
-              <button onClick={() => { setProductForm({ name: "", price: "", bulkPrice: "", packQuantity: "", image: "", desc: "", category: "", gameId: "" }); setEditingProduct(null); setShowProductForm(true); }} className="flex items-center gap-2 rounded-[14px] bg-[#2F9BE6] px-4 py-2 text-sm font-medium"><Plus className="h-4 w-4" /> Thêm mặt hàng</button>
+              <button onClick={() => { setProductForm({ name: "", price: "", bulkPrice: "", packQuantity: "", image: "", desc: "", category: "", gameId: "" }); setEditingProduct(null); setShowProductForm(true); }} className="flex items-center gap-2 rounded-[14px] bg-[#2F9BE6] px-4 py-2 text-sm font-medium"><Plus className="h-4 w-4" /> Thêm Sản Phẩm</button>
             </div>
 
             {showProductForm && (
@@ -724,23 +702,23 @@ export default function AdminPage() {
                 <h3 className="font-medium">{editingProduct ? "Chỉnh sửa mặt hàng" : "Thêm mặt hàng mới"}</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <input required value={productForm.name} onChange={(e) => setProductForm((p) => ({ ...p, name: e.target.value }))} placeholder="Tên mặt hàng (ví dụ: Aura Crate)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input required value={productForm.category} onChange={(e) => setProductForm((p) => ({ ...p, category: e.target.value }))} placeholder="Danh mục (ví dụ: Chest, Trait, Race...)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input required type="number" step="0.01" value={productForm.price} onChange={(e) => setProductForm((p) => ({ ...p, price: e.target.value }))} placeholder="Giá ($)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input type="number" step="0.01" value={productForm.bulkPrice} onChange={(e) => setProductForm((p) => ({ ...p, bulkPrice: e.target.value }))} placeholder="Giá sỉ (tùy chọn)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
+                  <input required value={productForm.category} onChange={(e) => setProductForm((p) => ({ ...p, category: e.target.value }))} placeholder="Danh Mục (ví dụ: Chest, Trait, Race...)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
+                  <input required type="number" step="0.01" value={productForm.price} onChange={(e) => setProductForm((p) => ({ ...p, price: e.target.value }))} placeholder="Giá (VND)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
+                  <input type="number" step="0.01" value={productForm.bulkPrice} onChange={(e) => setProductForm((p) => ({ ...p, bulkPrice: e.target.value }))} placeholder="Giá sỉ (tùy chọn, VND)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
                   <input type="number" step="1" min="1" value={productForm.packQuantity} onChange={(e) => setProductForm((p) => ({ ...p, packQuantity: e.target.value }))} placeholder="Số lượng mỗi gói (ví dụ: 50, 100, 1000...)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
                   <select value={productForm.gameId} onChange={(e) => setProductForm((p) => ({ ...p, gameId: e.target.value }))} className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none">
-                    <option value="">Chọn game</option>
+                    <option value="">Chọn Game</option>
                     {games.map((g) => <option key={g._id} value={g._id}>{g.name}</option>)}
                   </select>
                 </div>
                 <textarea value={productForm.desc} onChange={(e) => setProductForm((p) => ({ ...p, desc: e.target.value }))} placeholder="Mô tả chi tiết..." rows={3} className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
                 <div className="space-y-2">
-                  <label className="text-xs text-[#B5B5B5]/80">URL Anh san pham</label>
+                  <label className="text-xs text-[#B5B5B5]/80">URL Ảnh Sản Phẩm</label>
                   <input value={productForm.image} onChange={(e) => setProductForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL ảnh (Cloudinary / ImgBB)" className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-2 outline-none" />
                   {productForm.image && <img src={imgUrl(productForm.image)} alt="preview" className="mt-2 h-20 w-20 rounded border border-[#1E1E1E] object-cover" />}
                 </div>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={submitting} className="rounded-[14px] bg-[#2F9BE6] px-5 py-2.5 text-sm font-medium disabled:opacity-50">Lưu mặt hàng</button>
+                  <button type="submit" disabled={submitting} className="rounded-[14px] bg-[#2F9BE6] px-5 py-2.5 text-sm font-medium disabled:opacity-50">Lưu</button>
                   <button type="button" onClick={() => setShowProductForm(false)} className="rounded-[14px] bg-[#1E1E1E] px-5 py-2.5 text-sm">Hủy</button>
                 </div>
               </form>
@@ -754,7 +732,7 @@ export default function AdminPage() {
                     <img src={imgUrl(p.image)} alt="" className="h-12 w-12 rounded-[14px] object-cover bg-[#050505]" />
                     <div className="min-w-0">
                       <p className="font-medium truncate text-sm">{p.name}</p>
-                  <p className="text-xs text-[#B5B5B5]/80">{p.category} • ${p.price.toFixed(2)}{<span className="text-[#2F9BE6] ml-2">(x{p.packQuantity || 1})</span>}</p>
+                  <p className="text-xs text-[#B5B5B5]/80">{p.category} • {p.price.toLocaleString('vi-VN')} VND{<span className="text-[#2F9BE6] ml-2">(x{p.packQuantity || 1})</span>}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -772,7 +750,7 @@ export default function AdminPage() {
         )}
 
         {/* ─── TAB: SLOTS ─── */}
-        {tab === "khung giờ" && (
+        {tab === "Khung Giờ Giao Hàng" && (
           <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
             <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-4 h-fit">
               <div>
@@ -912,20 +890,20 @@ export default function AdminPage() {
         )}
 
         {/* ─── TAB: GAMES ─── */}
-        {tab === "game" && (
+        {tab === "Game" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between border border-[#1E1E1E] bg-[#111111] p-4 rounded-[16px]">
-              <div><h2 className="font-semibold text-lg">Danh mục game</h2><p className="text-xs text-[#B5B5B5]/80">Quản lý danh sách game.</p></div>
-              <button onClick={() => { setEditingGame(null); setGameForm({ name: "", slug: "", image: "", active: true }); setShowGameForm(true); }} className="flex items-center gap-2 rounded-[14px] bg-[#2F9BE6] px-4 py-2 text-sm font-medium"><Plus className="h-4 w-4" /> Thêm game</button>
+              <div><h2 className="font-semibold text-lg">Danh mục Game</h2><p className="text-xs text-[#B5B5B5]/80">Quản lý danh sách game.</p></div>
+              <button onClick={() => { setEditingGame(null); setGameForm({ name: "", slug: "", image: "", active: true }); setShowGameForm(true); }} className="flex items-center gap-2 rounded-[14px] bg-[#2F9BE6] px-4 py-2 text-sm font-medium"><Plus className="h-4 w-4" /> Thêm Game</button>
             </div>
 
             {showGameForm && (
               <form onSubmit={submitGame} className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-4">
-                <h3 className="font-medium">{editingGame ? "Chỉnh sửa game" : "Thêm game mới"}</h3>
+                <h3 className="font-medium">{editingGame ? "Chỉnh sửa Game" : "Thêm Game mới"}</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <input required value={gameForm.name} onChange={(e) => setGameForm((p) => ({ ...p, name: e.target.value }))} placeholder="Tên game" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input required value={gameForm.slug} onChange={(e) => setGameForm((p) => ({ ...p, slug: e.target.value }))} placeholder="Slug game" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input value={gameForm.image} onChange={(e) => setGameForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL ảnh (tùy chọn)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
+                  <input required value={gameForm.name} onChange={(e) => setGameForm((p) => ({ ...p, name: e.target.value }))} placeholder="Tên Game" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
+                  <input required value={gameForm.slug} onChange={(e) => setGameForm((p) => ({ ...p, slug: e.target.value }))} placeholder="Slug Game" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
+                  <input value={gameForm.image} onChange={(e) => setGameForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL Ảnh (tùy chọn)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
                 </div>
                 {gameForm.image.trim() && (
                   <div className="flex items-center gap-3 rounded-[14px] border border-[#1E1E1E] bg-[#050505] p-3">
@@ -934,7 +912,7 @@ export default function AdminPage() {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <button type="submit" disabled={submitting} className="rounded-[14px] bg-[#2F9BE6] px-5 py-2.5 text-sm font-medium disabled:opacity-50">Lưu game</button>
+                  <button type="submit" disabled={submitting} className="rounded-[14px] bg-[#2F9BE6] px-5 py-2.5 text-sm font-medium disabled:opacity-50">Lưu</button>
                   <button type="button" onClick={() => setShowGameForm(false)} className="rounded-[14px] bg-[#1E1E1E] px-5 py-2.5 text-sm">Hủy</button>
                 </div>
               </form>
@@ -959,18 +937,18 @@ export default function AdminPage() {
         )}
 
         {/* ─── TAB: CONFIG (BANNERS) ─── */}
-        {tab === "cấu hình" && (
+        {tab === "Cấu Hình" && (
           <div className="space-y-6">
             <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-6">
-              <div><h2 className="font-semibold text-lg">Banner cửa hàng</h2><p className="text-xs text-[#B5B5B5]/80">Chỉ 1 banner hiện có. Dán URL ảnh để thay thế.</p></div>
+              <div><h2 className="font-semibold text-lg">Banner Cửa Hàng</h2><p className="text-xs text-[#B5B5B5]/80">Chỉ 1 banner hiện có. Dán URL ảnh để thay thế.</p></div>
               <div className="flex items-center gap-3 flex-wrap">
                 <input
                   value={newBannerUrl}
                   onChange={(e) => setNewBannerUrl(e.target.value)}
-                  placeholder="Dán URL ảnh banner"
+                  placeholder="Dán URL ảnh Banner"
                   className="min-w-[280px] flex-1 rounded border border-[#1E1E1E] bg-[#050505] p-2 text-sm outline-none"
                 />
-                <button onClick={() => void handleBannerSave()} disabled={submitting || !newBannerUrl.trim()} className="rounded bg-[#2F9BE6] px-4 py-2 text-sm font-semibold disabled:opacity-50">Lưu banner</button>
+                <button onClick={() => void handleBannerSave()} disabled={submitting || !newBannerUrl.trim()} className="rounded bg-[#2F9BE6] px-4 py-2 text-sm font-semibold disabled:opacity-50">Lưu Banner</button>
               </div>
               {banners[0] ? (
                 <div className="relative group overflow-hidden rounded-[14px] border border-[#1E1E1E]">
@@ -985,7 +963,7 @@ export default function AdminPage() {
             <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-semibold text-lg">Lucky Wheel</h2>
+                  <h2 className="font-semibold text-lg">Vòng Quay May Mắn</h2>
                   <p className="text-xs text-[#B5B5B5]/80">Bật/tắt event và cấu hình các ô quay. Ô empty là chúc may mắn lần sau.</p>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-[#B5B5B5]">
@@ -994,44 +972,44 @@ export default function AdminPage() {
                     checked={luckyWheel.enabled}
                     onChange={(e) => setLuckyWheel((current) => ({ ...current, enabled: e.target.checked }))}
                   />
-                  Enabled
+                  Bật
                 </label>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <input value={luckyWheel.title} onChange={(e) => setLuckyWheel((current) => ({ ...current, title: e.target.value }))} className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none" placeholder="Event title" />
-                <input value={luckyWheel.message} onChange={(e) => setLuckyWheel((current) => ({ ...current, message: e.target.value }))} className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none" placeholder="Popup message" />
+                <input value={luckyWheel.title} onChange={(e) => setLuckyWheel((current) => ({ ...current, title: e.target.value }))} className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none" placeholder="Tiêu đề event" />
+                <input value={luckyWheel.message} onChange={(e) => setLuckyWheel((current) => ({ ...current, message: e.target.value }))} className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none" placeholder="Thông báo popup" />
               </div>
               <div className="space-y-3">
                 {luckyWheel.slices.map((slice, index) => (
                   <div key={index} className="grid gap-2 rounded-[14px] border border-[#1E1E1E] bg-[#050505] p-3 md:grid-cols-[1fr_140px_120px_auto]">
-                    <input value={slice.label} onChange={(e) => updateWheelSlice(index, { label: e.target.value })} className="rounded-[12px] border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none" placeholder="Label" />
+                    <input value={slice.label} onChange={(e) => updateWheelSlice(index, { label: e.target.value })} className="rounded-[12px] border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none" placeholder="Tên" />
                     <select value={slice.type} onChange={(e) => updateWheelSlice(index, { type: e.target.value as LuckyWheelSlice["type"] })} className="rounded-[12px] border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none">
-                      <option value="empty">Empty</option>
-                      <option value="discount">Discount</option>
+                      <option value="empty">Trống</option>
+                      <option value="discount">Giảm giá</option>
                     </select>
                     <input type="number" min="0" max="100" value={slice.discountPercent} onChange={(e) => updateWheelSlice(index, { discountPercent: e.target.value === "" ? "" : Number(e.target.value) })} disabled={slice.type === "empty"} className="rounded-[12px] border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none disabled:opacity-50" placeholder="%" />
-                    <button onClick={() => removeWheelSlice(index)} className="rounded-[12px] bg-[#FF4D4F]/15 px-3 py-2 text-sm text-[#FF4D4F]">Remove</button>
+                    <button onClick={() => removeWheelSlice(index)} className="rounded-[12px] bg-[#FF4D4F]/15 px-3 py-2 text-sm text-[#FF4D4F]">Xóa</button>
                   </div>
                 ))}
               </div>
               <div className="flex flex-wrap gap-2">
-                <button onClick={addWheelSlice} className="rounded-[14px] bg-[#1E1E1E] px-4 py-2 text-sm">Add slice</button>
-                <button onClick={() => void saveLuckyWheel()} disabled={submitting} className="rounded-[14px] bg-[#2F9BE6] px-4 py-2 text-sm font-semibold disabled:opacity-50">Save Lucky Wheel</button>
+                <button onClick={addWheelSlice} className="rounded-[14px] bg-[#1E1E1E] px-4 py-2 text-sm">Thêm ô</button>
+                <button onClick={() => void saveLuckyWheel()} disabled={submitting} className="rounded-[14px] bg-[#2F9BE6] px-4 py-2 text-sm font-semibold disabled:opacity-50">Lưu Vòng Quay</button>
               </div>
             </div>
           </div>
         )}
 
-        {tab === "liên kết" && (
+        {tab === "Tài Khoản Web" && (
           <div className="space-y-6">
             <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-semibold text-lg">Tài khoản Discord đã liên kết</h2>
-                  <p className="text-xs text-[#B5B5B5]/80">Theo dõi token, giỏ hàng, thời gian liên kết. Phục vụ restore sang server mới.</p>
+                  <h2 className="font-semibold text-lg">Tài Khoản Web</h2>
+                  <p className="text-xs text-[#B5B5B5]/80">Quản lý tài khoản web người dùng, ví VND, giỏ hàng, và liên kết Discord.</p>
                 </div>
                 <button onClick={() => void fetchLinkedUsers(linkedUsersPage, linkedUsersSearch)} className="rounded-[14px] border border-[#1E1E1E] bg-[#161616] px-4 py-2 text-sm">
-                  Làm mới
+                  Làm Mới
                 </button>
               </div>
 
@@ -1039,7 +1017,7 @@ export default function AdminPage() {
                 <input
                   value={linkedUsersSearch}
                   onChange={(e) => setLinkedUsersSearch(e.target.value)}
-                  placeholder="Tìm theo Discord ID hoặc username"
+                  placeholder="Tìm theo tên đăng nhập hoặc email"
                   className="min-w-[280px] flex-1 rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none"
                 />
                 <button
@@ -1051,7 +1029,7 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              <div className="text-sm text-[#B5B5B5]/80">Tổng liên kết: {linkedUsersTotal}</div>
+              <div className="text-sm text-[#B5B5B5]/80">Tổng tài khoản: {linkedUsersTotal}</div>
 
               <div className="grid gap-3">
                 {linkedUsersLoading && <p className="text-sm text-[#B5B5B5]/60">Đang tải...</p>}
@@ -1064,60 +1042,48 @@ export default function AdminPage() {
                   <div key={linkedUser._id} className="rounded-[16px] border border-[#1E1E1E] bg-[#050505] p-4">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-white">{linkedUser.discordUsername || "Unknown user"}</p>
-                        <p className="text-xs text-[#B5B5B5]/80">Discord ID: {linkedUser.discordId}</p>
+                        <p className="text-sm font-semibold text-white">{linkedUser.tenDangNhap || "Không rõ tên"}</p>
+                        <p className="text-xs text-[#B5B5B5]/80">Email: {linkedUser.email}</p>
                         <div className="flex flex-wrap gap-2 pt-1 text-xs">
-                          <span className={"rounded-full px-2 py-1 " + (linkedUser.hasAccessToken ? "bg-[#3DDC84]/15 text-[#3DDC84]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]")}>
-                            Access token: {linkedUser.hasAccessToken ? "yes" : "no"}
-                          </span>
-                          <span className={"rounded-full px-2 py-1 " + (linkedUser.hasRefreshToken ? "bg-[#2F9BE6]/15 text-[#2F9BE6]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]")}>
-                            Refresh token: {linkedUser.hasRefreshToken ? "yes" : "no"}
-                          </span>
-                          <span className="rounded-full bg-[#161616] px-2 py-1 text-[#B5B5B5]">
-                            Cart items: {linkedUser.cartItemsCount}
-                          </span>
                           <span className="rounded-full bg-[#2F9BE6]/15 px-2 py-1 text-[#49B6FF]">
-                            Spins: {linkedUser.luckyWheelTickets || 0}
+                            Ví VND: {linkedUser.soDuVnd.toLocaleString('vi-VN')}
+                          </span>
+                          <span className={"rounded-full px-2 py-1 " + (linkedUser.daLienKetDiscord ? "bg-[#3DDC84]/15 text-[#3DDC84]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]")}>
+                            Discord: {linkedUser.daLienKetDiscord ? "Có liên kết" : "Chưa liên kết"}
+                          </span>
+                          {linkedUser.daLienKetDiscord && linkedUser.discordTenHienThi && (
+                            <span className="rounded-full bg-[#5865F2]/15 px-2 py-1 text-[#7289DA]">
+                              {linkedUser.discordTenHienThi}
+                            </span>
+                          )}
+                          <span className="rounded-full bg-[#161616] px-2 py-1 text-[#B5B5B5]">
+                            Giỏ hàng: {linkedUser.cartItemsCount} mục
                           </span>
                         </div>
                       </div>
 
                       <div className="flex flex-wrap gap-2">
                         <button
-                          onClick={() => void grantLuckyWheelTicket(linkedUser.discordId)}
+                          onClick={() => void grantLuckyWheelTicket(linkedUser._id)}
                           disabled={submitting}
                           className="rounded-[14px] bg-[#2F9BE6]/15 px-4 py-2 text-sm text-[#49B6FF] disabled:opacity-50"
                         >
-                          Grant spin
+                          Cấp vòng quay
                         </button>
                         <button
-                          onClick={() => void clearLinkedUserCart(linkedUser.discordId)}
+                          onClick={() => void clearLinkedUserCart(linkedUser._id)}
                           disabled={submitting}
                           className="rounded-[14px] bg-[#FF4D4F]/15 px-4 py-2 text-sm text-[#FF4D4F] disabled:opacity-50"
                         >
-                          Clear cart
-                        </button>
-                        <button
-                          onClick={() => void unlinkUser(linkedUser.discordId)}
-                          disabled={submitting}
-                          className="rounded-[14px] bg-[#FF4D4F] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                        >
-                          Unlink
+                          Xóa giỏ
                         </button>
                       </div>
                     </div>
 
-                    <div className="mt-3 grid gap-2 text-xs text-[#B5B5B5]/80 md:grid-cols-3">
-                      <div>Linked at: {formatDateTime(linkedUser.joinedAt)}</div>
-                      <div>Token expires: {formatDateTime(linkedUser.tokenExpiresAt)}</div>
-                      <div>Cart updated: {formatDateTime(linkedUser.cartUpdatedAt)}</div>
-                      <div>First spin award: {formatDateTime(linkedUser.luckyWheelFirstLinkAwardedAt)}</div>
-                      <div>Admin granted spins: {linkedUser.luckyWheelTicketsGrantedByAdmin || 0}</div>
+                    <div className="mt-3 grid gap-2 text-xs text-[#B5B5B5]/80 md:grid-cols-2">
+                      <div>Cập nhật giỏ hàng: {formatDateTime(linkedUser.cartUpdatedAt)}</div>
+                      <div>Tạo tài khoản: {formatDateTime(linkedUser.taoLucTruocDo)}</div>
                     </div>
-
-                    {Array.isArray(linkedUser.scopes) && linkedUser.scopes.length > 0 && (
-                      <p className="mt-2 text-xs text-[#B5B5B5]/70">Scopes: {linkedUser.scopes.join(", ")}</p>
-                    )}
                   </div>
                 ))}
               </div>
