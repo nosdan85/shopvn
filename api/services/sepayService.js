@@ -57,9 +57,8 @@ async function taoMaNapTien({ userId, tenDangNhap, soTienVnd }) {
 
     tenDangNhap = taiKhoan.tenDangNhap;
 
-    // Tao ma ngau nhien 5 ky tu
-    const maNgauNhien = crypto.randomBytes(3).toString('uppercase')
-        .replace(/[^A-Z0-9]/g, () => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[crypto.randomInt(36)]);
+    // Tao ma ngau nhien 6 ky tu uppercase
+    const maNgauNhien = crypto.randomBytes(3).toString('hex').toUpperCase().substring(0, 6);
 
     const maGiaoDich = `NAP ${tenDangNhap.toUpperCase()} ${maNgauNhien}`;
     const noiDungChuyenKhoan = maGiaoDich;
@@ -197,21 +196,21 @@ async function xuLyWebhook(payload, signature) {
         };
     }
 
-    // Cap nhat vi (atomic update voi dieu kien soDuVi)
+    // Cap nhat vi (atomic update voi dieu kien soDuVnd)
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-        // FIX: Chuyển discordId (string) thành ObjectId
-        const taiKhoanId = mongoose.Types.ObjectId(giaoDich.discordId);
+        // FIX: Chuyển discordId (string) thành ObjectId với 'new'
+        const taiKhoanId = new mongoose.Types.ObjectId(giaoDich.discordId);
 
         const updatedTaiKhoan = await TaiKhoan.findOneAndUpdate(
             {
                 _id: taiKhoanId,  // ✅ Dùng ObjectId đúng
-                soDuVi: { $gte: 0 } // Điều kiện để đảm bảo tính atomic
+                soDuVnd: { $gte: 0 } // Điều kiện để đảm bảo tính atomic
             },
             {
-                $inc: { soDuVi: soTien }
+                $inc: { soDuVnd: soTien }
             },
             {
                 new: true,
@@ -236,7 +235,7 @@ async function xuLyWebhook(payload, signature) {
 
         return {
             thanhCong: true,
-            thongBao: `Nạp ${soTien.toLocaleString('vi-VN')} VND thành công! Số dư ví hiện tại: ${updatedTaiKhoan.soDuVi.toLocaleString('vi-VN')} VND`
+            thongBao: `Nạp ${soTien.toLocaleString('vi-VN')} VND thành công! Số dư ví hiện tại: ${updatedTaiKhoan.soDuVnd.toLocaleString('vi-VN')} VND`
         };
 
     } catch (err) {

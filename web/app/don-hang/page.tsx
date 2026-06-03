@@ -102,7 +102,7 @@ const API_URL = typeof window !== "undefined" ? process.env.NEXT_PUBLIC_API_URL 
 function DonHangPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading: authLoading, layThongTin } = useAuthViet();
+  const { user, token, isLoading: authLoading, layThongTin } = useAuthViet();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -147,10 +147,17 @@ function DonHangPage() {
   }, [successMessage]);
 
   const loadOrders = useCallback(async () => {
+    if (!token) return;
+
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/don-hang/lich-su`, { cache: "no-store" });
+      const res = await fetch(`${API_URL}/api/don-hang/lich-su`, {
+        cache: "no-store",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || data?.message || "Lỗi tải đơn hàng");
 
@@ -161,7 +168,7 @@ function DonHangPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -195,9 +202,12 @@ function DonHangPage() {
     setError(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/don-hang/don-hang/${orderId}/huy`, {
+      const res = await fetch(`${API_URL}/api/don-hang/${orderId}/huy`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Huy don hang that bai");
@@ -220,9 +230,12 @@ function DonHangPage() {
     setError(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/don-hang/don-hang/${orderId}/tao-ticket`, {
+      const res = await fetch(`${API_URL}/api/don-hang/${orderId}/tao-ticket`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Tao ticket that bai");

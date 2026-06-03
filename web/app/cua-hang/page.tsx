@@ -401,7 +401,7 @@ export default function CuaHangPage() {
         donGiaVnd: i.price,
       }));
 
-      const res = await fetch("/api/don-hang/don-hang/dat-hang", {
+      const res = await fetch("/api/don-hang/dat-hang", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -439,7 +439,7 @@ export default function CuaHangPage() {
     setTicketError(null);
 
     try {
-      const res = await fetch(`/api/don-hang/don-hang/${orderId}/tao-ticket`, {
+      const res = await fetch(`/api/don-hang/${orderId}/tao-ticket`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });

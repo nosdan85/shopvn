@@ -109,7 +109,7 @@ app.use(express.urlencoded({
 // Tai khoan web (dang ky/dang nhap/lien ket Discord)
 app.use('/api/tai-khoan', require('./routes/taiKhoanRoutes'));
 // Vi & nap tien (SePay MB Bank, the cao)
-app.use('/api', require('./routes/viRoutes'));
+app.use('/api/vi', require('./routes/viRoutes'));
 // Don hang (dat hang, lich su, tao ticket)
 app.use('/api/don-hang', require('./routes/donHangRoutes'));
 

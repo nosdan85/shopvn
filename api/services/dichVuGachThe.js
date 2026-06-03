@@ -192,9 +192,8 @@ async function gachThe({ userId, nhaMang, menhGia, serial, maThe }) {
     const serialClean = serial.replace(/\s/g, '').toUpperCase();
     const maTheClean = maThe.replace(/\s/g, '').toUpperCase();
 
-    // Tao ma giao dich ngau nhien
-    const maNgauNhien = crypto.randomBytes(4).toString('uppercase')
-        .replace(/[^A-Z0-9]/g, () => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[crypto.randomInt(36)]);
+    // Tao ma giao dich ngau nhien 8 ky tu uppercase
+    const maNgauNhien = crypto.randomBytes(4).toString('hex').toUpperCase().substring(0, 8);
     const maGiaoDich = `GT${maNgauNhien}`;
 
     // Tao giao dich pending trong database
@@ -432,7 +431,7 @@ async function kiemTraTrangThai(maGiaoDich) {
 
         if (trangThaiProvider || maLoi === '1' || maLoi === 'success') {
             // Thanh cong - tien ngay vao vi
-            const taiKhoanId = mongoose.Types.ObjectId(giaoDich.discordId);
+            const taiKhoanId = new mongoose.Types.ObjectId(giaoDich.discordId);
             const updatedTaiKhoan = await TaiKhoan.findOneAndUpdate(
                 {
                     _id: taiKhoanId,

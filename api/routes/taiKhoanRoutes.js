@@ -369,6 +369,27 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
             );
         }
 
+        // SYNC: Đồng bộ sang User model (legacy) để bot hoạt động
+        try {
+            const User = require('../models/User');
+            await User.findOneAndUpdate(
+                { discordId: discordUserInfo.id },
+                {
+                    discordId: discordUserInfo.id,
+                    discordUsername: discordUserInfo.username || discordUserInfo.global_name || 'Unknown',
+                    taiKhoanId: req.nguoiDung._id.toString(), // Link to TaiKhoan
+                    tenDangNhap: taiKhoanCapNhat.tenDangNhap,
+                    balance: taiKhoanCapNhat.soDuVnd || 0,
+                    joinedAt: new Date()
+                },
+                { upsert: true, new: true }
+            );
+            console.log(`[SYNC] Synced TaiKhoan → User for Discord ${discordUserInfo.id}`);
+        } catch (syncErr) {
+            console.warn('[SYNC] Failed to sync to User model:', syncErr.message);
+            // Don't fail the request if sync fails
+        }
+
         res.json({
             thongBao: 'Liên kết Discord thành công',
             daLienKetDiscord: true,

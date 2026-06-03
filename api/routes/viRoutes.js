@@ -167,7 +167,7 @@ router.get('/nap-tien/chuyen-khoan/:maGiaoDich', async (req, res) => {
             phuongThuc: ketQua.phuongThuc,
             ngayTao: ketQua.ngayTao,
             ngayCapNhat: ketQua.ngayCapNhat,
-            soDuVi: ketQua.soDuVi
+            soDuVnd: ketQua.soDuVnd
         });
     } catch (err) {
         console.error('Loi kiem tra trang thai chuyen khoan:', err);
@@ -402,7 +402,7 @@ router.post('/admin/vi/cong-tien', xacThucViet, yeuCauQuanTri, async (req, res) 
             referenceCode: 'ADMIN_CONG_' + Date.now(),
             provider: 'admin',
             providerPaymentId: '',
-            balanceAfterVnd: taiKhoanCapNhat.soDuVi,
+            balanceAfterVnd: taiKhoanCapNhat.soDuVnd,
             adminNotes: ghiChu || 'Admin cong tien thu cong',
             reviewedBy: req.nguoiDung.tenDangNhap || req.nguoiDung._id.toString(),
             reviewedAt: new Date()
@@ -413,7 +413,7 @@ router.post('/admin/vi/cong-tien', xacThucViet, yeuCauQuanTri, async (req, res) 
         res.json({
             thanhCong: true,
             thongBao: 'Cong tien thanh cong',
-            soDuMoi: taiKhoanCapNhat.soDuVi
+            soDuMoi: taiKhoanCapNhat.soDuVnd
         });
     } catch (err) {
         console.error('Loi cong tien admin:', err);
@@ -476,7 +476,7 @@ router.post('/admin/vi/tru-tien', xacThucViet, yeuCauQuanTri, async (req, res) =
             referenceCode: 'ADMIN_TRU_' + Date.now(),
             provider: 'admin',
             providerPaymentId: '',
-            balanceAfterVnd: taiKhoanCapNhat.soDuVi,
+            balanceAfterVnd: taiKhoanCapNhat.soDuVnd,
             adminNotes: ghiChu || 'Admin tru tien thu cong',
             reviewedBy: req.nguoiDung.tenDangNhap || req.nguoiDung._id.toString(),
             reviewedAt: new Date()
@@ -487,7 +487,7 @@ router.post('/admin/vi/tru-tien', xacThucViet, yeuCauQuanTri, async (req, res) =
         res.json({
             thanhCong: true,
             thongBao: 'Tru tien thanh cong',
-            soDuMoi: taiKhoanCapNhat.soDuVi
+            soDuMoi: taiKhoanCapNhat.soDuVnd
         });
     } catch (err) {
         console.error('Loi tru tien admin:', err);

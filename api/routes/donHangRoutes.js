@@ -265,7 +265,7 @@ router.post('/dat-hang', xacThucDonHang, async (req, res) => {
             orderId: orderId,
             orderCode: orderId,
             items: validItems,
-            balanceAfterVnd: soDuVi - totalVnd
+            balanceAfterVnd: soDuVnd - totalVnd
         }], { session: session });
 
         await session.commitTransaction();
@@ -309,15 +309,25 @@ router.get('/lich-su', xacThucDonHang, async (req, res) => {
             .lean();
 
         const danhSach = donHang.map(dh => ({
-            orderId: dh.orderId,
+            _id: dh._id,
+            maDonHang: dh.orderId,
+            orderId: dh.orderId, // Keep for backward compat
             items: dh.items,
             subtotalVnd: dh.subtotalVnd || 0,
             discountVnd: dh.discountVnd || 0,
-            totalVnd: dh.totalVnd || dh.totalAmount || 0,
-            paymentStatus: dh.paymentStatus,
-            status: dh.status,
+            tongTienVnd: dh.totalVnd || dh.totalAmount || 0,
+            totalVnd: dh.totalVnd || dh.totalAmount || 0, // Keep for backward compat
+            trangThaiThanhToan: dh.paymentStatus,
+            paymentStatus: dh.paymentStatus, // Keep for backward compat
+            trangThai: dh.status,
+            status: dh.status, // Keep for backward compat
             ticketStatus: dh.ticketStatus,
-            createdAt: dh.createdAt
+            daTaoTicket: dh.ticketStatus === 'created' || dh.ticketStatus === 'pending',
+            ticketChannelName: dh.ticketChannelName,
+            discordDaLienKet: !!dh.discordId,
+            discordDaJoinServer: true, // Assume true if has discordId
+            ngayTao: dh.createdAt,
+            createdAt: dh.createdAt // Keep for backward compat
         }));
 
         res.json({
@@ -593,7 +603,7 @@ router.post('/:orderId/huy', xacThucDonHang, async (req, res) => {
                     orderId: orderId,
                     orderCode: orderId,
                     items: donHang.items || [],
-                    balanceAfterVnd: (Number(taiKhoan.soDuVi) || 0) + refundAmount
+                    balanceAfterVnd: (Number(taiKhoan.soDuVnd) || 0) + refundAmount
                 }], { session: session });
             }
 

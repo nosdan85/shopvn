@@ -41,7 +41,17 @@ const authRequired = (req, res, next) => {
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    if (!decoded?.discordId && decoded?.role !== 'admin') {
+    // Accept multiple token types:
+    // 1. Discord tokens (legacy): have discordId
+    // 2. Admin tokens: have role: 'admin'
+    // 3. Web tokens (TaiKhoan): have _id and tenDangNhap
+    const isValidToken =
+        decoded?.discordId ||           // Discord user
+        decoded?.role === 'admin' ||    // Admin token
+        decoded?._id ||                 // Web account (TaiKhoan)
+        decoded?.userId;                // Alternative user ID field
+
+    if (!isValidToken) {
         return res.status(401).json({ error: 'Invalid auth token' });
     }
 

@@ -101,8 +101,8 @@ async function processTransaction(transaction) {
     session.startTransaction();
 
     try {
-        // Chuyển discordId (string) thành ObjectId
-        const taiKhoanId = mongoose.Types.ObjectId(giaoDich.discordId);
+        // FIX: Chuyển discordId (string) thành ObjectId với 'new'
+        const taiKhoanId = new mongoose.Types.ObjectId(giaoDich.discordId);
 
         // Cộng tiền vào ví
         const updatedTaiKhoan = await TaiKhoan.findOneAndUpdate(
