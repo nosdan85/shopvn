@@ -8,7 +8,7 @@ interface BackButtonProps {
 }
 
 export default function BackButton({
-  href = "/cua-hang",
+  href = "/shop",
   label,
   variant = "back"
 }: BackButtonProps) {

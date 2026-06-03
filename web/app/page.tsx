@@ -7,7 +7,7 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/cua-hang");
+    router.replace("/shop");
   }, [router]);
 
   return (

@@ -71,7 +71,7 @@ export default function DangKyPage() {
         xacNhanMatKhau,
       });
       setThanhCong(true);
-      router.push("/cua-hang");
+      router.push("/shop");
       router.refresh();
     } catch (err) {
       setLoi(err instanceof Error ? err.message : "Đăng ký thất bại");
@@ -96,7 +96,7 @@ export default function DangKyPage() {
 
       {/* Back to Home Button */}
       <Link
-        href="/cua-hang"
+        href="/shop"
         className="mb-4 flex items-center gap-2 text-sm text-[#B5B5B5] hover:text-white transition-colors"
       >
         <Home className="h-4 w-4" />

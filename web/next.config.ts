@@ -55,6 +55,11 @@ const nextConfig: NextConfig = {
         destination: "/shop",
         permanent: false,
       },
+      {
+        source: "/cua-hang",
+        destination: "/shop",
+        permanent: true,
+      },
     ];
   },
 };

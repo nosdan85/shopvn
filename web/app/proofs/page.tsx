@@ -264,12 +264,12 @@ export default function ProofsPage() {
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-4">
-          <BackButton href="/cua-hang" label="Cửa Hàng" variant="back" />
+          <BackButton href="/shop" label="Cửa Hàng" variant="back" />
         </div>
         <div className="mb-8 flex items-center justify-between animate-fade-in-up">
           <div className="flex items-center gap-4">
             <Link
-              href="/cua-hang"
+              href="/shop"
               className="flex items-center gap-2 rounded-[14px] bg-[#111111] px-4 py-2 transition-colors hover:bg-[#1E1E1E]"
             >
               <Home className="h-5 w-5" />

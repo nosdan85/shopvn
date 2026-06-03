@@ -112,7 +112,7 @@ export default function LinkDiscordCallbackPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-4">
       <div className="absolute top-4 left-4">
-        <BackButton href="/cua-hang" label="Cửa Hàng" variant="back" />
+        <BackButton href="/shop" label="Cửa Hàng" variant="back" />
       </div>
       <Suspense
         fallback={

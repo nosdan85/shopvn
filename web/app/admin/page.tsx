@@ -670,7 +670,7 @@ export default function AdminPage() {
 
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-4">
-          <BackButton href="/cua-hang" label="Cửa Hàng" variant="back" />
+          <BackButton href="/shop" label="Cửa Hàng" variant="back" />
         </div>
         <div className="mb-8 flex flex-wrap gap-4 items-center justify-between">
           <div>

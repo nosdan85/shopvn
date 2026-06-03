@@ -403,7 +403,7 @@ export default function NapTienPage() {
       </div>
 
       <div className="mx-auto max-w-3xl px-4 py-4">
-        <BackButton href="/cua-hang" label="Cửa Hàng" variant="back" />
+        <BackButton href="/shop" label="Cửa Hàng" variant="back" />
         <div className="mt-4">
         {/* Error / Success Messages */}
         {error && (

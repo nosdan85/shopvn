@@ -237,6 +237,17 @@ const connectMongo = async () => {
 const bootstrap = async () => {
     log.info('[KHOI_DONG] Bat dau khoi tao server...');
     const mongoConnected = await connectMongo();
+
+    // Khởi động SePay Bot sau khi MongoDB connect
+    if (mongoConnected && process.env.SEPAY_BOT_ENABLED === 'true') {
+        try {
+            const sepayBot = require('./bot/sepayPollingBot');
+            sepayBot.start();
+        } catch (err) {
+            log.error('[SEPAY_BOT] Khong the khoi dong bot', { error: err.message });
+        }
+    }
+
     if (shouldStartHttpServer) {
         const requireDbBeforeListen = String(process.env.REQUIRE_DB_BEFORE_LISTEN || 'true').trim().toLowerCase() !== 'false';
         if (requireDbBeforeListen && !mongoConnected) {
