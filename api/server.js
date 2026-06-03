@@ -151,9 +151,22 @@ app.get('/metrics', async (req, res) => {
 
 // Health check endpoint
 const redisCache = require('./cache/redis');
-const ticketQueue = require('./queue/ticketQueue');
+
+// Ticket queue - optional (comment out if not available)
+let ticketQueue;
+try {
+    ticketQueue = require('./queue/ticketQueue');
+    ticketQueue.getQueue();
+} catch (err) {
+    console.warn('[HEALTH] ticketQueue not available:', err.message);
+    ticketQueue = {
+        isAvailable: () => false,
+        getQueue: () => null
+    };
+}
+
 redisCache.getRedis();
-ticketQueue.getQueue();
+
 app.get('/health', (req, res) => {
   res.json({
     trangThai: 'ok',

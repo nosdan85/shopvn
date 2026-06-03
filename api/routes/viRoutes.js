@@ -296,8 +296,8 @@ router.get('/nap-tien/the-cao/menh-gia', async (req, res) => {
 
 // ============ LICH SU GIAO DICH ============
 
-// GET /vi/vi/lich-su - Lay lich su giao dich vi (can xac thuc)
-router.get('/vi/lich-su', xacThucViet, async (req, res) => {
+// GET /vi/lich-su - Lay lich su giao dich vi (can xac thuc)
+router.get('/lich-su', xacThucViet, async (req, res) => {
     try {
         const userId = req.userId;
         const userIdString = userId.toString();

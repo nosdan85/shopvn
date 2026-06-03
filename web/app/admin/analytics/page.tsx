@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthViet } from "../../context/AuthVietContext";
 import Navbar from "../../components/Navbar";
+import BackButton from "../../components/BackButton";
 import { TrendingUp, Package, ShoppingCart, ImageIcon, Loader2, RefreshCw } from "lucide-react";
 
 interface SalesData {
@@ -100,6 +101,9 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-[#050505] text-white">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="mb-4">
+          <BackButton href="/admin" label="Trang Admin" variant="back" />
+        </div>
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-bold">Thống Kê</h1>
           <button

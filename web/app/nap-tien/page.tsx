@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthViet } from "../context/AuthVietContext";
+import BackButton from "../components/BackButton";
 import {
   Banknote,
   Smartphone,
@@ -402,6 +403,8 @@ export default function NapTienPage() {
       </div>
 
       <div className="mx-auto max-w-3xl px-4 py-4">
+        <BackButton href="/cua-hang" label="Cửa Hàng" variant="back" />
+        <div className="mt-4">
         {/* Error / Success Messages */}
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-[12px] border border-[#FF4D4F]/30 bg-[#FF4D4F]/10 p-3">
@@ -808,6 +811,7 @@ export default function NapTienPage() {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

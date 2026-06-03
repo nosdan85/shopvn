@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Navbar from "../../components/Navbar";
+import BackButton from "../../components/BackButton";
 import { useAuthViet } from "../../context/AuthVietContext";
 import { AlertCircle, CheckCircle2, Clock3, RefreshCcw, Search, ShieldAlert, XCircle } from "lucide-react";
 
@@ -158,6 +159,9 @@ export default function AdminOrdersPage() {
     <div className="min-h-screen bg-[#050505] text-white">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-8">
+        <div className="mb-4">
+          <BackButton href="/admin" label="Trang Admin" variant="back" />
+        </div>
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-3xl font-semibold">Đơn Hàng</h1>

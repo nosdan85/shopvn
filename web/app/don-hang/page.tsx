@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthViet } from "../context/AuthVietContext";
+import BackButton from "../components/BackButton";
 import {
   ChevronDown,
   ChevronUp,
@@ -256,6 +257,8 @@ function DonHangPage() {
       </div>
 
       <div className="mx-auto max-w-3xl px-4 py-6">
+        <BackButton href="/cua-hang" label="Cửa Hàng" variant="back" />
+        <div className="mt-4">
         {/* Success Message */}
         {successMessage && (
           <div className="mb-4 flex items-center gap-2 rounded-[12px] bg-[#3DDC84]/20 px-4 py-3 text-sm text-[#3DDC84]">
@@ -570,6 +573,7 @@ function DonHangPage() {
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

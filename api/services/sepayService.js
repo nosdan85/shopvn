@@ -25,7 +25,7 @@ async function taoMaNapTien({ userId, tenDangNhap, soTienVnd }) {
     if (!soTienVnd || soTienVnd < 10000) {
         return {
             thanhCong: false,
-            thongBao: 'So tien nap toi thieu la 10,000 VND'
+            thongBao: 'Số tiền nạp tối thiểu là 10,000 VND'
         };
     }
 
@@ -36,14 +36,14 @@ async function taoMaNapTien({ userId, tenDangNhap, soTienVnd }) {
     } catch (err) {
         return {
             thanhCong: false,
-            thongBao: 'ID tai khoan khong hop le'
+            thongBao: 'ID tài khoản không hợp lệ'
         };
     }
 
     if (!taiKhoan) {
         return {
             thanhCong: false,
-            thongBao: 'Khong tim thay tai khoan'
+            thongBao: 'Không tìm thấy tài khoản'
         };
     }
 
@@ -51,7 +51,7 @@ async function taoMaNapTien({ userId, tenDangNhap, soTienVnd }) {
     if (tenDangNhap && tenDangNhap !== taiKhoan.tenDangNhap) {
         return {
             thanhCong: false,
-            thongBao: 'Ten dang nhap khong khop voi tai khoan'
+            thongBao: 'Tên đăng nhập không khớp với tài khoản'
         };
     }
 
@@ -202,10 +202,13 @@ async function xuLyWebhook(payload, signature) {
     session.startTransaction();
 
     try {
+        // FIX: Chuyển discordId (string) thành ObjectId
+        const taiKhoanId = mongoose.Types.ObjectId(giaoDich.discordId);
+
         const updatedTaiKhoan = await TaiKhoan.findOneAndUpdate(
             {
-                _id: giaoDich.discordId,
-                soDuVi: { $gte: 0 } // Đieu kien de dam ba tinh atomic
+                _id: taiKhoanId,  // ✅ Dùng ObjectId đúng
+                soDuVi: { $gte: 0 } // Điều kiện để đảm bảo tính atomic
             },
             {
                 $inc: { soDuVi: soTien }
@@ -217,7 +220,7 @@ async function xuLyWebhook(payload, signature) {
         );
 
         if (!updatedTaiKhoan) {
-            throw new Error('Khong cap nhat duoc vi');
+            throw new Error('Không cập nhật được ví - Tài khoản không tồn tại');
         }
 
         // Cap nhat trang thai giao dich
@@ -233,7 +236,7 @@ async function xuLyWebhook(payload, signature) {
 
         return {
             thanhCong: true,
-            thongBao: `Nap ${soTien.toLocaleString('vi-VN')} VND thanh cong! So du vi hien tai: ${updatedTaiKhoan.soDuVi.toLocaleString('vi-VN')} VND`
+            thongBao: `Nạp ${soTien.toLocaleString('vi-VN')} VND thành công! Số dư ví hiện tại: ${updatedTaiKhoan.soDuVi.toLocaleString('vi-VN')} VND`
         };
 
     } catch (err) {
@@ -241,7 +244,7 @@ async function xuLyWebhook(payload, signature) {
 
         return {
             thanhCong: false,
-            thongBao: 'Loi khi xu ly giao dich: ' + (err.message || 'Loi khong xac dinh')
+            thongBao: 'Lỗi khi xử lý giao dịch: ' + (err.message || 'Lỗi không xác định')
         };
     } finally {
         session.endSession();

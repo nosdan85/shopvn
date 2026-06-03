@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthViet } from "../../context/AuthVietContext";
+import BackButton from "../../components/BackButton";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 function LinkDiscordCallbackContent() {
@@ -110,6 +111,9 @@ function LinkDiscordCallbackContent() {
 export default function LinkDiscordCallbackPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-4">
+      <div className="absolute top-4 left-4">
+        <BackButton href="/cua-hang" label="Cửa Hàng" variant="back" />
+      </div>
       <Suspense
         fallback={
           <div className="max-w-lg w-full bg-[#111111] border border-[#1E1E1E] rounded-2xl p-8 text-center shadow-xl animate-fade-in-up">

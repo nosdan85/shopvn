@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import Navbar from "../components/Navbar";
+import BackButton from "../components/BackButton";
 import { useAuthViet } from "../context/AuthVietContext";
 import { resolveImageUrl } from "@/lib/imageUrl";
 import {
@@ -514,7 +515,8 @@ export default function CuaHangPage() {
       {/* Hero Section */}
       <div className="px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <h1 className="text-3xl font-bold text-white sm:text-4xl">Cua Hang Game</h1>
+          <BackButton href="/" label="Trang Chủ" variant="home" />
+          <h1 className="mt-4 text-3xl font-bold text-white sm:text-4xl">Cua Hang Game</h1>
           <p className="mt-2 text-[#B5B5B5]">Mua kim cuong, the game, voucher voi gia tot nhat</p>
         </div>
       </div>
