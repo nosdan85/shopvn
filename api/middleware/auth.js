@@ -8,11 +8,6 @@ try {
     taiKhoanService = null;
 }
 
-/**
- * Extract Bearer token from Authorization header or x-auth-token header
- * @param {Object} req - Express request object
- * @returns {string} Token string or empty string if not found
- */
 function layToken(req) {
     const authHeader = req.headers.authorization || '';
     if (authHeader.startsWith('Bearer ')) {
@@ -21,13 +16,6 @@ function layToken(req) {
     return req.header('x-auth-token') || '';
 }
 
-/**
- * Authentication middleware
- * Verifies JWT token and loads user info into req.nguoiDung
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
- */
 async function xacThuc(req, res, next) {
     if (!process.env.JWT_SECRET) {
         return res.status(500).json({ thongBao: 'Server chưa cấu hình xác thực' });
@@ -45,38 +33,39 @@ async function xacThuc(req, res, next) {
         return res.status(401).json({ thongBao: 'Token không hợp lệ hoặc đã hết hạn' });
     }
 
-    // Check if taiKhoanService is available
     if (taiKhoanService?.xacthucToken) {
-        const ketQua = await taiKhoanService.xacthucToken(token);
-        if (!ketQua || !ketQua.hopLe) {
-            return res.status(401).json({ thongBao: 'Token không hợp lệ hoặc đã hết hạn' });
+        const serviceDecoded = await taiKhoanService.xacthucToken(token);
+        if (serviceDecoded) {
+            decoded = serviceDecoded;
         }
-        req.nguoiDung = ketQua.taiKhoan;
-    } else {
-        // Fallback: find account by token info
-        if (!decoded?._id && !decoded?.tenDangNhap) {
-            return res.status(401).json({ thongBao: 'Token không hợp lệ' });
-        }
-
-        // Find account in database
-        const taiKhoan = await TaiKhoan.findOne({
-            $or: [
-                { _id: decoded._id },
-                { tenDangNhap: decoded.tenDangNhap }
-            ]
-        });
-
-        if (!taiKhoan) {
-            return res.status(401).json({ thongBao: 'Tài khoản không tồn tại' });
-        }
-
-        if (!taiKhoan.dangHoatDong) {
-            return res.status(401).json({ thongBao: 'Tài khoản đã bị khóa' });
-        }
-
-        req.nguoiDung = taiKhoan;
     }
 
+    const userId = decoded?._id || decoded?.userId;
+    const tenDangNhap = decoded?.tenDangNhap;
+
+    if (!userId && !tenDangNhap) {
+        return res.status(401).json({ thongBao: 'Token không hợp lệ' });
+    }
+
+    const dieuKienTim = [];
+    if (userId) {
+        dieuKienTim.push({ _id: userId });
+    }
+    if (tenDangNhap) {
+        dieuKienTim.push({ tenDangNhap });
+    }
+
+    const taiKhoan = await TaiKhoan.findOne({ $or: dieuKienTim });
+
+    if (!taiKhoan) {
+        return res.status(401).json({ thongBao: 'Tài khoản không tồn tại' });
+    }
+
+    if (!taiKhoan.dangHoatDong) {
+        return res.status(401).json({ thongBao: 'Tài khoản đã bị khóa' });
+    }
+
+    req.nguoiDung = taiKhoan;
     next();
 }
 
