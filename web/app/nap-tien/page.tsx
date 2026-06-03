@@ -205,12 +205,12 @@ export default function NapTienPage() {
       }
       setChuyenKhoanResult({
         maGiaoDich: data.maGiaoDich || "",
-        nganHang: data.nganHang || "MB Bank",
-        soTaiKhoan: data.soTaiKhoan || "",
-        tenChuTaiKhoan: data.tenChuTaiKhoan || "",
+        nganHang: data.thongTinNganHang?.tenNganHang || "MB Bank",
+        soTaiKhoan: data.thongTinNganHang?.soTaiKhoan || "",
+        tenChuTaiKhoan: data.thongTinNganHang?.tenChuTaiKhoan || "",
         soTien: data.soTien || soTien,
-        noiDung: data.noiDung || data.maGiaoDich || "",
-        qrCode: data.qrCode || "",
+        noiDung: data.noiDungChuyenKhoan || data.maGiaoDich || "",
+        qrCode: data.qrCodeUrl || "",
       });
 
       // Start polling
@@ -548,6 +548,21 @@ export default function NapTienPage() {
                         {formatVND(chuyenKhoanResult.soTien)} VND
                       </span>
                     </div>
+
+                    {/* QR Code */}
+                    {chuyenKhoanResult.qrCode && (
+                      <div className="flex flex-col items-center gap-2 border-t border-[#1E1E1E] pt-3">
+                        <span className="text-xs text-[#B5B5B5]">Quet ma QR de chuyen khoan</span>
+                        <div className="rounded-[12px] bg-white p-3">
+                          <img
+                            src={chuyenKhoanResult.qrCode}
+                            alt="QR Code"
+                            className="h-48 w-48 object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex flex-col gap-1 border-t border-[#1E1E1E] pt-3">
                       <span className="text-xs text-[#B5B5B5]">Noi dung (sao chep)</span>
                       <div className="flex items-center gap-2">

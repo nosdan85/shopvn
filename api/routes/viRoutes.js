@@ -136,6 +136,7 @@ router.post('/nap-tien/chuyen-khoan/tao', xacThucViet, async (req, res) => {
             maGiaoDich: ketQua.maGiaoDich,
             soTien: ketQua.soTien,
             noiDungChuyenKhoan: ketQua.noiDungChuyenKhoan,
+            qrCodeUrl: ketQua.qrCodeUrl || null,
             thongTinNganHang: ketQua.thongTinNganHang
         });
     } catch (err) {

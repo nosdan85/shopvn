@@ -11,6 +11,8 @@ const WalletTransaction = require('../models/WalletTransaction');
 const SEPAY_WEBHOOK_SECRET = process.env.SEPAY_WEBHOOK_SECRET || '';
 const SEPAY_MB_BANK_ACCOUNT = process.env.SEPAY_MB_BANK_ACCOUNT || '';
 const SEPAY_ACCOUNT_NAME = process.env.SEPAY_ACCOUNT_NAME || '';
+const SEPAY_API_KEY = process.env.SEPAY_BOT_API_KEY || process.env.SEPAY_API_KEY || '';
+const SEPAY_BANK_CODE = 'MB'; // MB Bank code for VietQR
 
 /**
  * Tao ma nap tien (ma chuyen khoan)
@@ -81,11 +83,24 @@ async function taoMaNapTien({ userId, tenDangNhap, soTienVnd }) {
 
     await giaoDich.save();
 
+    // Tạo QR code URL từ SePay (nếu có API key)
+    let qrCodeUrl = null;
+    if (SEPAY_API_KEY) {
+        try {
+            // SePay QR code format: https://my.sepay.vn/qr/{accountNumber}/{amount}/{content}
+            const qrContent = encodeURIComponent(noiDungChuyenKhoan);
+            qrCodeUrl = `https://img.vietqr.io/image/${SEPAY_BANK_CODE || 'MB'}-${SEPAY_MB_BANK_ACCOUNT}-compact2.png?amount=${soTienVnd}&addInfo=${qrContent}&accountName=${encodeURIComponent(SEPAY_ACCOUNT_NAME)}`;
+        } catch (err) {
+            console.warn('[SEPAY] Failed to generate QR code URL:', err.message);
+        }
+    }
+
     return {
         thanhCong: true,
         maGiaoDich: maGiaoDich,
         soTien: soTienVnd,
         noiDungChuyenKhoan: noiDungChuyenKhoan,
+        qrCodeUrl: qrCodeUrl, // QR code URL
         thongTinNganHang: {
             tenNganHang: 'MB Bank',
             soTaiKhoan: SEPAY_MB_BANK_ACCOUNT,
