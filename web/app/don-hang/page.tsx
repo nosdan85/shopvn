@@ -134,12 +134,14 @@ function DonHangPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/don-hang/don-hang/lich-su`, { cache: "no-store" });
+      const res = await fetch(`${API_URL}/api/don-hang/lich-su`, { cache: "no-store" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Loi tai don hang");
-      setOrders(Array.isArray(data) ? data : []);
+      if (!res.ok) throw new Error(data?.error || data?.message || "Lỗi tải đơn hàng");
+
+      // API returns { donHang: [], tong: number }
+      setOrders(Array.isArray(data.donHang) ? data.donHang : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Loi tai don hang");
+      setError(e instanceof Error ? e.message : "Lỗi tải đơn hàng");
     } finally {
       setLoading(false);
     }
