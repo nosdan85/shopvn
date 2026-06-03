@@ -83,16 +83,26 @@ async function taoMaNapTien({ userId, tenDangNhap, soTienVnd }) {
 
     await giaoDich.save();
 
-    // Tạo QR code URL từ SePay (nếu có API key)
+    // Tạo QR code URL từ VietQR API
     let qrCodeUrl = null;
-    if (SEPAY_API_KEY) {
+    if (SEPAY_MB_BANK_ACCOUNT && SEPAY_ACCOUNT_NAME) {
         try {
-            // SePay QR code format: https://my.sepay.vn/qr/{accountNumber}/{amount}/{content}
-            const qrContent = encodeURIComponent(noiDungChuyenKhoan);
-            qrCodeUrl = `https://img.vietqr.io/image/${SEPAY_BANK_CODE || 'MB'}-${SEPAY_MB_BANK_ACCOUNT}-compact2.png?amount=${soTienVnd}&addInfo=${qrContent}&accountName=${encodeURIComponent(SEPAY_ACCOUNT_NAME)}`;
+            // VietQR API format: https://img.vietqr.io/image/{bankCode}-{accountNumber}-{template}.png
+            const bankCode = SEPAY_BANK_CODE || 'MB';
+            const accountNumber = SEPAY_MB_BANK_ACCOUNT;
+            const amount = soTienVnd;
+            const description = encodeURIComponent(noiDungChuyenKhoan);
+            const accountName = encodeURIComponent(SEPAY_ACCOUNT_NAME);
+
+            // VietQR compact template with amount and description pre-filled
+            qrCodeUrl = `https://img.vietqr.io/image/${bankCode}-${accountNumber}-compact2.png?amount=${amount}&addInfo=${description}&accountName=${accountName}`;
+
+            console.log('[SEPAY] Generated QR code URL:', qrCodeUrl);
         } catch (err) {
             console.warn('[SEPAY] Failed to generate QR code URL:', err.message);
         }
+    } else {
+        console.warn('[SEPAY] Missing SEPAY_MB_BANK_ACCOUNT or SEPAY_ACCOUNT_NAME - QR code disabled');
     }
 
     return {

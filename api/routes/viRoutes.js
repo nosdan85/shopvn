@@ -496,6 +496,60 @@ router.post('/admin/vi/tru-tien', xacThucViet, yeuCauQuanTri, async (req, res) =
     }
 });
 
+// ============ TEST ENDPOINTS (Development Only) ============
+
+// POST /vi/test/duyet-nap-tien - Duyet giao dich nap tien (test without real payment)
+// ONLY USE IN DEVELOPMENT - bypass real payment for testing
+router.post('/test/duyet-nap-tien', xacThucViet, async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ thongBao: 'Endpoint nay chi su dung trong development' });
+    }
+
+    try {
+        const { maGiaoDich } = req.body;
+        const userId = req.userId;
+
+        if (!maGiaoDich) {
+            return res.status(400).json({ thongBao: 'Thieu ma giao dich' });
+        }
+
+        // Tim giao dich pending
+        const giaoDich = await WalletTransaction.findOne({
+            referenceCode: maGiaoDich,
+            type: 'topup',
+            status: 'pending'
+        });
+
+        if (!giaoDich) {
+            return res.status(404).json({ thongBao: 'Khong tim thay giao dich hoac giao dich da duoc xu ly' });
+        }
+
+        // Update transaction to completed
+        giaoDich.status = 'completed';
+        giaoDich.providerPaymentId = 'TEST_' + Date.now();
+        await giaoDich.save();
+
+        // Cap nhat so du tai khoan
+        const taiKhoan = await TaiKhoan.findById(userId);
+        if (taiKhoan) {
+            taiKhoan.soDuVnd = (taiKhoan.soDuVnd || 0) + giaoDich.amountVnd;
+            await taiKhoan.save();
+            console.log(`[TEST] Approved deposit ${maGiaoDich}: +${giaoDich.amountVnd} VND for user ${taiKhoan.tenDangNhap}`);
+        }
+
+        res.json({
+            thanhCong: true,
+            thongBao: 'Da duyet giao dich (TEST MODE)',
+            soDuVndMoi: taiKhoan?.soDuVnd || 0,
+            soTienNap: giaoDich.amountVnd
+        });
+
+    } catch (err) {
+        console.error('Loi duyet test:', err);
+        res.status(500).json({ thongBao: 'Loi he thong' });
+    }
+});
+
 module.exports = router;
 module.exports.xacThucViet = xacThucViet;
 module.exports.yeuCauQuanTri = yeuCauQuanTri;
