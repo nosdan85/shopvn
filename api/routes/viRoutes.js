@@ -499,10 +499,21 @@ router.post('/admin/vi/tru-tien', xacThucViet, yeuCauQuanTri, async (req, res) =
 // ============ TEST ENDPOINTS (Development Only) ============
 
 // POST /vi/test/duyet-nap-tien - Duyet giao dich nap tien (test without real payment)
-// ONLY USE IN DEVELOPMENT - bypass real payment for testing
+// ONLY USE IN DEVELOPMENT OR BY ADMIN - bypass real payment for testing
 router.post('/test/duyet-nap-tien', xacThucViet, async (req, res) => {
+    // Check if production AND not admin
     if (process.env.NODE_ENV === 'production') {
-        return res.status(403).json({ thongBao: 'Endpoint nay chi su dung trong development' });
+        // Allow admin to use this endpoint even in production
+        const taiKhoan = req.nguoiDung;
+        const isAdmin = taiKhoan && taiKhoan.vaiTro === 'admin';
+
+        if (!isAdmin) {
+            return res.status(403).json({
+                thongBao: 'Endpoint nay chi su dung trong development hoac boi admin'
+            });
+        }
+
+        console.log(`[TEST] Admin ${taiKhoan.tenDangNhap} using test endpoint in production`);
     }
 
     try {
