@@ -105,6 +105,15 @@ app.use(express.urlencoded({
     }
 }));
 
+// === ROUTES MOI - TIENG VIET ===
+// Tai khoan web (dang ky/dang nhap/lien ket Discord)
+app.use('/api/tai-khoan', require('./routes/taiKhoanRoutes'));
+// Vi & nap tien (SePay MB Bank, the cao)
+app.use('/api', require('./routes/viRoutes'));
+// Don hang (dat hang, lich su, tao ticket)
+app.use('/api/don-hang', require('./routes/donHangRoutes'));
+
+// === ROUTES CU (giu lai de backward compat, se refactor sau) ===
 app.use('/ipn.php', require('./routes/paypalIpnRoutes'));
 app.use('/api/shop/paypal/ipn', require('./routes/paypalIpnRoutes'));
 app.use('/api', apiLimiter);
@@ -127,7 +136,7 @@ const BANNER_DIR = path.resolve(process.env.BANNER_IMAGE_DIR || './uploads/banne
 try { fs.mkdirSync(BANNER_DIR, { recursive: true }); } catch (_) {}
 app.use('/api/banners', express.static(BANNER_DIR));
 
-app.get('/', (req, res) => res.status(200).json({ status: 'ok', service: 'gaming-shop' }));
+app.get('/', (req, res) => res.status(200).json({ trangThai: 'ok', dichVu: 'nosmarket-shop-vi' }));
 
 // Prometheus metrics endpoint
 const { getMetrics, getContentType } = require('./metrics');
@@ -147,18 +156,18 @@ redisCache.getRedis();
 ticketQueue.getQueue();
 app.get('/health', (req, res) => {
   res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    redis: redisCache.isAvailable() ? 'connected' : 'unavailable',
-    queue: ticketQueue.isAvailable() ? 'ready' : 'unavailable',
+    trangThai: 'ok',
+    thoiGian: new Date().toISOString(),
+    redis: redisCache.isAvailable() ? 'da_ket_noi' : 'khong_kha_dung',
+    queue: ticketQueue.isAvailable() ? 'san_sang' : 'khong_kha_dung',
   });
 });
 
 app.use((err, req, res, next) => {
     if (err?.message === 'CORS_NOT_ALLOWED') {
-        return res.status(403).json({ error: 'Origin is not allowed by CORS policy' });
+        return res.status(403).json({ loi: 'Origin khong duoc cho phep boi CORS policy' });
     }
-    log.error('Unhandled server error', {
+    log.error('Loi server chua xu ly', {
         requestId: req.requestId,
         error: err?.message || err,
         stack: err?.stack,
@@ -171,7 +180,7 @@ app.use((err, req, res, next) => {
     const status = Number(err?.status);
     const safeStatus = Number.isFinite(status) && status >= 400 && status <= 599 ? status : 500;
     return res.status(safeStatus).json({
-        error: safeStatus >= 500 ? 'Internal server error' : String(err?.message || 'Request failed')
+        loi: safeStatus >= 500 ? 'Loi he thong. Vui long thu lai sau.' : String(err?.message || 'Yeu cau that bai')
     });
 });
 
@@ -180,53 +189,53 @@ app.use(createErrorLogger());
 
 const normalizedBotToken = normalizeEnvValue(process.env.DISCORD_BOT_TOKEN);
 if (normalizedBotToken && shouldEnableBotGateway) {
-    log.info('[DISCORD] Bot attempting to login...');
+    log.info('[DISCORD] Bot dang cho login...');
     client.login(normalizedBotToken).then(() => {
-        log.info('[DISCORD] Bot login successful');
+        log.info('[DISCORD] Bot login thanh cong');
     }).catch((err) => {
-        log.error('[DISCORD] Bot login failed', { error: err.message });
+        log.error('[DISCORD] Bot login that bai', { error: err.message });
     });
     client.on('error', (err) => log.error('[DISCORD] Bot error', { error: err.message }));
-    client.on('ready', () => log.info('[DISCORD] Bot is ready', { tag: client.user?.tag }));
+    client.on('ready', () => log.info('[DISCORD] Bot da san sang', { tag: client.user?.tag }));
 } else if (normalizedBotToken && !shouldEnableBotGateway) {
-    log.warn('[DISCORD] Gateway login disabled (DISCORD_ENABLE_GATEWAY=false or serverless runtime)');
+    log.warn('[DISCORD] Gateway login bi tat (DISCORD_ENABLE_GATEWAY=false hoac serverless runtime)');
 } else {
-    log.warn('[DISCORD] DISCORD_BOT_TOKEN missing - bot disabled');
+    log.warn('[DISCORD] DISCORD_BOT_TOKEN thieu - bot bi tat');
 }
 
 const PORT = process.env.PORT || 5000;
 const shouldStartHttpServer = !isVercelRuntime || forceHttpListen;
 const connectMongo = async () => {
     if (!process.env.MONGO_URI) {
-        log.error('[MONGODB] MONGO_URI is not configured');
+        log.error('[MONGODB] MONGO_URI chua duoc cau hinh');
         return false;
     }
-    log.info('[MONGODB] Attempting to connect...', { uri: process.env.MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//[REDACTED]:[REDACTED]@') });
+    log.info('[MONGODB] Dang ket noi...', { uri: process.env.MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//[AN_TOAN]:[AN_TOAN]@') });
     try {
         await mongoose.connect(process.env.MONGO_URI);
-        log.info('[MONGODB] Connected successfully');
+        log.info('[MONGODB] Ket noi thanh cong');
         return true;
     } catch (err) {
-        log.error('[MONGODB] Connection failed', { error: err?.message || err });
+        log.error('[MONGODB] Ket noi that bai', { error: err?.message || err });
         return false;
     }
 };
 
 const bootstrap = async () => {
-    log.info('[BOOTSTRAP] Starting server initialization...');
+    log.info('[KHOI_DONG] Bat dau khoi tao server...');
     const mongoConnected = await connectMongo();
     if (shouldStartHttpServer) {
         const requireDbBeforeListen = String(process.env.REQUIRE_DB_BEFORE_LISTEN || 'true').trim().toLowerCase() !== 'false';
         if (requireDbBeforeListen && !mongoConnected) {
-            log.error('[BOOTSTRAP] Required DB not connected, exiting...');
+            log.error('[KHOI_DONG] Database chua ket noi, dang thoat...');
             process.exit(1);
             return;
         }
         app.listen(PORT, () => {
-            log.info('[SERVER] Listening', { port: PORT, nodeEnv: process.env.NODE_ENV || 'development' });
+            log.info('[SERVER] Dang lang nghe', { port: PORT, moiTruong: process.env.NODE_ENV || 'development' });
         });
     } else {
-        log.info('[BOOTSTRAP] Running in serverless mode (no HTTP server)');
+        log.info('[KHOI_DONG] Chay o che do serverless (khong co HTTP server)');
     }
 };
 

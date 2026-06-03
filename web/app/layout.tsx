@@ -30,20 +30,20 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "NOS Market | Premium Gaming Marketplace",
-  description: "Buy and sell gaming items securely with instant delivery. Premium dark tech gaming marketplace.",
-  keywords: ["gaming", "marketplace", "roblox", "game items", "buy sell"],
+  title: "NOS Market | Chợ Game Uy Tín",
+  description: "Mua bán vật phẩm game an toàn với giao hàng tức thì. Chợ game uy tín hàng đầu Việt Nam.",
+  keywords: ["game", "chợ game", "roblox", "vật phẩm game", "mua bán game"],
   authors: [{ name: "NOS Market" }],
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "NOS Market | Premium Gaming Marketplace",
-    description: "Buy and sell gaming items securely with instant delivery.",
+    title: "NOS Market | Chợ Game Uy Tín",
+    description: "Mua bán vật phẩm game an toàn với giao hàng tức thì.",
     url: "/",
     siteName: "NOS Market",
     type: "website",
-    locale: "en_US",
+    locale: "vi_VN",
     images: [
       {
         url: SOCIAL_BANNER_IMAGE,
@@ -55,8 +55,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "NOS Market | Premium Gaming Marketplace",
-    description: "Buy and sell gaming items securely with instant delivery.",
+    title: "NOS Market | Chợ Game Uy Tín",
+    description: "Mua bán vật phẩm game an toàn với giao hàng tức thì.",
     images: [SOCIAL_BANNER_IMAGE],
   },
   robots: {
@@ -83,7 +83,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
         {/* Preconnect to external resources */}
         <link rel="preconnect" href="https://cdn.discordapp.com" />

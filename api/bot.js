@@ -16,12 +16,6 @@ const Proof = require('./models/Proof');
 const ProofImage = require('./models/ProofImage');
 const { encryptSecret, decryptSecret } = require('./utils/tokenCrypto');
 const { formatPurchasedUnitsLabel } = require('./utils/itemQuantityDisplay');
-const {
-    buildPaymentProofLogPayload,
-    getPaymentLogConfig,
-    isPaymentLogConfigured
-} = require('./utils/paymentProofLog');
-const { buildDeliveryWindowFields } = require('./utils/ticketDeliveryFields');
 const { bitmapOffsetFromHash, bitmapCheckAndSet } = require('./cache/redis');
 const DeviceFingerprint = require('./models/DeviceFingerprint');
 const Referral = require('./models/Referral');
@@ -67,9 +61,7 @@ const ADDALL_MAX_JOIN_RETRIES = (() => {
     if (!Number.isFinite(n)) return 3;
     return Math.max(1, Math.min(8, Math.floor(n)));
 })();
-const CLOSE_COMMANDS = new Set(['!close', '/close', '!dong', '/dong']);
 const DONE_COMMANDS = new Set(['!done', '/done']);
-const CONFIRM_COMMANDS = new Set(['!confirm', '/confirm']);
 const READD_ALL_COMMANDS = new Set(['!addall', '/addall', '!readdall', '/readdall']);
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff', '.svg'];
 
@@ -129,9 +121,6 @@ const normalizeEnvValue = (value) => {
 };
 
 const isSnowflake = (value) => SNOWFLAKE_PATTERN.test(String(value || '').trim());
-const getPayPalPaymentEmail = () => normalizeEnvValue(process.env.PAYPAL_PAYMENT_EMAIL) || 'nguyenquanghuy111106@gmail.com';
-const getCashAppHandle = () => normalizeEnvValue(process.env.CASHAPP_HANDLE) || '$yoko276';
-const getLtcPayAddress = () => normalizeEnvValue(process.env.LTC_PAY_ADDRESS) || 'ltc1ququ7e6ryccpnu7jgy0l4vukgc3mventxyulyge';
 const getBotToken = () => normalizeEnvValue(process.env.DISCORD_BOT_TOKEN);
 const getGuildId = () => normalizeEnvValue(process.env.DISCORD_GUILD_ID);
 const getOwnerRoleId = () => normalizeEnvValue(process.env.DISCORD_OWNER_ROLE_ID);
@@ -218,25 +207,20 @@ const sanitizeChannelName = (raw, fallbackPrefix = 'ticket') => {
     return safe.slice(0, 90);
 };
 
-const formatOrderItems = (items) => {
-    const lines = Array.isArray(items)
-        ? items.map((item) => {
-            const name = String(item?.name || 'Item').trim();
-            return `${name} (${formatPurchasedUnitsLabel(item)})`;
-        })
-        : [];
-    const joined = lines.join('\n') || '-';
-    return truncateText(joined, 1000);
+const formatVndAmount = (amount) => {
+    const num = Number(amount || 0);
+    if (!Number.isFinite(num) || num < 0) return '0 VND';
+    return num.toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
 };
 
-const formatOrderItemsWithPrice = (items) => {
+const formatOrderItemsVnd = (items) => {
     const lines = Array.isArray(items)
         ? items.map((item) => {
+            const name = String(item?.name || 'San pham').trim();
             const quantity = Math.max(1, Number(item?.quantity) || 1);
-            const name = String(item?.name || 'Item').trim();
             const deliveredLabel = formatPurchasedUnitsLabel(item);
-            const lineTotal = (Math.max(0, Number(item?.price) || 0) * quantity).toFixed(2);
-            return `${name} (${deliveredLabel}) - $${lineTotal}`;
+            const lineTotal = Math.max(0, Number(item?.lineTotalVnd || item?.priceVnd || 0) * quantity);
+            return `${name} (${deliveredLabel}) - ${formatVndAmount(lineTotal)}`;
         })
         : [];
     const joined = lines.join('\n') || '-';
@@ -249,14 +233,7 @@ const formatOrderItemNamesForNote = (items) => {
             .map((item) => String(item?.name || '').trim())
             .filter(Boolean)
         : [];
-    return truncateText(names.join(', ') || 'Item', 300);
-};
-
-const formatPayPalMemoForOrder = (order) => {
-    const existingMemo = normalizeEnvValue(order?.memoExpected);
-    if (existingMemo) return truncateText(existingMemo, 255);
-    const orderCode = String(order?.orderId || '').trim().toUpperCase();
-    return truncateText(`NOSMARKET ${orderCode} - ${formatOrderItemNamesForNote(order?.items)}`, 255);
+    return truncateText(names.join(', ') || 'San pham', 300);
 };
 
 const getOrderSequence = (order) => {
@@ -495,26 +472,14 @@ const getImageAttachments = (message) => {
 
 const findOrderByTicketChannelId = async (channelId) => {
     if (!isSnowflake(channelId)) return null;
-    return Order.findOne({
-        $or: [
-            { channelId },
-            { paypalTicketChannelId: channelId },
-            { ltcTicketChannelId: channelId }
-        ]
-    }).sort({ createdAt: -1 });
+    return Order.findOne({ channelId }).sort({ createdAt: -1 });
 };
 
 const findOrderByTicketChannelName = async (channelNameRaw) => {
     const channelName = String(channelNameRaw || '').trim().toLowerCase();
     if (!channelName) return null;
 
-    return Order.findOne({
-        $or: [
-            { orderId: channelName },
-            { paypalTicketChannel: channelName },
-            { ltcTicketChannel: channelName }
-        ]
-    }).sort({ createdAt: -1 });
+    return Order.findOne({ orderId: channelName }).sort({ createdAt: -1 });
 };
 
 const findOrderByTicketChannel = async (message) => {
@@ -559,17 +524,16 @@ const isStaffUser = async (discordId) => {
         return true;
     }
 
-    // Also check owner role membership
     const hasRole = await checkUserHasOwnerRole(userId).catch(() => false);
     if (hasRole) return true;
     return false;
 };
 
 const formatPurchasedItemsForDm = (items) => {
-    if (!Array.isArray(items) || items.length === 0) return 'Unknown item';
+    if (!Array.isArray(items) || items.length === 0) return 'San pham khong biet';
     return items
         .map((item) => {
-            const name = String(item?.name || 'Unknown item').trim();
+            const name = String(item?.name || 'San pham khong biet').trim();
             return `${name} (${formatPurchasedUnitsLabel(item)})`;
         })
         .join(', ')
@@ -579,17 +543,17 @@ const formatPurchasedItemsForDm = (items) => {
 const buildPurchaseThankYouDm = (order) => {
     const purchasedItems = formatPurchasedItemsForDm(order?.items);
     return [
-        '**✨ Thank You for Your Purchase ✨**',
+        '**Cam on quy khach da mua hang!**',
         '',
-        'We sincerely appreciate your order and the trust you have placed in our service. It was a pleasure serving you, and we hope that you are completely satisfied with your purchase.',
+        'Chung toi rat trong trong don hang cua ban va san sang phuc vu quy khach.',
         '',
-        `**📦 Purchased Item:** [${purchasedItems}]`,
+        `**San pham da mua:** [${purchasedItems}]`,
         '',
-        'If you require any additional items in the future, please feel free to contact us at any time. We would be delighted to assist you again and continue providing you with reliable service.',
+        'Neu quy khach can them san pham nao khac, vui long lien he voi chung toi. Chung toi se rat vui long được tiep tuc phuc vu.',
         '',
-        '**💎 Thank you once again for your support and trust.**',
+        '**Cam on quy khach da tin tuong va ung ho!**',
         '',
-        '**— Nos Team**'
+        '**— ShopVN Team**'
     ].join('\n');
 };
 
@@ -714,8 +678,8 @@ const isForbiddenOrUnknownJoinFailure = (error) => {
 const formatLinkedUserLine = (dbUser, index) => {
     const orderNo = String(index + 1).padStart(5, '0');
     const discordId = String(dbUser?.discordId || '').trim();
-    const discordUsername = String(dbUser?.discordUsername || '').trim() || 'Unknown User';
-    return `${orderNo}. ${discordUsername} (${discordId || 'missing-id'})`;
+    const discordUsername = String(dbUser?.discordUsername || '').trim() || 'Nguoi dung chua biet';
+    return `${orderNo}. ${discordUsername} (${discordId || 'thieu-id'})`;
 };
 
 const getLinkedUsersSnapshot = async () => {
@@ -736,8 +700,8 @@ const buildLinkedUsersListText = (users) => {
     const rows = Array.isArray(users)
         ? users.map((item, index) => formatLinkedUserLine(item, index))
         : [];
-    const body = rows.join('\n') || 'No linked users found.';
-    return `Linked users (${rows.length})\n\n${body}`;
+    const body = rows.join('\n') || 'Khong co nguoi dung lien ket.';
+    return `Nguoi dung lien ket (${rows.length})\n\n${body}`;
 };
 
 const reAddLinkedUsersToGuild = async ({ targetGuildId, totalLinkedHint = 0, onProgress = null } = {}) => {
@@ -897,10 +861,10 @@ const reAddLinkedUsersToGuild = async ({ targetGuildId, totalLinkedHint = 0, onP
 };
 
 const formatVouchItems = (items) => {
-    if (!Array.isArray(items) || items.length === 0) return '**1X UNKNOWN ITEM**';
+    if (!Array.isArray(items) || items.length === 0) return '**1X SAN PHAM KHONG BIET**';
     return items
         .map((item) => {
-            const name = String(item?.name || 'UNKNOWN ITEM').trim().toUpperCase();
+            const name = String(item?.name || 'SAN PHAM').trim().toUpperCase();
             const deliveredLabel = formatPurchasedUnitsLabel(item).toUpperCase();
             return `**${name} (${deliveredLabel})**`;
         })
@@ -912,7 +876,7 @@ const buildVouchContent = (order) => {
     const mention = `<@${order?.discordId || ''}>`;
     const itemsText = formatVouchItems(order?.items);
     const enjoyText = formatPurchasedItemsForDm(order?.items);
-    return truncateText(`${mention}\n${itemsText}\nEnjoy your ${enjoyText}\nPlease leave us a vouch \u2764\uFE0F`, 1900);
+    return truncateText(`${mention}\n${itemsText}\nNam muon ${enjoyText}\nVui long danh gia cho chung toi`, 1900);
 };
 
 const buildProofItems = (items) => {
@@ -923,13 +887,13 @@ const buildProofItems = (items) => {
             if (!name) return null;
             const quantity = Math.max(1, Number(item?.quantity) || 1);
             const deliveredLabel = formatPurchasedUnitsLabel(item);
-            const lineTotal = Math.max(0, Number(item?.price) || 0) * quantity;
+            const lineTotal = Math.max(0, Number(item?.lineTotalVnd || item?.priceVnd || 0) * quantity);
             return {
                 name,
                 packQuantity: Math.max(1, Number(item?.packQuantity) || 1),
                 quantity,
                 deliveredLabel,
-                lineTotal: Number.isFinite(lineTotal) ? Number(lineTotal.toFixed(2)) : 0
+                lineTotal: Number.isFinite(lineTotal) ? Number(lineTotal) : 0
             };
         })
         .filter(Boolean);
@@ -976,9 +940,9 @@ const saveProofRecord = async ({ order, imageUrls, imageBuffers = [], vouchMessa
     const payload = {
         orderId: String(order?.orderId || ''),
         discordId: String(order?.discordId || ''),
-        discordUsername: String(order?.discordUsername || ''),
-        robloxUsername: String(order?.robloxUsername || ''),
-        totalAmount: Number(order?.totalAmount || 0),
+        discordUsername: String(order?.discordTenHienThi || order?.discordUsername || ''),
+        robloxUsername: String(order?.tenDangNhap || order?.robloxUsername || ''),
+        totalAmount: Number(order?.totalVnd || order?.subtotalVnd || order?.totalAmount || 0),
         items: buildProofItems(order?.items),
         imageUrls: images,
         imageHashes,
@@ -1147,7 +1111,6 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
     }
 
     try {
-        // Only store URLs, not Buffer data, to avoid RAM bloat in MongoDB
         await saveProofRecord({
             order,
             imageUrls: Array.from(new Set(uploadedImageUrls)),
@@ -1161,115 +1124,23 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
     return true;
 };
 
-const sendPaymentProofLog = async ({ order, method, ticketChannelId, proofFile }) => {
-    const config = getPaymentLogConfig();
-    if (!isPaymentLogConfigured(config)) {
-        return { ok: false, error: 'Payment log channel is not configured.' };
-    }
-    if (!proofFile?.buffer || !proofFile?.mimetype) {
-        return { ok: false, error: 'Payment proof file is missing.' };
-    }
-
-    const channel = await client.channels.fetch(config.channelId, { force: true });
-    if (!channel || typeof channel.send !== 'function') {
-        return { ok: false, error: 'Payment log channel is unavailable.' };
-    }
-
-    const safeOrderId = String(order?.orderId || 'order').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const mimeExt = String(proofFile.mimetype || '').toLowerCase().split('/')[1];
-    const extFromMime = mimeExt ? `.${mimeExt.replace(/[^a-z0-9]/g, '')}` : '';
-    const ext = String(proofFile.originalname || '').toLowerCase().match(/\.(png|jpe?g|webp|gif|bmp|avif|heic|heif|tiff?)$/)?.[0] || extFromMime || '.png';
-    const attachmentName = `payment-proof-${safeOrderId}${ext}`;
-    const payload = buildPaymentProofLogPayload({
-        order,
-        method,
-        ticketGuildId: getGuildId(),
-        ticketChannelId,
-        status: 'not_done',
-        proofAttachmentName: attachmentName
-    });
-    const proofAttachment = new AttachmentBuilder(proofFile.buffer, {
-        name: attachmentName,
-        description: `Payment proof for ${safeOrderId}`
-    });
-    const sent = await channel.send({
-        ...payload,
-        files: [proofAttachment]
-    });
-
-    return {
-        ok: true,
-        guildId: config.guildId,
-        channelId: config.channelId,
-        messageId: sent.id
-    };
-};
-
-const updatePaymentProofLogDone = async ({ order, doneBy }) => {
-    if (!order?.paymentProofLogChannelId || !order?.paymentProofLogMessageId) return false;
-
-    const channel = await client.channels.fetch(order.paymentProofLogChannelId, { force: true });
-    if (!channel || typeof channel.messages?.fetch !== 'function') return false;
-
-    const message = await channel.messages.fetch(order.paymentProofLogMessageId);
-    if (!message || typeof message.edit !== 'function') return false;
-
-    const ticketChannelId = order.paypalTicketChannelId || order.ltcTicketChannelId || order.channelId || '';
-    const payload = buildPaymentProofLogPayload({
-        order,
-        method: order.paymentMethod || order.paymentProofMethod,
-        ticketGuildId: getGuildId(),
-        ticketChannelId,
-        status: 'done',
-        doneBy,
-        doneAt: new Date()
-    });
-    const existingImageUrl = message.embeds?.[0]?.image?.proxyURL || message.embeds?.[0]?.image?.url || '';
-    const proofEmbed = payload.embeds?.[0];
-    if (existingImageUrl && proofEmbed && typeof proofEmbed.setImage === 'function') {
-        proofEmbed.setImage(existingImageUrl);
-    }
-
-    await message.edit({
-        ...payload,
-        attachments: []
-    });
-    return true;
-};
-
 const resetOrderTicketStateByChannel = async (order, channelId, { finalStatus = '' } = {}) => {
     if (!order || !channelId) return;
 
     const update = {};
     if (String(order.channelId || '') === channelId) {
         update.channelId = '';
-        update.ticketStatus = 'pending';
+        update.ticketStatus = 'chua_yeu_cau';
         update.ticketError = '';
         update.ticketLockUntil = null;
     }
 
-    if (String(order.paypalTicketChannelId || '') === channelId) {
-        update.paypalTicketChannelId = '';
-        update.paypalTicketChannel = '';
-        update.paypalTicketStatus = 'pending';
-        update.paypalTicketError = '';
-        update.paypalTicketLockUntil = null;
-    }
-
-    if (String(order.ltcTicketChannelId || '') === channelId) {
-        update.ltcTicketChannelId = '';
-        update.ltcTicketChannel = '';
-        update.ltcTicketStatus = 'pending';
-        update.ltcTicketError = '';
-        update.ltcTicketLockUntil = null;
-    }
-
-    if (finalStatus === 'Cancelled') {
-        update.status = 'Cancelled';
+    if (finalStatus === 'huy') {
+        update.status = 'huy';
         update.paymentStatus = 'cancelled';
     }
-    if (finalStatus === 'Completed') {
-        update.status = 'Completed';
+    if (finalStatus === 'hoan_thanh') {
+        update.status = 'hoan_thanh';
         update.paymentStatus = 'paid';
     }
 
@@ -1366,7 +1237,7 @@ const createTicketChannel = async ({ channelName, customerId }) => {
     const inGuild = await checkUserInGuild(customerId);
     if (inGuild === false) {
         log.warn('[TICKET] User not in guild', { customerId });
-        throw new DiscordBotError('You must join the Discord server before creating a ticket.', {
+        throw new DiscordBotError('Ban phai gia nhap Discord server truoc khi tao ticket.', {
             status: 403,
             code: 'USER_NOT_IN_GUILD'
         });
@@ -1482,13 +1353,12 @@ const buildOrderMention = (discordId) => {
     return `<@${discordId}>`;
 };
 
-const formatUsdAmount = (value) => `$${Number(value || 0).toFixed(2)}`;
-const getClientBaseUrl = () => normalizeEnvValue((process.env.CLIENT_URL || '').split(',')[0] || '') || 'https://www.nosdan.store';
+const getClientBaseUrl = () => normalizeEnvValue((process.env.CLIENT_URL || '').split(',')[0] || '') || 'https://shopvn.live';
 const formatDateInTimezone = (value, timezone) => {
     if (!value) return '-';
     try {
-        return new Intl.DateTimeFormat('en-US', {
-            timeZone: String(timezone || 'UTC'),
+        return new Intl.DateTimeFormat('vi-VN', {
+            timeZone: String(timezone || 'Asia/Ho_Chi_Minh'),
             dateStyle: 'medium',
             timeStyle: 'short'
         }).format(new Date(value));
@@ -1496,266 +1366,20 @@ const formatDateInTimezone = (value, timezone) => {
         return new Date(value).toISOString();
     }
 };
-const formatWalletMethodLabel = (method) => {
-    const normalized = String(method || '').trim().toLowerCase();
-    if (normalized === 'paypal_ff') return 'PayPal Friends & Family';
-    if (normalized === 'cashapp') return 'Cash App';
-    if (normalized === 'ltc') return 'Litecoin';
-    if (normalized === 'wallet') return 'NosMarket wallet';
-    return normalized || '-';
-};
-
-const buildPaymentTicketFields = ({ order, paymentLine, note, orderTotalAmount = null }) => {
-    const ownerRoleId = getOwnerRoleId();
-    const ownerMention = isSnowflake(ownerRoleId) ? `<@&${ownerRoleId}>` : '-';
-    const hasExplicitOrderTotal = !(
-        orderTotalAmount === null
-        || orderTotalAmount === undefined
-        || String(orderTotalAmount).trim() === ''
-    );
-    const normalizedOrderTotalAmount = hasExplicitOrderTotal ? Number(orderTotalAmount) : NaN;
-    const resolvedOrderTotalAmount = Number.isFinite(normalizedOrderTotalAmount)
-        ? normalizedOrderTotalAmount
-        : Number(order?.totalAmount || 0);
-
-    const robloxUsername = String(order?.robloxUsername || '').trim();
-    const robloxUserId = String(order?.robloxUserId || '').trim();
-    const robloxField = robloxUsername
-        ? `**${robloxUsername}**${robloxUserId ? ` (${robloxUserId})` : ''}`
-        : '-';
-
-    const fields = [
-        { name: 'Buyer', value: `<@${order.discordId}>`, inline: true },
-        { name: 'Owner Role', value: ownerMention, inline: true },
-        { name: 'Order Total', value: `**${formatUsdAmount(resolvedOrderTotalAmount)}**`, inline: true },
-        { name: 'Roblox Account', value: robloxField, inline: false },
-        { name: 'Payment', value: `**${paymentLine}**`, inline: false },
-        { name: 'Items (Qty + Price)', value: formatOrderItemsWithPrice(order.items), inline: false },
-        ...buildCouponTicketFields(order),
-        ...buildReferralTicketFields(order),
-        ...buildFirstOrderRewardFields(order),
-        ...buildDeliveryWindowFields(order)
-    ];
-    return fields;
-};
-
-const buildCouponTicketFields = (order) => {
-    const code = String(order?.couponCode || '').trim().toUpperCase();
-    const percent = Number(order?.discountPercent || 0);
-    if (!code || percent <= 0) return [];
-    return [{ name: 'Discount', value: `**${percent}%** discount applied — **${code}**`, inline: false }];
-};
-
-const buildReferralTicketFields = (order) => {
-    const referralCode = String(order?.referralAppliedCode || '').trim();
-    if (!referralCode) return [];
-    return [{ name: 'Invite Bonus', value: '✅ **Inviter gets 50% coupon** after your first completed order', inline: false }];
-};
-
-const buildFirstOrderRewardFields = (order) => {
-    // Show first order reward for all orders (no minimum)
-    return [{ name: '🎁 First Order Reward', value: '**Complete this order and get 20% OFF coupon**\nBot will DM you after admin confirms with **!done**', inline: false }];
-};
 
 const buildDeliveryTicketFields = (order) => {
-    const robloxUsername = String(order?.robloxUsername || '').trim();
-    const robloxUserId = String(order?.robloxUserId || '').trim();
-    const robloxField = robloxUsername
-        ? `**${robloxUsername}**${robloxUserId ? ` (${robloxUserId})` : ''}`
-        : '-';
+    const discordUsername = String(order?.discordTenHienThi || order?.discordUsername || '').trim();
+    const tenDangNhap = String(order?.tenDangNhap || order?.robloxUsername || '').trim();
+    const discordId = String(order?.discordId || '').trim();
 
-    return [
-        { name: 'Discord Account', value: order.discordId ? `<@${order.discordId}>` : (order.discordUsername || '-Normalized'), inline: true },
-        { name: 'Order Total', value: `**${formatUsdAmount(order.totalAmount || order.total || 0)}**`, inline: true },
-        { name: 'Roblox Account', value: robloxField, inline: false },
-        { name: 'Items (Qty + Price)', value: formatOrderItemsWithPrice(order.items), inline: false },
-        ...buildCouponTicketFields(order),
-        ...buildReferralTicketFields(order),
-        ...buildFirstOrderRewardFields(order),
-        ...buildDeliveryWindowFields(order)
+    const fields = [
+        { name: 'Khach hang', value: discordId ? `<@${discordId}>` : (discordUsername || '-'), inline: true },
+        { name: 'Tai khoan web', value: tenDangNhap || '-', inline: true },
+        { name: 'Tong don', value: `**${formatVndAmount(order?.totalVnd || order?.subtotalVnd || order?.total || 0)}**`, inline: true },
+        { name: 'Trang thai thanh toan', value: '**Da thanh toan**', inline: false },
+        { name: 'San pham', value: formatOrderItemsVnd(order?.items), inline: false }
     ];
-};
-
-const sendRobloxAccountMessage = async ({ channelId, order }) => {
-    const username = String(order?.robloxUsername || '').trim();
-    if (!username) return;
-    const userId = String(order?.robloxUserId || '').trim();
-    await sendTicketMessage({
-        channelId,
-        content: `**Roblox Account:** ${username}${userId ? ` (${userId})` : ''}`
-    });
-};
-
-const buildCopyButtons = (buttonConfigs = []) => {
-    const usableConfigs = (Array.isArray(buttonConfigs) ? buttonConfigs : [])
-        .filter((item) => item && item.customId && item.label);
-    if (usableConfigs.length === 0) return [];
-
-    const rows = [];
-    for (let index = 0; index < usableConfigs.length; index += 5) {
-        const chunk = usableConfigs.slice(index, index + 5);
-        rows.push(new ActionRowBuilder().addComponents(
-            ...chunk.map((item) => new ButtonBuilder()
-                .setCustomId(String(item.customId))
-                .setLabel(String(item.label))
-                .setStyle(ButtonStyle.Secondary))
-        ));
-    }
-    return rows;
-};
-
-const buildPayPalGuideDescription = (order) => {
-    const amountText = formatUsdAmount(order?.totalAmount || 0);
-    const itemNote = formatPayPalMemoForOrder(order);
-    const paypalEmail = getPayPalPaymentEmail();
-    return [
-        '# **\u{1F4B3} PayPal Payment Guide**',
-        '',
-        '**Method:** **Friends and Family**',
-        `**Send ${amountText} to:** \`${paypalEmail}\``,
-        '',
-        '**1.** Choose **Friends and Family**',
-        `**2.** Write \`${itemNote}\` in the note`,
-        '**3.** Send the **payment screenshot** in the ticket'
-    ].join('\n');
-};
-
-const buildCashAppGuideDescription = (order) => {
-    const baseTotal = Number(order?.totalAmount || 0);
-    const cashAppTotal = Math.max(0, baseTotal * 1.1);
-    const amountText = formatUsdAmount(cashAppTotal);
-    const cashAppHandle = getCashAppHandle();
-    const itemNote = formatOrderItemNamesForNote(order?.items);
-    return [
-        '# **\u{1F4B8} Cash App Payment Guide**',
-        '',
-        `**Send ${amountText} to:** \`${cashAppHandle}\``,
-        '',
-        `**1.** Send the payment to **${cashAppHandle}**`,
-        `**2.** Write \`${itemNote}\` in the note`,
-        '**3.** Send the **payment screenshot** in the ticket',
-        '',
-        '**Note:** Cash App payments will include an additional **10% conversion fee**.'
-    ].join('\n');
-};
-
-const buildLtcGuideDescription = (order) => {
-    const ltcAddress = getLtcPayAddress();
-    const amountText = formatUsdAmount(order?.totalAmount || 0);
-    return [
-        '# **LTC Payment Guide**',
-        '',
-        `**Send ${amountText} worth of LTC to:** \`${ltcAddress}\``,
-        '',
-        '**1.** Send the LTC payment to the wallet above',
-        '**2.** Send your **payment screenshot** in this ticket'
-    ].join('\n');
-};
-
-const buildPayPalCopyRows = (order) => buildCopyButtons([
-    { customId: `copy_paypal_email_${order.orderId}`, label: 'Copy PayPal Email' },
-    { customId: `copy_paypal_item_${order.orderId}`, label: 'Copy PayPal Note' }
-]);
-
-const buildCashAppCopyRows = (order) => buildCopyButtons([
-    { customId: `copy_cashapp_tag_${order.orderId}`, label: 'Copy CashApp Tag' },
-    { customId: `copy_cashapp_item_${order.orderId}`, label: 'Copy Item Name' }
-]);
-
-const buildLtcCopyRows = (order) => buildCopyButtons([
-    { customId: `copy_ltc_wallet_${order.orderId}`, label: 'Copy LTC Address' }
-]);
-
-const createPayPalFFTicket = async (order, paypalSeq) => {
-    const safeSeq = Number.isInteger(Number(paypalSeq)) ? Number(paypalSeq) : Date.now();
-    const channelId = await createTicketChannel({
-        channelName: `paypal_${safeSeq}`,
-        customerId: order.discordId
-    });
-
-    const embed = new EmbedBuilder()
-        .setColor(0x8ED3FF)
-        .setTitle('PayPal Payment')
-        .setDescription(
-            `Hello <@${order.discordId}>. Please complete payment and send your proof screenshot in this ticket.\nOur staff will confirm your payment and deliver right away.`
-        )
-        .addFields(buildPaymentTicketFields({
-            order,
-            paymentLine: `${formatUsdAmount(order.totalAmount || 0)} to ${getPayPalPaymentEmail()} (Friends & Family)`,
-            note: `PayPal note: ${formatPayPalMemoForOrder(order)}`
-        }));
-
-    try {
-        await sendTicketMessage({
-            channelId,
-            content: buildOrderMention(order.discordId),
-            embed
-        });
-    } catch (error) {
-        console.error('PayPal F&F ticket message error:', error?.message || error);
-    }
-
-    return channelId;
-};
-
-const createLTCTicket = async (order, ltcSeq) => {
-    const safeSeq = Number.isInteger(Number(ltcSeq)) ? Number(ltcSeq) : Date.now();
-    const channelId = await createTicketChannel({
-        channelName: `ltc_${safeSeq}`,
-        customerId: order.discordId
-    });
-
-    const embed = new EmbedBuilder()
-        .setColor(0xF5F7FA)
-        .setTitle('LTC Payment')
-        .setDescription(
-            `Hello <@${order.discordId}>. Please complete payment and send your proof screenshot in this ticket.\nOur staff will confirm your payment and deliver right away.`
-        )
-        .addFields(buildPaymentTicketFields({
-            order,
-            paymentLine: `${formatUsdAmount(order.totalAmount || 0)} equivalent LTC to ${getLtcPayAddress()}`
-        }));
-
-    try {
-        await sendTicketMessage({
-            channelId,
-            content: buildOrderMention(order.discordId),
-            embed
-        });
-    } catch (error) {
-        console.error('LTC ticket message error:', error?.message || error);
-    }
-
-    return channelId;
-};
-
-const createOrderTicket = async (order) => {
-    const seq = getOrderSequence(order);
-    const cashAppAmount = Number(order.totalAmount || 0) * 1.1;
-    const channelId = await createTicketChannel({
-        channelName: `cashapp_${seq}`,
-        customerId: order.discordId
-    });
-
-    const embed = new EmbedBuilder()
-        .setColor(0xA7EFC0)
-        .setTitle('Order Delivery')
-        .setDescription(
-            `Hello <@${order.discordId}>. Payment is confirmed. Staff will deliver during the selected delivery time.`
-        )
-        .addFields(buildDeliveryTicketFields(order));
-
-    try {
-        await sendTicketMessage({
-            channelId,
-            content: buildOrderMention(order.discordId),
-            embed
-        });
-    } catch (error) {
-        console.error('Order ticket message error:', error?.message || error);
-    }
-
-    return channelId;
+    return fields;
 };
 
 const createWalletDeliveryTicket = async (order) => {
@@ -1765,24 +1389,15 @@ const createWalletDeliveryTicket = async (order) => {
         customerId: order.discordId
     });
 
-    const fields = order.deliverySlotId
-        ? buildDeliveryTicketFields(order)
-        : [
-            { name: 'Buyer', value: `<@${order.discordId}>`, inline: true },
-            { name: 'Order Total', value: formatUsdAmount(order.totalAmount || order.total || 0), inline: true },
-            { name: 'Payment', value: 'Paid with NosMarket wallet', inline: false },
-            { name: 'Items (Qty + Price)', value: formatOrderItemsWithPrice(order.items), inline: false }
-        ];
-
     const embed = new EmbedBuilder()
-        .setColor(0xA7EFC0)
-        .setTitle('Order Delivery')
+        .setColor(0x00D4AA)
+        .setTitle('Giao Hang')
         .setDescription(
-            `Hello <@${order.discordId}>. Wallet payment is complete. Staff will use this ticket to deliver your items.`
+            `Xin chao <@${order.discordId}>. Thanh toan da xac nhan. Nhan vien se giao hang trong khung gio da chon.`
         )
         .addFields([
-            { name: 'Order ID', value: String(order.orderId || '').toUpperCase(), inline: false },
-            ...fields
+            { name: 'Ma don', value: String(order.orderId || '').toUpperCase(), inline: false },
+            ...buildDeliveryTicketFields(order)
         ]);
 
     try {
@@ -1805,25 +1420,25 @@ const notifyOwnerWalletTopupRequest = async (transaction) => {
     const ownerRoleId = getOwnerRoleId();
     const ownerMention = isSnowflake(ownerRoleId) ? `<@&${ownerRoleId}>` : '';
     const embed = new EmbedBuilder()
-        .setColor(0xF7C948)
-        .setTitle('Wallet Top-up Pending')
-        .setDescription('A customer created a wallet top-up request. Approve it in the owner panel after you verify the payment.')
+        .setColor(0xFFD700)
+        .setTitle('Yeu Cau Nap Vi')
+        .setDescription('Mot khach hang da tao yeu cau nap vi. Hay xac nhan sau khi kiem tra thanh toan.')
         .addFields([
             {
-                name: 'Customer',
+                name: 'Khach hang',
                 value: transaction?.discordId ? `<@${transaction.discordId}>` : (transaction?.discordUsername || '-'),
                 inline: true
             },
-            { name: 'Amount', value: formatUsdAmount(Number(transaction?.amountCents || 0) / 100), inline: true },
-            { name: 'Method', value: formatWalletMethodLabel(transaction?.method), inline: true },
-            { name: 'Reference', value: String(transaction?.referenceCode || '-'), inline: true },
-            { name: 'Memo', value: truncateText(transaction?.memoExpected || '-', 900), inline: false }
+            { name: 'So tien', value: formatVndAmount(Number(transaction?.amountCents || 0) / 100), inline: true },
+            { name: 'Phuong thuc', value: String(transaction?.method || '-'), inline: true },
+            { name: 'Ma tham chieu', value: String(transaction?.referenceCode || '-'), inline: true },
+            { name: 'Ghi chu', value: truncateText(transaction?.memoExpected || '-', 900), inline: false }
         ]);
 
     try {
         await sendTicketMessage({
             channelId,
-            content: ownerMention || 'Wallet top-up pending',
+            content: ownerMention || 'Yeu cau nap vi',
             embed
         });
         return true;
@@ -1834,57 +1449,7 @@ const notifyOwnerWalletTopupRequest = async (transaction) => {
 };
 
 client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton()) return;
-
-    const customId = String(interaction.customId || '');
-    const match = customId.match(/^copy_(paypal_email|paypal_item|cashapp_tag|cashapp_item|ltc_wallet)_(.+)$/);
-    if (!match) return;
-
-    const copyType = match[1];
-    const orderId = match[2];
-
-    try {
-        const order = await Order.findOne({ orderId });
-        if (!order) {
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: 'Order not found.', ephemeral: true });
-            }
-            return;
-        }
-
-        const valueMap = {
-            paypal_email: getPayPalPaymentEmail(),
-            paypal_item: formatPayPalMemoForOrder(order),
-            cashapp_tag: getCashAppHandle(),
-            cashapp_item: formatOrderItemNamesForNote(order.items),
-            ltc_wallet: getLtcPayAddress()
-        };
-        const labelMap = {
-            paypal_email: 'PayPal Email',
-            paypal_item: 'PayPal Note',
-            cashapp_tag: 'CashApp Tag',
-            cashapp_item: 'Item Name',
-            ltc_wallet: 'LTC Address'
-        };
-        const rawValue = String(valueMap[copyType] || '').trim();
-        const safeValue = truncateText(rawValue || '-', 300);
-        const label = String(labelMap[copyType] || 'Value');
-        if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({
-                ephemeral: true,
-                content: `Copy ${label}:\n\`${safeValue}\``
-            });
-        }
-    } catch (error) {
-        console.error('Button interaction error:', error?.message || error);
-        if (!interaction.replied && !interaction.deferred) {
-            try {
-                await interaction.reply({ content: 'Failed to process payment selection.', ephemeral: true });
-            } catch (replyError) {
-                console.error('Button reply error:', replyError?.message || replyError);
-            }
-        }
-    }
+    // No longer handling copy buttons for payment methods
 });
 
 client.on('channelDelete', async (channel) => {
@@ -1908,23 +1473,21 @@ client.on('messageCreate', async (message) => {
     if (!isSnowflake(channelId)) return;
 
     const normalizedContent = String(message.content || '').trim().toLowerCase();
-    const isCloseCommand = CLOSE_COMMANDS.has(normalizedContent);
     const isDoneCommand = DONE_COMMANDS.has(normalizedContent);
-    const isConfirmCommand = CONFIRM_COMMANDS.has(normalizedContent);
     const isReAddAllCommand = READD_ALL_COMMANDS.has(normalizedContent);
     const imageAttachments = getImageAttachments(message);
-    if (!isCloseCommand && !isDoneCommand && !isConfirmCommand && !isReAddAllCommand && imageAttachments.length === 0) return;
+    if (!isDoneCommand && !isReAddAllCommand && imageAttachments.length === 0) return;
 
     if (isReAddAllCommand) {
         const canRun = await isStaffUser(message.author.id);
         if (!canRun) {
-            await message.reply('You do not have permission to run this command.');
+            await message.reply('Ban khong co quyen su dung lenh nay.');
             return;
         }
 
         const targetGuildId = String(message.guildId || '').trim();
         if (!isSnowflake(targetGuildId)) {
-            await message.reply('Could not resolve target server for this command.');
+            await message.reply('Khong the resolve server cho lenh nay.');
             return;
         }
 
@@ -1934,13 +1497,13 @@ client.on('messageCreate', async (message) => {
                 discordId: { $exists: true, $ne: '' }
             });
             if (totalLinked === 0) {
-                await message.reply('No linked users found to restore.');
+                await message.reply('Khong co nguoi dung lien ket de khoi phuc.');
                 return;
             }
 
-            await message.reply(`Found ${totalLinked} linked users. Starting restore into this server now...`);
+            await message.reply(`Tim thay ${totalLinked} nguoi dung lien ket. Dang bat dau khoi phucvao server...`);
 
-            progressMessage = await message.reply('Restore in progress... 0 users processed.');
+            progressMessage = await message.reply('Dang khoi phuc... 0 nguoi dung da xu ly.');
             let lastProgressEditAt = 0;
             const summary = await reAddLinkedUsersToGuild({
                 targetGuildId,
@@ -1957,32 +1520,32 @@ client.on('messageCreate', async (message) => {
                     lastProgressEditAt = now;
                     if (progressMessage && typeof progressMessage.edit === 'function') {
                         const progressText = [
-                            `Restore in progress on guild ${targetGuildId}`,
-                            `Processed: ${progress.processed}/${progress.totalLinked}`,
-                            `Added: ${progress.added}`,
-                            `Already in server: ${progress.alreadyInGuild}`,
-                            `Refreshed tokens: ${progress.refreshedToken}`,
-                            `Skipped (missing/expired token): ${progress.skippedNoToken}`,
-                            `Skipped (forbidden/unknown): ${progress.skippedForbiddenOrUnknown}`,
-                            `Rate limited: ${progress.rateLimited}`,
-                            `Failed: ${progress.failed}`
+                            `Khoi phuc tai server ${targetGuildId}`,
+                            `Da xu ly: ${progress.processed}/${progress.totalLinked}`,
+                            `Da them: ${progress.added}`,
+                            `Da trong server: ${progress.alreadyInGuild}`,
+                            `Lam moi token: ${progress.refreshedToken}`,
+                            `Bo qua (thieu/het han): ${progress.skippedNoToken}`,
+                            `Bo qua (cam/tim khong thay): ${progress.skippedForbiddenOrUnknown}`,
+                            `Bi gioi han: ${progress.rateLimited}`,
+                            `That bai: ${progress.failed}`
                         ].join('\n');
                         await progressMessage.edit(progressText);
                     }
                 }
             });
             const summaryText = [
-                'Add-all completed.',
-                `Target guild: ${targetGuildId}`,
-                `Linked users: ${summary.totalLinked}`,
-                `Processed: ${summary.processed}`,
-                `Added: ${summary.added}`,
-                `Already in server: ${summary.alreadyInGuild}`,
-                `Refreshed tokens: ${summary.refreshedToken}`,
-                `Skipped (missing/expired token): ${summary.skippedNoToken}`,
-                `Skipped (forbidden/unknown): ${summary.skippedForbiddenOrUnknown}`,
-                `Rate limited: ${summary.rateLimited}`,
-                `Failed: ${summary.failed}`
+                'Hoan tat them-tat-ca.',
+                `Server dich: ${targetGuildId}`,
+                `Nguoi dung lien ket: ${summary.totalLinked}`,
+                `Da xu ly: ${summary.processed}`,
+                `Da them: ${summary.added}`,
+                `Da trong server: ${summary.alreadyInGuild}`,
+                `Lam moi token: ${summary.refreshedToken}`,
+                `Bo qua (thieu/ het han): ${summary.skippedNoToken}`,
+                `Bo qua (cam/tim khong thay): ${summary.skippedForbiddenOrUnknown}`,
+                `Bi gioi han: ${summary.rateLimited}`,
+                `That bai: ${summary.failed}`
             ].join('\n');
 
             if (progressMessage && typeof progressMessage.edit === 'function') {
@@ -1992,7 +1555,7 @@ client.on('messageCreate', async (message) => {
             }
         } catch (error) {
             console.error('Add-all command error:', error?.message || error);
-            const failText = 'Failed to add linked users. Check bot permissions and OAuth config (DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET).';
+            const failText = 'That bai khi them nguoi dung lien ket. Kiem tra quyen bot va cau hinh OAuth.';
             if (progressMessage && typeof progressMessage.edit === 'function') {
                 await progressMessage.edit(failText).catch(() => {});
             } else {
@@ -2010,32 +1573,10 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    if (isCloseCommand) {
-        try {
-            if (!order && !isConfiguredTicketCategoryChannel(message)) {
-                await message.reply('This command only works inside a ticket channel.');
-                return;
-            }
-
-            await message.reply('Closing ticket in 3 seconds...');
-            await sleep(3000);
-            await closeTicketChannel({ order, channelId, finalStatus: order ? 'Cancelled' : '' });
-            return;
-        } catch (error) {
-            console.error('Close ticket command error:', error?.message || error);
-            try {
-                await message.reply('Failed to close ticket. Please try again.');
-            } catch {
-                // Ignore reply failures.
-            }
-            return;
-        }
-    }
-
     if (isDoneCommand) {
         try {
             if (!order) {
-                await message.reply('Could not find order for this ticket channel.');
+                await message.reply('Khong tim thay don hang cho ticket channel nay.');
                 return;
             }
 
@@ -2043,24 +1584,17 @@ client.on('messageCreate', async (message) => {
                 { _id: order._id },
                 {
                     $set: {
-                        status: 'Completed',
+                        status: 'hoan_thanh',
                         paymentStatus: 'paid',
-                        paymentMethod: order.paymentMethod || 'manual',
-                        paymentProofStatus: 'done',
-                        paymentProofDoneAt: new Date(),
-                        paymentProofDoneBy: String(message.author.id || '')
+                        paymentMethod: order.paymentMethod || 'wallet',
+                        completedAt: new Date(),
+                        completedBy: String(message.author.id || '')
                     }
                 }
             );
 
             await maybeGrantNewUserReward(order);
-
-            // Mark referral status on completion (coupon may already be issued at checkout)
             await maybeGrantReferralReward(order);
-
-            await updatePaymentProofLogDone({ order, doneBy: message.author.id }).catch((error) => {
-                console.error('Payment proof log update failed:', error?.message || error);
-            });
 
             let dmSent = false;
             try {
@@ -2071,46 +1605,19 @@ client.on('messageCreate', async (message) => {
 
             await message.reply(
                 dmSent
-                    ? 'Order marked as completed. Customer DM sent. Closing ticket in 3 seconds...'
-                    : 'Order marked as completed. Could not send customer DM. Closing ticket in 3 seconds...'
+                    ? 'Don hang da danh dau hoan thanh. Da gui tin nhan cam on. Dong ticket trong 3 giay...'
+                    : 'Don hang da danh dau hoan thanh. Khong gui duoc tin nhan cam on. Dong ticket trong 3 giay...'
             );
             await sleep(3000);
-            await closeTicketChannel({ order, channelId, finalStatus: 'Completed' });
+            await closeTicketChannel({ order, channelId, finalStatus: 'hoan_thanh' });
             return;
         } catch (error) {
             console.error('Done ticket command error:', error?.message || error);
             try {
-                await message.reply('Failed to complete this order ticket. Please try again.');
+                await message.reply('That bai hoan thanh don hang ticket. Thu lai.');
             } catch {
                 // Ignore reply failures.
             }
-            return;
-        }
-    }
-
-    if (isConfirmCommand) {
-        try {
-            if (!order) {
-                await message.reply('Could not find order for this ticket channel.');
-                return;
-            }
-            const canRun = await isStaffUser(message.author.id);
-            if (!canRun) {
-                await message.reply('You do not have permission to request customer confirmation.');
-                return;
-            }
-            order.deliveredAt = order.deliveredAt || new Date();
-            order.confirmationRequestedAt = new Date();
-            order.confirmationRequestedBy = String(message.author.id || '');
-            await order.save();
-            const confirmUrl = `${getClientBaseUrl().replace(/\/+$/, '')}/pay?orderId=${encodeURIComponent(order.orderId)}&confirm=1`;
-            await message.reply(
-                `<@${order.discordId}> Your order has been marked as delivered. Please return to the website and press the confirm button only if you have received your items:\n${confirmUrl}`
-            );
-            return;
-        } catch (error) {
-            console.error('Confirm ticket command error:', error?.message || error);
-            await message.reply('Failed to request customer confirmation. Please try again.').catch(() => {});
             return;
         }
     }
@@ -2144,9 +1651,9 @@ client.on('messageCreate', async (message) => {
 
         if (sent) {
             const imageCountText = imageUrls.length > 1
-                ? ` (${imageUrls.length} images)`
+                ? ` (${imageUrls.length} anh)`
                 : '';
-            await message.reply(`Vouch posted successfully${imageCountText}.`);
+            await message.reply(`Viet thanh cong${imageCountText}.`);
             return;
         }
 
@@ -2154,7 +1661,7 @@ client.on('messageCreate', async (message) => {
     } catch (error) {
         console.error('Auto vouch send error:', error?.message || error);
         try {
-            await message.reply('Could not post vouch. Check DISCORD_VOUCH_CHANNEL_ID and bot permissions.');
+            await message.reply('Khong the Viet. Kiem tra DISCORD_VOUCH_CHANNEL_ID va quyen bot.');
         } catch {
             // Ignore reply failures.
         }
@@ -2162,7 +1669,7 @@ client.on('messageCreate', async (message) => {
 });
 
 client.on('clientReady', () => {
-    log.info('[DISCORD BOT] Bot is online', {
+    log.info('[DISCORD BOT] Bot online', {
         tag: client.user?.tag || 'unknown',
         userId: client.user?.id || 'unknown'
     });
@@ -2176,13 +1683,12 @@ client.on('error', (error) => {
 });
 
 client.on('disconnect', () => {
-    log.warn('[DISCORD BOT] Disconnected from gateway');
+    log.warn('[DISCORD BOT] Mat ket noi khoi gateway');
 });
 
 client.on('reconnecting', () => {
-    log.info('[DISCORD BOT] Reconnecting to gateway...');
+    log.info('[DISCORD BOT] Dang ket noi lai...');
 });
-
 
 // --- REFERRAL + NEW-USER REWARD HELPERS ---
 const sendDmToUser = async (discordId, content) => {
@@ -2205,7 +1711,7 @@ const createRewardCoupon = async ({ discountPercent, discordId, source }) => {
             if (Number(err?.code) !== 11000 || attempt >= 7) throw err;
         }
     }
-    throw new Error('Could not generate reward coupon.');
+    throw new Error('Khong tao duoc ma giam gia.');
 };
 
 const maybeGrantNewUserReward = async (order) => {
@@ -2217,7 +1723,7 @@ const maybeGrantNewUserReward = async (order) => {
         return;
     }
     const coupon = await createRewardCoupon({ discountPercent: 20, discordId, source: 'new_user' });
-    await sendDmToUser(discordId, 'Here is your NEW USER coupon:\n```' + coupon.couponCode + '```\n20% off your next order!');
+    await sendDmToUser(discordId, 'Day la ma giam gia cho nguoi dung moi cua ban:\n```' + coupon.couponCode + '```\nGiam 20% cho don hang tiep theo!');
     await DeviceFingerprint.updateMany({ discordId }, { $set: { orderCount: 1, firstOrderAt: new Date() } });
     await Order.updateOne({ _id: order._id }, { $set: { newUserRewardSent: true } });
     console.log('[REWARD] New-user 20% coupon sent to', discordId, coupon.couponCode);
@@ -2256,21 +1762,15 @@ const maybeGrantReferralReward = async (order) => {
     ).catch(() => {});
 
     const fence = String.fromCharCode(96).repeat(3);
-    await sendDmToUser(referrerId, 'Your invite reward (50%):\n' + fence + rewardCode + fence);
+    await sendDmToUser(referrerId, 'Thuong cua ban (50%):\n' + fence + rewardCode + fence);
 };
 
 module.exports = {
     client,
     DiscordBotError,
-    createOrderTicket,
     createWalletDeliveryTicket,
     notifyOwnerWalletTopupRequest,
-    sendPaymentProofLog,
-    createPayPalFFTicket,
-    createLTCTicket,
     checkUserInGuild,
     checkUserHasOwnerRole,
     getOwnerId
 };
-
-
