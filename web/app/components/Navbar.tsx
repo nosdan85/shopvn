@@ -19,7 +19,7 @@ const getUserInitial = (username: string) => {
 };
 
 export default function Navbar({ cartCount = 0, showCart = false, onCartClick }: NavbarProps) {
-  const { user, isLoading, soDuVnd, daDangNhap, dangXuat, daLienKetDiscord, discordTenHienThi, getDiscordOAuthUrl } = useAuthViet();
+  const { user, isLoading, soDuVnd, daDangNhap, dangXuat, daLienKetDiscord, discordTenHienThi, getDiscordOAuthUrl, huyLienKetDiscord } = useAuthViet();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -77,7 +77,22 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
 
     setDropdownOpen(false);
     setMobileMenuOpen(false);
+    localStorage.setItem('discord_flow', 'link'); // Set flow to 'link'
     window.location.href = discordOAuthUrl;
+  };
+
+  const handleDiscordUnlink = async () => {
+    if (!window.confirm('Bạn có chắc muốn hủy liên kết Discord?')) {
+      return;
+    }
+
+    try {
+      await huyLienKetDiscord();
+      setDropdownOpen(false);
+      setMobileMenuOpen(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Lỗi khi hủy liên kết');
+    }
   };
 
   const clearCheckoutResume = () => {
@@ -232,13 +247,13 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
 
                     <button
                       type="button"
-                      onClick={handleDiscordLink}
+                      onClick={daLienKetDiscord ? handleDiscordUnlink : handleDiscordLink}
                       className="w-full flex items-center gap-2 px-4 py-3 text-white hover:bg-[#161616] transition-colors duration-150 border-b border-[#1E1E1E]"
                     >
                       <User className="w-4 h-4 text-[#5865F2]" />
                       <span className="text-sm font-medium">
                         {daLienKetDiscord
-                          ? `Discord: ${discordTenHienThi || "Da lien ket"}`
+                          ? `Discord: ${discordTenHienThi || "Da lien ket"} ✕`
                           : "Lien Ket Discord"}
                       </span>
                     </button>

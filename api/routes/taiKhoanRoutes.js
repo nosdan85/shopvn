@@ -422,6 +422,53 @@ router.get('/kiem-tra-discord', xacThuc, async (req, res) => {
     }
 });
 
+// POST /huy-lien-ket-discord - Huy lien ket Discord
+router.post('/huy-lien-ket-discord', xacThuc, async (req, res) => {
+    try {
+        const taiKhoan = req.nguoiDung;
+
+        if (!taiKhoan.discordId) {
+            return res.status(400).json({
+                thongBao: 'Tài khoản chưa liên kết Discord'
+            });
+        }
+
+        // Remove Discord link
+        await TaiKhoan.findByIdAndUpdate(
+            taiKhoan._id,
+            {
+                discordId: '',
+                discordTenHienThi: '',
+                discordDaLienKetLuc: null
+            }
+        );
+
+        // SYNC: Also remove from User model
+        try {
+            const User = require('../models/User');
+            await User.findOneAndUpdate(
+                { discordId: taiKhoan.discordId },
+                {
+                    taiKhoanId: '',
+                    tenDangNhap: ''
+                }
+            );
+            console.log(`[SYNC] Removed link from User model for Discord ${taiKhoan.discordId}`);
+        } catch (syncErr) {
+            console.warn('[SYNC] Failed to unlink User model:', syncErr.message);
+        }
+
+        res.json({
+            thongBao: 'Đã hủy liên kết Discord',
+            daLienKetDiscord: false
+        });
+
+    } catch (err) {
+        console.error('Loi huy lien ket Discord:', err);
+        res.status(500).json({ thongBao: 'Lỗi hệ thống. Vui lòng thử lại sau.' });
+    }
+});
+
 // POST /dang-xuat - Dang xuat (xoa token tren client)
 router.post('/dang-xuat', xacThuc, async (req, res) => {
     // Chu yeu la xoa token tren client

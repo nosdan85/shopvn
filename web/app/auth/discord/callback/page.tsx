@@ -66,7 +66,10 @@ function DiscordCallbackContent() {
 
           setStatus("success");
           setMessage(flow === 'signup' ? 'Đăng ký thành công!' : 'Liên kết Discord thành công!');
-          setTimeout(() => router.push("/shop"), 2000);
+
+          // Redirect based on flow
+          const redirectPath = flow === 'signup' ? '/shop' : '/';
+          setTimeout(() => router.push(redirectPath), 2000);
         } else {
           throw new Error("Không nhận được thông tin user");
         }

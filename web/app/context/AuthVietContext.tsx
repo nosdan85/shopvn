@@ -33,6 +33,7 @@ interface AuthVietContextType {
   layThongTin: () => Promise<void>;
   kiemTraDiscord: () => Promise<void>;
   lienKetDiscord: (maDiscord: string) => Promise<void>;
+  huyLienKetDiscord: () => Promise<void>;
   lamMoiVi: () => Promise<void>;
   getDiscordOAuthUrl: () => string;
 }
@@ -223,6 +224,16 @@ export function AuthVietProvider({ children }: { children: ReactNode }) {
     setDiscordTenHienThiState(duLieu.discordTenHienThi || null);
   };
 
+  const huyLienKetDiscord = async (): Promise<void> => {
+    await goiApi<{ thongBao: string; daLienKetDiscord: boolean }>(
+      "/api/tai-khoan/huy-lien-ket-discord",
+      { method: "POST" }
+    );
+    setDiscordDaLienKetState(false);
+    setDiscordTenHienThiState(null);
+    await layThongTin(); // Refresh user data
+  };
+
   const lamMoiVi = async (): Promise<void> => {
     await layThongTin();
   };
@@ -269,6 +280,7 @@ export function AuthVietProvider({ children }: { children: ReactNode }) {
         layThongTin,
         kiemTraDiscord,
         lienKetDiscord,
+        huyLienKetDiscord,
         lamMoiVi,
         getDiscordOAuthUrl,
       }}

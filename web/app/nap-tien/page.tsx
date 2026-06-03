@@ -15,6 +15,8 @@ import {
   Clock,
 } from "lucide-react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 interface GiaoDich {
   _id: string;
   loai: string;
@@ -79,7 +81,7 @@ export default function NapTienPage() {
 
   const loadMenhGia = useCallback(async () => {
     try {
-      const res = await fetch("/api/vi/nap-tien/the-cao/menh-gia", { cache: "no-store" });
+      const res = await fetch(`${API_URL}/api/vi/nap-tien/the-cao/menh-gia`, { cache: "no-store" });
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
         setMenhGiaList(data);
@@ -93,7 +95,7 @@ export default function NapTienPage() {
     if (!token) return;
     setLoadingHistory(true);
     try {
-      const res = await fetch("/api/vi/vi/lich-su", {
+      const res = await fetch(`${API_URL}/api/vi/lich-su`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
@@ -189,7 +191,7 @@ export default function NapTienPage() {
     setChuyenKhoanResult(null);
 
     try {
-      const res = await fetch("/api/vi/nap-tien/chuyen-khoan/tao", {
+      const res = await fetch(`${API_URL}/api/vi/nap-tien/chuyen-khoan/tao`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -257,7 +259,7 @@ export default function NapTienPage() {
     setTheCaoResult(null);
 
     try {
-      const res = await fetch("/api/vi/nap-tien/the-cao", {
+      const res = await fetch(`${API_URL}/api/vi/nap-tien/the-cao`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
