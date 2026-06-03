@@ -5,6 +5,7 @@ const axios = require('axios');
 const TaiKhoan = require('../models/TaiKhoan');
 const { xacThuc } = require('../middleware/auth');
 const { resolveDiscordRedirectUri } = require('../utils/discordOauth');
+const { isOwnerDiscordId } = require('../utils/ownerAccess');
 
 // Service chua ton tai - se duoc Tao sau
 let taiKhoanService;
@@ -346,17 +347,24 @@ router.post('/lien-ket-discord', xacThuc, async (req, res) => {
         if (taiKhoanService?.capNhatLienKetDiscord) {
             const ketQua = await taiKhoanService.capNhatLienKetDiscord(req.nguoiDung._id, {
                 discordId: discordUserInfo.id,
-                discordTenHienThi: discordUserInfo.username || discordUserInfo.global_name
+                discordTenHienThi: discordUserInfo.username || discordUserInfo.global_name,
+                vaiTro: isOwnerDiscordId(discordUserInfo.id) ? 'quan_tri' : undefined
             });
             taiKhoanCapNhat = ketQua.taiKhoan;
         } else {
+            const updatePayload = {
+                discordId: discordUserInfo.id,
+                discordTenHienThi: discordUserInfo.username || discordUserInfo.global_name,
+                discordDaLienKetLuc: new Date()
+            };
+
+            if (isOwnerDiscordId(discordUserInfo.id)) {
+                updatePayload.vaiTro = 'quan_tri';
+            }
+
             taiKhoanCapNhat = await TaiKhoan.findByIdAndUpdate(
                 req.nguoiDung._id,
-                {
-                    discordId: discordUserInfo.id,
-                    discordTenHienThi: discordUserInfo.username || discordUserInfo.global_name,
-                    discordDaLienKetLuc: new Date()
-                },
+                updatePayload,
                 { new: true }
             );
         }

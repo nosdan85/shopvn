@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Navbar from "../components/Navbar"
 import BackButton from "../components/BackButton"
+import { isAdminRole } from "@/lib/authRole"
 import {
   ShieldCheck,
   ImageIcon,
@@ -86,7 +87,7 @@ export default function ProofsPage() {
       const rawUser = localStorage.getItem("webUser")
       if (!rawUser || !token) return
       const user: WebUser = JSON.parse(rawUser)
-      if (user?.vaiTro === 'admin') {
+      if (isAdminRole(user?.vaiTro)) {
         setIsAdmin(true)
         setAdminToken(token)
       }

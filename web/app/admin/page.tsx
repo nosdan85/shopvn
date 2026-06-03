@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import BackButton from "../components/BackButton";
 import { useAuthViet } from "../context/AuthVietContext";
 import { resolveImageUrl } from "@/lib/imageUrl";
+import { isAdminRole } from "@/lib/authRole";
 import {
   AlertCircle, Loader2, Plus, Edit2, Trash2, RefreshCcw, ChevronLeft, ChevronRight
 } from "lucide-react";
@@ -276,7 +277,7 @@ export default function AdminPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!isLoading && user?.vaiTro === 'admin' && token) {
+    if (!isLoading && isAdminRole(user?.vaiTro) && token) {
       void fetchAll();
     }
   }, [isLoading, user, token]);
@@ -652,7 +653,7 @@ export default function AdminPage() {
 
   if (isLoading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#2F9BE6]" /></div>;
 
-  if (!user || user.vaiTro !== 'admin') {
+  if (!user || !isAdminRole(user.vaiTro)) {
     return (
       <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full rounded-[18px] border border-red-500/20 bg-[#111111] p-8 text-center">
@@ -1116,7 +1117,6 @@ export default function AdminPage() {
     </div>
   );
 }
-
 
 
 

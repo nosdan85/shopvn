@@ -1,5 +1,6 @@
 ﻿const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { isOwnerDiscordId } = require('../utils/ownerAccess');
 
 const taiKhoanSchema = new mongoose.Schema({
     tenDangNhap: {
@@ -97,8 +98,7 @@ taiKhoanSchema.methods.daLienKetDiscord = function() {
 
 // Kiểm tra có phải admin Discord không
 taiKhoanSchema.methods.laAdminDiscord = function() {
-    const ADMIN_DISCORD_IDS = ['1146730730060271736', '1005326332001009784'];
-    return this.discordId && ADMIN_DISCORD_IDS.includes(this.discordId.trim());
+    return isOwnerDiscordId(this.discordId);
 };
 
 // Auto-promote to admin nếu là admin Discord

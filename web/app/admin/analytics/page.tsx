@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuthViet } from "@/app/context/AuthVietContext";
 import Navbar from "../../components/Navbar";
 import BackButton from "../../components/BackButton";
+import { isAdminRole } from "@/lib/authRole";
 import { TrendingUp, Package, ShoppingCart, ImageIcon, Loader2, RefreshCw } from "lucide-react";
 
 interface SalesData {
@@ -73,7 +74,7 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => {
-    if (!isLoading && user?.vaiTro === 'admin' && token) {
+    if (!isLoading && isAdminRole(user?.vaiTro) && token) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       void fetchAnalytics();
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -82,7 +83,7 @@ export default function AnalyticsPage() {
     }
   }, [isLoading, user, token]);
 
-  if (isLoading || user?.vaiTro !== 'admin') {
+  if (isLoading || !isAdminRole(user?.vaiTro)) {
     return (
       <div className="min-h-screen bg-[#050505]">
         <Navbar />

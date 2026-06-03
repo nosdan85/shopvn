@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Navbar from "../../components/Navbar";
 import BackButton from "../../components/BackButton";
 import { useAuthViet } from "@/app/context/AuthVietContext";
+import { isAdminRole } from "@/lib/authRole";
 import { AlertCircle, CheckCircle2, Clock3, RefreshCcw, Search, ShieldAlert, XCircle } from "lucide-react";
 
 type Order = {
@@ -82,7 +83,7 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => {
-    if (token && user?.vaiTro === "admin") {
+    if (token && isAdminRole(user?.vaiTro)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       void loadOrders();
     } else {
@@ -150,7 +151,7 @@ export default function AdminOrdersPage() {
     );
   }
 
-  if (user && user.vaiTro !== "admin") {
+  if (user && !isAdminRole(user.vaiTro)) {
     return (
       <div className="min-h-screen bg-[#050505] text-white">
         <Navbar />

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuthViet } from "../context/AuthVietContext";
 import { ShoppingCart, LogOut, User, Loader2, Menu, X, Wallet, ShoppingBag } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { isAdminRole } from "@/lib/authRole";
 
 const SUPPORT_DISCORD_URL = "https://discord.com/channels/1398984938111369256/1493927408217100438";
 
@@ -18,7 +19,7 @@ const getUserInitial = (username: string) => {
 };
 
 export default function Navbar({ cartCount = 0, showCart = false, onCartClick }: NavbarProps) {
-  const { user, isLoading, soDuVnd, daDangNhap, dangXuat } = useAuthViet();
+  const { user, isLoading, soDuVnd, daDangNhap, dangXuat, daLienKetDiscord, discordTenHienThi, getDiscordOAuthUrl } = useAuthViet();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -65,6 +66,18 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
     } finally {
       setLoggingOut(false);
     }
+  };
+
+  const handleDiscordLink = () => {
+    const discordOAuthUrl = getDiscordOAuthUrl();
+
+    if (!discordOAuthUrl || discordOAuthUrl.startsWith("#")) {
+      return;
+    }
+
+    setDropdownOpen(false);
+    setMobileMenuOpen(false);
+    window.location.href = discordOAuthUrl;
   };
 
   const clearCheckoutResume = () => {
@@ -138,7 +151,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
             Ho Tro
             <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#2F9BE6] scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left rounded-full" />
           </a>
-          {user?.vaiTro === "admin" && (
+          {isAdminRole(user?.vaiTro) && (
             <Link
               href="/admin"
               className="relative px-3 py-2 text-[#B5B5B5] hover:text-white transition-colors duration-200 font-medium text-sm group"
@@ -218,6 +231,19 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                     </Link>
 
                     <button
+                      type="button"
+                      onClick={handleDiscordLink}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-white hover:bg-[#161616] transition-colors duration-150 border-b border-[#1E1E1E]"
+                    >
+                      <User className="w-4 h-4 text-[#5865F2]" />
+                      <span className="text-sm font-medium">
+                        {daLienKetDiscord
+                          ? `Discord: ${discordTenHienThi || "Da lien ket"}`
+                          : "Lien Ket Discord"}
+                      </span>
+                    </button>
+
+                    <button
                       onClick={handleLogout}
                       disabled={loggingOut}
                       className="w-full flex items-center gap-2 px-4 py-3 text-[#FF4D4F] hover:bg-[#FF4D4F]/10 transition-colors duration-150 disabled:opacity-50"
@@ -286,7 +312,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
             >
               Ho Tro
             </a>
-            {user?.vaiTro === "admin" && (
+            {isAdminRole(user?.vaiTro) && (
               <Link
                 href="/admin"
                 onClick={() => setMobileMenuOpen(false)}
@@ -339,6 +365,15 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                     <ShoppingBag className="w-5 h-5" />
                     <span>Don Hang</span>
                   </Link>
+
+                  <button
+                    type="button"
+                    onClick={handleDiscordLink}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#5865F2]/10 hover:bg-[#5865F2]/20 text-[#AAB2FF] rounded-xl transition-all font-medium"
+                  >
+                    <User className="w-5 h-5" />
+                    <span>{daLienKetDiscord ? `Discord: ${discordTenHienThi || "Da lien ket"}` : "Lien Ket Discord"}</span>
+                  </button>
 
                   <button
                     onClick={handleLogout}
