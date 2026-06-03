@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "../components/Navbar";
-import { useAuthViet } from "../context/AuthContext";
+import { useAuthViet } from "../context/AuthVietContext";
 import { resolveImageUrl } from "@/lib/imageUrl";
 import {
   AlertCircle, Loader2, Plus, Edit2, Trash2, RefreshCcw, ChevronLeft, ChevronRight

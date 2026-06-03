@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuthViet } from "../../context/AuthContext";
+import { useAuthViet } from "../../context/AuthVietContext";
 import Navbar from "../../components/Navbar";
 import { TrendingUp, Package, ShoppingCart, ImageIcon, Loader2, RefreshCw } from "lucide-react";
 
