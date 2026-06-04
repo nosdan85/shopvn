@@ -49,14 +49,18 @@ interface Game { _id: string; name: string; slug: string; image?: string; active
 interface Slot { _id: string; ownerTimezone: string; startAt: string; endAt: string; active: boolean; note?: string }
 interface LinkedUser {
   _id: string;
-  tenDangNhap: string;
-  email: string;
-  soDuVnd: number;
-  daLienKetDiscord: boolean;
-  discordTenHienThi?: string | null;
+  discordId: string;
+  discordUsername: string;
+  hasAccessToken: boolean;
+  hasRefreshToken: boolean;
+  tokenExpiresAt?: string | null;
+  scopes: string[];
   cartItemsCount: number;
   cartUpdatedAt?: string | null;
-  taoLucTruocDo?: string | null;
+  joinedAt?: string | null;
+  luckyWheelTickets: number;
+  luckyWheelTicketsGrantedByAdmin: number;
+  luckyWheelFirstLinkAwardedAt?: string | null;
 }
 
 interface LuckyWheelSlice { label: string; type: "empty" | "discount"; discountPercent: number | "" }
@@ -538,28 +542,42 @@ export default function AdminPage() {
 
   const deleteBanner = async (bannerUrl: string) => {
     if (!token || !confirm("Xóa banner?")) return;
+    setSubmitting(true);
+    setError(null);
     try {
-      await fetch("/api/shop/owner/config/banners", {
+      const res = await fetch("/api/shop/owner/config/banners", {
         method: "DELETE",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bannerUrl })
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Xóa banner thất bại");
       await fetchConfig();
-    } catch { /* silent */ }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Xóa banner thất bại");
+    }
+    setSubmitting(false);
   };
 
   const toggleBestSeller = async (productId: string) => {
     if (!token) return;
     const isBs = bestSellers.includes(productId);
     const updated = isBs ? bestSellers.filter((id) => id !== productId) : [...bestSellers, productId];
+    setSubmitting(true);
+    setError(null);
     try {
-      await fetch("/api/shop/owner/config/best-sellers", {
+      const res = await fetch("/api/shop/owner/config/best-sellers", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bestSellerIds: updated }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Cập nhật best sellers thất bại");
       setBestSellers(updated);
-    } catch { /* silent */ }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cập nhật best sellers thất bại");
+    }
+    setSubmitting(false);
   };
 
   const clearLinkedUserCart = async (userId: string) => {
@@ -567,7 +585,7 @@ export default function AdminPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/shop/owner/web-accounts/${userId}/cart`, {
+      const res = await fetch(`/api/shop/owner/linked-users/${encodeURIComponent(userId)}/cart`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -636,7 +654,7 @@ export default function AdminPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/shop/owner/web-accounts/${userId}/lucky-wheel-ticket`, {
+      const res = await fetch(`/api/shop/owner/linked-users/${encodeURIComponent(userId)}/lucky-wheel-ticket`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ count: 1 }),
@@ -1047,20 +1065,21 @@ export default function AdminPage() {
                   <div key={linkedUser._id} className="rounded-[16px] border border-[#1E1E1E] bg-[#050505] p-4">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-white">{linkedUser.tenDangNhap || "Không rõ tên"}</p>
-                        <p className="text-xs text-[#B5B5B5]/80">Email: {linkedUser.email}</p>
+                        <p className="text-sm font-semibold text-white">{linkedUser.discordUsername || "Không rõ Discord"}</p>
+                        <p className="text-xs text-[#B5B5B5]/80">Discord ID: {linkedUser.discordId || "-"}</p>
                         <div className="flex flex-wrap gap-2 pt-1 text-xs">
+                          <span className={"rounded-full px-2 py-1 " + (linkedUser.hasAccessToken ? "bg-[#3DDC84]/15 text-[#3DDC84]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]")}>
+                            Access token: {linkedUser.hasAccessToken ? "Có" : "Không"}
+                          </span>
+                          <span className={"rounded-full px-2 py-1 " + (linkedUser.hasRefreshToken ? "bg-[#3DDC84]/15 text-[#3DDC84]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]")}>
+                            Refresh token: {linkedUser.hasRefreshToken ? "Có" : "Không"}
+                          </span>
+                          <span className="rounded-full bg-[#5865F2]/15 px-2 py-1 text-[#7289DA]">
+                            Vé quay: {linkedUser.luckyWheelTickets}
+                          </span>
                           <span className="rounded-full bg-[#2F9BE6]/15 px-2 py-1 text-[#49B6FF]">
-                            Ví VND: {linkedUser.soDuVnd.toLocaleString('vi-VN')}
+                            Admin cấp: {linkedUser.luckyWheelTicketsGrantedByAdmin}
                           </span>
-                          <span className={"rounded-full px-2 py-1 " + (linkedUser.daLienKetDiscord ? "bg-[#3DDC84]/15 text-[#3DDC84]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]")}>
-                            Discord: {linkedUser.daLienKetDiscord ? "Có liên kết" : "Chưa liên kết"}
-                          </span>
-                          {linkedUser.daLienKetDiscord && linkedUser.discordTenHienThi && (
-                            <span className="rounded-full bg-[#5865F2]/15 px-2 py-1 text-[#7289DA]">
-                              {linkedUser.discordTenHienThi}
-                            </span>
-                          )}
                           <span className="rounded-full bg-[#161616] px-2 py-1 text-[#B5B5B5]">
                             Giỏ hàng: {linkedUser.cartItemsCount} mục
                           </span>
@@ -1069,15 +1088,15 @@ export default function AdminPage() {
 
                       <div className="flex flex-wrap gap-2">
                         <button
-                          onClick={() => void grantLuckyWheelTicket(linkedUser._id)}
-                          disabled={submitting}
+                          onClick={() => void grantLuckyWheelTicket(linkedUser.discordId)}
+                          disabled={submitting || !linkedUser.discordId}
                           className="rounded-[14px] bg-[#2F9BE6]/15 px-4 py-2 text-sm text-[#49B6FF] disabled:opacity-50"
                         >
                           Cấp vòng quay
                         </button>
                         <button
-                          onClick={() => void clearLinkedUserCart(linkedUser._id)}
-                          disabled={submitting}
+                          onClick={() => void clearLinkedUserCart(linkedUser.discordId)}
+                          disabled={submitting || !linkedUser.discordId}
                           className="rounded-[14px] bg-[#FF4D4F]/15 px-4 py-2 text-sm text-[#FF4D4F] disabled:opacity-50"
                         >
                           Xóa giỏ
@@ -1087,7 +1106,9 @@ export default function AdminPage() {
 
                     <div className="mt-3 grid gap-2 text-xs text-[#B5B5B5]/80 md:grid-cols-2">
                       <div>Cập nhật giỏ hàng: {formatDateTime(linkedUser.cartUpdatedAt)}</div>
-                      <div>Tạo tài khoản: {formatDateTime(linkedUser.taoLucTruocDo)}</div>
+                      <div>Tham gia: {formatDateTime(linkedUser.joinedAt)}</div>
+                      <div>Token hết hạn: {formatDateTime(linkedUser.tokenExpiresAt)}</div>
+                      <div>Thưởng link đầu: {formatDateTime(linkedUser.luckyWheelFirstLinkAwardedAt)}</div>
                     </div>
                   </div>
                 ))}

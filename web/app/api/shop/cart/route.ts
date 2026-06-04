@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { backendUrl, noStoreHeaders } from "@/lib/backendApi";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || "http://localhost:5000";
-
-async function getResponseData(response: Response) {
+const parseJsonSafe = async (res: Response) => {
   try {
-    return await response.json();
+    return await res.json();
   } catch {
     return { error: "Backend request failed" };
   }
-}
+};
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 async function proxyCartRequest(method: "GET" | "PUT" | "DELETE", request: NextRequest) {
   const token = request.headers.get("authorization") || "";
@@ -20,6 +21,7 @@ async function proxyCartRequest(method: "GET" | "PUT" | "DELETE", request: NextR
   const init: RequestInit = {
     method,
     headers,
+    cache: "no-store",
   };
 
   if (method === "PUT") {
@@ -31,10 +33,10 @@ async function proxyCartRequest(method: "GET" | "PUT" | "DELETE", request: NextR
     init.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/shop/cart`, init);
-  const data = await getResponseData(response);
+  const response = await fetch(backendUrl("/api/shop/cart"), init);
+  const data = await parseJsonSafe(response);
 
-  return NextResponse.json(data, { status: response.status });
+  return NextResponse.json(data, { status: response.status, headers: noStoreHeaders() });
 }
 
 export async function GET(request: NextRequest) {
@@ -42,7 +44,7 @@ export async function GET(request: NextRequest) {
     return await proxyCartRequest("GET", request);
   } catch (error) {
     console.error("[shop/cart proxy] GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: noStoreHeaders() });
   }
 }
 
@@ -51,7 +53,7 @@ export async function PUT(request: NextRequest) {
     return await proxyCartRequest("PUT", request);
   } catch (error) {
     console.error("[shop/cart proxy] PUT error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: noStoreHeaders() });
   }
 }
 
@@ -60,6 +62,6 @@ export async function DELETE(request: NextRequest) {
     return await proxyCartRequest("DELETE", request);
   } catch (error) {
     console.error("[shop/cart proxy] DELETE error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: noStoreHeaders() });
   }
 }

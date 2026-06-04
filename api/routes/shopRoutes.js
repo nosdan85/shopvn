@@ -17,6 +17,7 @@ const ShopConfig = require('../models/ShopConfig');
 const GeneratedCoupon = require('../models/GeneratedCoupon');
 const DeviceFingerprint = require('../models/DeviceFingerprint');
 const Referral = require('../models/Referral');
+const TaiKhoan = require('../models/TaiKhoan');
 const {
     createOrderTicket,
     createWalletDeliveryTicket,
@@ -1131,14 +1132,11 @@ const createUniqueGeneratedCoupon = async ({ discountPercent, discordId, source 
 };
 
 const requireOwner = async (req, res) => {
-    const discordId = String(req.user?.discordId || '').trim();
+    const actor = await requireOwnerAccess(req, res);
+    if (!actor) return null;
+    const discordId = String(actor.discordId || '').trim();
     if (!discordId) {
-        res.status(401).json({ error: 'Authentication required' });
-        return null;
-    }
-    const isOwner = await canAccessOwnerEndpoints(discordId);
-    if (!isOwner) {
-        res.status(403).json({ error: 'Forbidden' });
+        res.status(409).json({ error: 'Owner Discord account is not linked' });
         return null;
     }
     return discordId;
@@ -1582,6 +1580,88 @@ const releaseLtcTicketLockAsFailed = async (orderId, discordId, lockUntil, messa
 
 const canAccessOwnerEndpoints = async (discordId) => isOwnerDiscordId(discordId);
 
+const resolveOwnerActor = async (req) => {
+    const user = req.user || {};
+    const discordId = String(user.discordId || '').trim();
+    const role = String(user.role || user.vaiTro || '').trim().toLowerCase();
+
+    if (discordId && await canAccessOwnerEndpoints(discordId)) {
+        return { ok: true, actorType: 'discord', discordId, role };
+    }
+
+    if (role === 'admin' || role === 'quan_tri') {
+        let taiKhoan = null;
+        const userId = String(user.userId || user._id || '').trim();
+        const tenDangNhap = String(user.tenDangNhap || '').trim();
+
+        if (userId) {
+            taiKhoan = await TaiKhoan.findById(userId).lean().catch(() => null);
+        }
+        if (!taiKhoan && tenDangNhap) {
+            taiKhoan = await TaiKhoan.findOne({ tenDangNhap }).lean().catch(() => null);
+        }
+
+        const taiKhoanDiscordId = String(taiKhoan?.discordId || '').trim();
+        if (taiKhoanDiscordId && await canAccessOwnerEndpoints(taiKhoanDiscordId)) {
+            return {
+                ok: true,
+                actorType: 'tai_khoan_admin_discord',
+                discordId: taiKhoanDiscordId,
+                role,
+                taiKhoan
+            };
+        }
+
+        return {
+            ok: true,
+            actorType: 'admin',
+            discordId: taiKhoanDiscordId,
+            role,
+            taiKhoan
+        };
+    }
+
+    return { ok: false, status: 403, error: 'Forbidden' };
+};
+
+const requireOwnerAccess = async (req, res) => {
+    const actor = await resolveOwnerActor(req);
+    if (!actor.ok) {
+        res.status(actor.status || 403).json({ error: actor.error || 'Forbidden' });
+        return null;
+    }
+    req.ownerActor = actor;
+    return actor;
+};
+
+const resolveAuthenticatedDiscordId = async (req) => {
+    const user = req.user || {};
+    const directDiscordId = String(user.discordId || '').trim();
+    if (directDiscordId) return directDiscordId;
+
+    const userId = String(user.userId || user._id || '').trim();
+    const tenDangNhap = String(user.tenDangNhap || '').trim();
+    let taiKhoan = null;
+
+    if (userId) {
+        taiKhoan = await TaiKhoan.findById(userId).select('discordId').lean().catch(() => null);
+    }
+    if (!taiKhoan && tenDangNhap) {
+        taiKhoan = await TaiKhoan.findOne({ tenDangNhap }).select('discordId').lean().catch(() => null);
+    }
+
+    return String(taiKhoan?.discordId || '').trim();
+};
+
+const requireAuthenticatedDiscordId = async (req, res, options = {}) => {
+    const discordId = await resolveAuthenticatedDiscordId(req);
+    if (discordId) return discordId;
+    const error = options.notLinkedMessage || 'Discord account not linked';
+    const status = options.notLinkedStatus || 409;
+    res.status(status).json({ error });
+    return null;
+};
+
 const getOptionalRequestUser = (req) => {
     const token = getBearerToken(req);
     if (!token) return null;
@@ -1948,15 +2028,9 @@ router.get('/proofs/:proofId/images/:imageIndex', async (req, res) => {
 
 router.delete('/proofs/:proofId', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
-        const canDelete = await canAccessOwnerEndpoints(discordId);
-        if (!canDelete) {
-            return res.status(403).json({ error: 'Forbidden' });
-        }
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const proofId = String(req.params?.proofId || '').trim();
         if (!OBJECT_ID_PATTERN.test(proofId)) {
@@ -1982,15 +2056,9 @@ router.delete('/proofs/:proofId', authRequired, async (req, res) => {
 
 router.patch('/proofs/:proofId', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
-        const canEdit = await canAccessOwnerEndpoints(discordId);
-        if (!canEdit) {
-            return res.status(403).json({ error: 'Forbidden' });
-        }
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const proofId = String(req.params?.proofId || '').trim();
         if (!OBJECT_ID_PATTERN.test(proofId)) {
@@ -2062,10 +2130,9 @@ router.patch('/proofs/:proofId', authRequired, async (req, res) => {
 
 router.post('/proofs/:proofId/images', authRequired, uploadProofImage.single('image'), async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const canEdit = await canAccessOwnerEndpoints(discordId);
-        if (!canEdit) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const proofId = String(req.params?.proofId || '').trim();
         if (!OBJECT_ID_PATTERN.test(proofId)) {
@@ -2131,10 +2198,9 @@ router.post('/proofs/:proofId/images', authRequired, uploadProofImage.single('im
 
 router.delete('/proofs/:proofId/images/:imageIndex', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const canEdit = await canAccessOwnerEndpoints(discordId);
-        if (!canEdit) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const proofId = String(req.params?.proofId || '').trim();
         const imageIndex = Math.floor(Number(req.params?.imageIndex));
@@ -2182,8 +2248,8 @@ router.delete('/proofs/:proofId/images/:imageIndex', authRequired, async (req, r
 // --- REFERRAL + DEVICE FINGERPRINT -------------------------------------------
 router.post('/fingerprint', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const fingerprintHashRaw = String(req.body?.fingerprintHash || '').trim();
         if (!fingerprintHashRaw) return res.status(400).json({ error: 'fingerprintHash is required' });
@@ -2224,8 +2290,8 @@ router.post('/fingerprint', authRequired, async (req, res) => {
 
 router.get('/my-referral-code', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const referralCode = buildReferralCode(discordId);
         const rewarded = await Referral.countDocuments({
@@ -2250,8 +2316,8 @@ router.get('/my-referral-code', authRequired, async (req, res) => {
 });
 router.get('/my-coupons', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const coupons = await GeneratedCoupon.find({
             discordId,
@@ -2337,8 +2403,8 @@ router.get('/lucky-wheel', async (req, res) => {
 
 router.post('/lucky-wheel/spin', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const config = await ShopConfig.getConfig();
         const luckyWheel = normalizeWheelConfig(config?.luckyWheel || {});
@@ -2388,8 +2454,8 @@ router.post('/lucky-wheel/spin', authRequired, async (req, res) => {
 
 router.get('/wallet', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const dbUser = await User.findOne({ discordId }).lean();
         if (!dbUser) return res.status(401).json({ error: 'Discord account not linked' });
@@ -2417,8 +2483,8 @@ router.get('/wallet', authRequired, async (req, res) => {
 
 router.post('/wallet/topup', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const method = String(req.body?.method || '').trim().toLowerCase();
         if (!WALLET_TOPUP_METHODS.has(method)) {
@@ -2512,8 +2578,8 @@ router.post('/wallet/topup', authRequired, async (req, res) => {
 
 router.post('/wallet/topup/square/:transactionId/complete', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const transactionId = String(req.params?.transactionId || '').trim();
         if (!OBJECT_ID_PATTERN.test(transactionId)) {
@@ -2596,11 +2662,9 @@ router.post('/wallet/topup/square/:transactionId/complete', authRequired, async 
 
 router.get('/wallet/admin', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const [pendingTopups, transactions] = await Promise.all([
             WalletTransaction.find({ type: 'topup', status: 'pending' })
@@ -2623,11 +2687,8 @@ router.get('/wallet/admin', authRequired, async (req, res) => {
 
 router.post('/wallet/admin/topups/:transactionId/approve', authRequired, async (req, res) => {
     try {
-        const ownerDiscordId = String(req.user?.discordId || '').trim();
-        if (!ownerDiscordId) return res.status(401).json({ error: 'Authentication required' });
-
-        const isOwner = await canAccessOwnerEndpoints(ownerDiscordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const ownerDiscordId = await requireOwner(req, res);
+        if (!ownerDiscordId) return;
 
         const transactionId = String(req.params?.transactionId || '').trim();
         if (!OBJECT_ID_PATTERN.test(transactionId)) {
@@ -2680,11 +2741,8 @@ router.post('/wallet/admin/topups/:transactionId/approve', authRequired, async (
 
 router.post('/wallet/admin/topups/:transactionId/reject', authRequired, async (req, res) => {
     try {
-        const ownerDiscordId = String(req.user?.discordId || '').trim();
-        if (!ownerDiscordId) return res.status(401).json({ error: 'Authentication required' });
-
-        const isOwner = await canAccessOwnerEndpoints(ownerDiscordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const ownerDiscordId = await requireOwner(req, res);
+        if (!ownerDiscordId) return;
 
         const transactionId = String(req.params?.transactionId || '').trim();
         if (!OBJECT_ID_PATTERN.test(transactionId)) {
@@ -2718,8 +2776,8 @@ router.post('/wallet/admin/topups/:transactionId/reject', authRequired, async (r
 
 router.get('/cart', authRequired, cartSyncLimiter, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const user = await User.findOne({ discordId }).select('cartItems cartUpdatedAt').lean();
         if (!user) return res.json({ items: [], updatedAt: null });
@@ -2733,8 +2791,8 @@ router.get('/cart', authRequired, cartSyncLimiter, async (req, res) => {
 
 router.put('/cart', authRequired, cartSyncLimiter, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
 
         const cartItems = Array.isArray(req.body?.cartItems) ? req.body.cartItems : [];
         const user = await persistUserCart(discordId, cartItems);
@@ -2749,8 +2807,8 @@ router.put('/cart', authRequired, cartSyncLimiter, async (req, res) => {
 
 router.delete('/cart', authRequired, cartSyncLimiter, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const discordId = await requireAuthenticatedDiscordId(req, res);
+        if (!discordId) return;
         await clearUserCart(discordId);
         return res.json({ success: true, items: [] });
     } catch (error) {
@@ -2762,8 +2820,8 @@ router.delete('/cart', authRequired, cartSyncLimiter, async (req, res) => {
 
 router.post('/referral/preview', authRequired, async (req, res) => {
   try {
-    const discordId = String(req.user?.discordId || '').trim();
-    if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+    const discordId = await requireAuthenticatedDiscordId(req, res);
+    if (!discordId) return;
     const referralCodeRaw = String(req.body?.referralCode || '').trim();
     const validatedRefCode = normalizeReferralCode(referralCodeRaw);
     if (!validatedRefCode) return res.status(400).json({ error: 'Referral code is required.' });
@@ -2784,8 +2842,8 @@ router.post('/referral/preview', authRequired, async (req, res) => {
 
 router.get('/welcome-voucher', authRequired, async (req, res) => {
   try {
-    const discordId = String(req.user?.discordId || '').trim();
-    if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+    const discordId = await requireAuthenticatedDiscordId(req, res);
+    if (!discordId) return;
 
     const fp = await DeviceFingerprint.findOne({ discordId }).sort({ updatedAt: -1 }).lean();
 
@@ -2837,8 +2895,8 @@ router.get('/welcome-voucher', authRequired, async (req, res) => {
 
 router.post('/referral/apply', authRequired, async (req, res) => {
   try {
-    const discordId = String(req.user?.discordId || '').trim();
-    if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+    const discordId = await requireAuthenticatedDiscordId(req, res);
+    if (!discordId) return;
 
     const referralCodeRaw = String(req.body?.referralCode || '').trim();
     const validatedRefCode = normalizeReferralCode(referralCodeRaw);
@@ -2899,8 +2957,8 @@ router.post('/referral/apply', authRequired, async (req, res) => {
 
 router.post('/referral/clear', authRequired, async (req, res) => {
   try {
-    const discordId = String(req.user?.discordId || '').trim();
-    if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+    const discordId = await requireAuthenticatedDiscordId(req, res);
+    if (!discordId) return;
 
     // Clear invite code from user
     await User.updateOne(
@@ -2943,8 +3001,8 @@ router.post('/referral/admin-clear', authRequired, async (req, res) => {
 
 router.get('/referral/status', authRequired, async (req, res) => {
   try {
-    const discordId = String(req.user?.discordId || '').trim();
-    if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+    const discordId = await requireAuthenticatedDiscordId(req, res);
+    if (!discordId) return;
 
     const user = await User.findOne({ discordId }).select('referralAppliedCode').lean();
     const hasApplied = Boolean(normalizeReferralCode(user?.referralAppliedCode || ''));
@@ -4692,11 +4750,14 @@ router.get('/check-owner', authRequired, async (req, res) => {
 
 router.get('/orders', authRequired, async (req, res) => {
     try {
-        const discordId = req.user?.discordId;
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const orders = await Order.find({})
+            .sort({ createdAt: -1 })
+            .limit(500)
+            .lean();
 
         return res.json(orders.map((order) => ({
             orderId: order.orderId,
@@ -4723,10 +4784,9 @@ router.get('/orders', authRequired, async (req, res) => {
 // --- Product image library ----------------------------------------------------
 router.get('/owner/product-images', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const uploadsDirFiles = await fs.promises.readdir(PRODUCT_IMAGE_DIR).catch(() => []);
         const publicDir = path.resolve(__dirname, '../../client/public/products');
@@ -4748,10 +4808,9 @@ router.get('/owner/product-images', authRequired, async (req, res) => {
 
 router.post('/owner/product-images/upload', authRequired, uploadProductImage.single('image'), async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         if (!req.file) return res.status(400).json({ error: 'No image file uploaded.' });
 
@@ -4768,10 +4827,9 @@ router.post('/owner/product-images/upload', authRequired, uploadProductImage.sin
 
 router.get('/owner/linked-users', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const rawPage = Number(req.query?.page);
         const rawLimit = Number(req.query?.limit);
@@ -4886,10 +4944,8 @@ router.put('/owner/lucky-wheel', authRequired, async (req, res) => {
 
 router.delete('/owner/linked-users/:discordId/cart', authRequired, async (req, res) => {
     try {
-        const ownerDiscordId = String(req.user?.discordId || '').trim();
-        if (!ownerDiscordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(ownerDiscordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const ownerDiscordId = await requireOwner(req, res);
+        if (!ownerDiscordId) return;
 
         const targetDiscordId = String(req.params?.discordId || '').trim();
         if (!targetDiscordId) return res.status(400).json({ error: 'Discord ID is required' });
@@ -4913,10 +4969,8 @@ router.delete('/owner/linked-users/:discordId/cart', authRequired, async (req, r
 
 router.delete('/owner/linked-users/:discordId', authRequired, async (req, res) => {
     try {
-        const ownerDiscordId = String(req.user?.discordId || '').trim();
-        if (!ownerDiscordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(ownerDiscordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const ownerDiscordId = await requireOwner(req, res);
+        if (!ownerDiscordId) return;
 
         const targetDiscordId = String(req.params?.discordId || '').trim();
         if (!targetDiscordId) return res.status(400).json({ error: 'Discord ID is required' });
@@ -4950,10 +5004,9 @@ router.delete('/owner/linked-users/:discordId', authRequired, async (req, res) =
 // --- Owner product CRUD -------------------------------------------------------
 router.get('/owner/products', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const filter = {};
         const category = String(req.query?.category || '').trim();
@@ -4969,10 +5022,9 @@ router.get('/owner/products', authRequired, async (req, res) => {
 
 router.post('/owner/products', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const { name, price, originalPriceString, bulkPrice, bulkPriceString, image, desc, category, gameId } = req.body || {};
         const packQuantity = Number(req.body?.packQuantity) || 1;
@@ -5003,10 +5055,9 @@ router.post('/owner/products', authRequired, async (req, res) => {
 
 router.put('/owner/products/:id', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const { id } = req.params;
         if (!OBJECT_ID_PATTERN.test(id)) return res.status(400).json({ error: 'Invalid product ID.' });
@@ -5042,10 +5093,9 @@ router.put('/owner/products/:id', authRequired, async (req, res) => {
 
 router.delete('/owner/products/:id', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const { id } = req.params;
         if (!OBJECT_ID_PATTERN.test(id)) return res.status(400).json({ error: 'Invalid product ID.' });
@@ -5109,10 +5159,9 @@ router.post('/delivery-slots/bulk', authRequired, async (req, res) => {
 
 router.get('/delivery-slots/manage', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const slots = await DeliverySlot.find({})
             .sort({ startAt: -1 })
@@ -5135,10 +5184,9 @@ router.get('/delivery-slots/manage', authRequired, async (req, res) => {
 
 router.patch('/delivery-slots/:id', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const { id } = req.params;
         if (!OBJECT_ID_PATTERN.test(id)) return res.status(400).json({ error: 'Invalid slot ID.' });
@@ -5179,10 +5227,9 @@ router.patch('/delivery-slots/:id', authRequired, async (req, res) => {
 
 router.delete('/delivery-slots/:id', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const { id } = req.params;
         if (!OBJECT_ID_PATTERN.test(id)) return res.status(400).json({ error: 'Invalid slot ID.' });
@@ -5326,10 +5373,9 @@ router.get('/recent-purchases', async (req, res) => {
 // GET /api/shop/owner/games ? list all games for owner admin
 router.get('/owner/games', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
         const games = await Game.find({}).sort({ createdAt: -1, name: 1 }).lean();
         return res.json({ games });
     } catch (error) {
@@ -5340,10 +5386,9 @@ router.get('/owner/games', authRequired, async (req, res) => {
 
 router.post('/owner/games', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
         const { name, slug, image, active } = req.body || {};
         const cleanName = String(name || '').trim();
         if (!cleanName) return res.status(400).json({ error: 'Game name is required.' });
@@ -5366,10 +5411,9 @@ router.post('/owner/games', authRequired, async (req, res) => {
 // PUT /api/shop/owner/games/:id
 router.put('/owner/games/:id', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
         const { id } = req.params;
         if (!OBJECT_ID_PATTERN.test(id)) return res.status(400).json({ error: 'Invalid game ID.' });
         const { name, slug, image, active } = req.body || {};
@@ -5391,10 +5435,9 @@ router.put('/owner/games/:id', authRequired, async (req, res) => {
 // DELETE /api/shop/owner/games/:id
 router.delete('/owner/games/:id', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
         const { id } = req.params;
         if (!OBJECT_ID_PATTERN.test(id)) return res.status(400).json({ error: 'Invalid game ID.' });
         await Game.findByIdAndDelete(id);
@@ -5410,10 +5453,9 @@ router.delete('/owner/games/:id', authRequired, async (req, res) => {
 // POST /api/shop/owner/config/banners/upload
 router.post('/owner/config/banners/upload', authRequired, bannerUpload.single('banner'), async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
         if (!req.file) return res.status(400).json({ error: 'No banner file uploaded.' });
 
         // Upload to ImgBB CDN; local filesystem storage is not deploy-safe.
@@ -5433,10 +5475,9 @@ router.post('/owner/config/banners/upload', authRequired, bannerUpload.single('b
 // PUT /api/shop/owner/config/banners ï¿½ body: { bannerUrl }
 router.put('/owner/config/banners', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
 
         const bannerUrl = String(req.body?.bannerUrl || '').trim();
         if (!bannerUrl) return res.status(400).json({ error: 'bannerUrl is required.' });
@@ -5457,10 +5498,9 @@ router.put('/owner/config/banners', authRequired, async (req, res) => {
 // DELETE /api/shop/owner/config/banners ï¿½ body: { bannerUrl }
 router.delete('/owner/config/banners', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
         const { bannerUrl } = req.body || {};
         if (!bannerUrl) return res.status(400).json({ error: 'bannerUrl is required.' });
         const config = await ShopConfig.getConfig();
@@ -5480,10 +5520,9 @@ router.delete('/owner/config/banners', authRequired, async (req, res) => {
 // PUT /api/shop/owner/config/best-sellers
 router.put('/owner/config/best-sellers', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
         const { bestSellerIds } = req.body || {};
         if (!Array.isArray(bestSellerIds)) return res.status(400).json({ error: 'bestSellerIds must be an array.' });
         const config = await ShopConfig.getConfig();
@@ -5501,10 +5540,9 @@ router.put('/owner/config/best-sellers', authRequired, async (req, res) => {
 // PUT /api/shop/owner/config/featured
 router.put('/owner/config/featured', authRequired, async (req, res) => {
     try {
-        const discordId = String(req.user?.discordId || '').trim();
-        if (!discordId) return res.status(401).json({ error: 'Authentication required' });
-        const isOwner = await canAccessOwnerEndpoints(discordId);
-        if (!isOwner) return res.status(403).json({ error: 'Forbidden' });
+        const actor = await requireOwnerAccess(req, res);
+        if (!actor) return;
+        const discordId = String(actor.discordId || '').trim();
         const { featuredProductIds } = req.body || {};
         if (!Array.isArray(featuredProductIds)) return res.status(400).json({ error: 'featuredProductIds must be an array.' });
         const config = await ShopConfig.getConfig();

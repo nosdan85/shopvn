@@ -10,10 +10,9 @@ import { AlertCircle, CheckCircle2, Clock3, RefreshCcw, Search, ShieldAlert, XCi
 type Order = {
   _id: string;
   orderId?: string;
-  tenDangNhap?: string;
-  userId?: string;
-  email?: string;
-  soDuVnd?: number;
+  discordUsername?: string;
+  discordId?: string;
+  customerEmail?: string;
   totalAmount?: number;
   status?: string;
   paymentStatus?: string;
@@ -99,9 +98,9 @@ export default function AdminOrdersPage() {
       if (!needle) return true;
       return [
         order.orderId,
-        order.tenDangNhap,
-        order.userId,
-        order.email,
+        order.discordUsername,
+        order.discordId,
+        order.customerEmail,
         order.txnId,
         ...(order.items || []).map((item) => item.name || ""),
       ]
@@ -236,10 +235,10 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-white">{order.tenDangNhap || "Người dùng không xác định"}</div>
-                  <div className="text-xs text-[#B5B5B5]/60">{order.userId || "-"}</div>
-                  {order.email && <div className="text-xs text-[#B5B5B5]/50">{order.email}</div>}
-                  {order.soDuVnd !== undefined && <div className="text-xs text-[#B5B5B5]/50">Ví: {formatPrice(order.soDuVnd)}</div>}
+                  <div className="text-sm text-white">{order.discordUsername || "Người dùng không xác định"}</div>
+                  <div className="text-xs text-[#B5B5B5]/60">{order.discordId || "-"}</div>
+                  {order.customerEmail && <div className="text-xs text-[#B5B5B5]/50">{order.customerEmail}</div>}
+                  {order.txnId && <div className="text-xs text-[#B5B5B5]/50">TXN: {order.txnId}</div>}
                 </div>
                 <div className="text-sm font-medium text-emerald-300">
                   {formatPrice(order.totalAmount || 0)}

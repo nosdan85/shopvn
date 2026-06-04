@@ -14,7 +14,7 @@ test('buildActiveTicketQuery includes discord id and active channel conditions',
     const query = buildActiveTicketQuery('1234567890');
 
     assert.equal(query.discordId, '1234567890');
-    assert.deepEqual(query.status, { $nin: ['Completed', 'Cancelled'] });
+    assert.deepEqual(query.status, { $nin: ['hoan_thanh', 'huy'] });
     assert.deepEqual(query.paymentStatus, { $ne: 'cancelled' });
     assert.equal(Array.isArray(query.$or), true);
     assert.equal(query.$or.length, 3);
