@@ -293,13 +293,13 @@ export default function AdminPage() {
     setSubmitting(true); setError(null);
     try {
       const payload = {
-        name: productForm.name,
+        name: productForm.name.trim(),
         price: Number(productForm.price),
         bulkPrice: productForm.bulkPrice ? Number(productForm.bulkPrice) : null,
         packQuantity: productForm.packQuantity ? Number(productForm.packQuantity) : 1,
-        image: productForm.image,
+        image: productForm.image.trim(),
         desc: productForm.desc,
-        category: productForm.category,
+        category: productForm.category.trim(),
         gameId: productForm.gameId || null,
       };
       const url = editingProduct ? `/api/shop/owner/products/${editingProduct}` : "/api/shop/owner/products";
@@ -309,12 +309,13 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Luu that bai");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || data?.message || "Lưu thất bại");
       setShowProductForm(false);
       setEditingProduct(null);
       setProductForm({ name: "", price: "", bulkPrice: "", packQuantity: "", image: "", desc: "", category: "", gameId: "" });
       await fetchProducts();
-    } catch (err) { setError("Luu that bai"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Lưu thất bại"); }
     setSubmitting(false);
   };
 
@@ -737,7 +738,7 @@ export default function AdminPage() {
                 <textarea value={productForm.desc} onChange={(e) => setProductForm((p) => ({ ...p, desc: e.target.value }))} placeholder="Mô tả chi tiết..." rows={3} className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
                 <div className="space-y-2">
                   <label className="text-xs text-[#B5B5B5]/80">URL Ảnh Sản Phẩm</label>
-                  <input value={productForm.image} onChange={(e) => setProductForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL ảnh (Cloudinary / ImgBB)" className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-2 outline-none" />
+                  <input value={productForm.image} onChange={(e) => setProductForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL ảnh (Cloudinary / ImgBB) hoặc đường dẫn /products/..." className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-2 outline-none" />
                   {productForm.image && <img src={imgUrl(productForm.image)} alt="preview" className="mt-2 h-20 w-20 rounded border border-[#1E1E1E] object-cover" />}
                 </div>
                 <div className="flex gap-2">

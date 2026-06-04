@@ -87,7 +87,7 @@ function LinkDiscordCallbackContent() {
         setStatus("success");
         setMessage("Liên kết Discord thành công!");
         setError(null);
-        setTimeout(() => router.push("/don-hang"), 2000);
+        setTimeout(() => router.push("/shop"), 2000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định";
         setStatus("error");
@@ -112,7 +112,7 @@ function LinkDiscordCallbackContent() {
         <>
           <CheckCircle2 className="mx-auto mb-4 h-16 w-16 text-green-500" />
           <h1 className="mb-2 text-2xl font-bold text-white">{message}</h1>
-          <p className="text-[#B5B5B5]">Bạn sẽ được chuyển hướng trở lại Đơn Hàng trong 2 giây.</p>
+          <p className="text-[#B5B5B5]">Bạn sẽ được chuyển hướng trở lại Cửa Hàng trong 2 giây.</p>
         </>
       )}
       {status === "error" && (
@@ -123,7 +123,7 @@ function LinkDiscordCallbackContent() {
             <p className="text-sm text-[#B5B5B5]">{error}</p>
           </div>
           <button
-            onClick={() => router.push("/don-hang")}
+            onClick={() => router.push("/shop")}
             className="rounded-lg bg-[#161616] px-6 py-3 font-medium text-white transition-all duration-200 hover:scale-105 hover:bg-[#1E1E1E]"
           >
             Quay về Đơn Hàng

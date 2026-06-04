@@ -1365,8 +1365,8 @@ export default function ShopPage() {
                   <Package className="h-5 w-5 text-[#3DDC84]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Welcome! Get 20% OFF your first order</h3>
-                  <p className="text-xs text-[#B5B5B5]">Minimum order: $5 • Use code at checkout</p>
+                  <h3 className="text-sm font-semibold text-white">Chào mừng! Giảm 20% cho đơn hàng đầu tiên</h3>
+                  <p className="text-xs text-[#B5B5B5]">Đơn tối thiểu: $5 • Dùng mã này khi thanh toán</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
