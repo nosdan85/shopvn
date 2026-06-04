@@ -7,7 +7,7 @@ import { useAuthViet } from "../context/AuthVietContext";
 import { resolveImageUrl } from "@/lib/imageUrl";
 import { isAdminRole } from "@/lib/authRole";
 import {
-  AlertCircle, Loader2, Plus, Edit2, Trash2, RefreshCcw, ChevronLeft, ChevronRight
+  AlertCircle, Loader2, Plus, Edit2, Trash2, RefreshCcw
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -31,11 +31,6 @@ function addDaysToDateKey(dateKey: string, days: number): string {
   return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(next.getUTCDate()).padStart(2, "0")}`;
 }
 
-function toVietnamIso(date: string, time: string): string {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  return new Date(Date.UTC(year, month - 1, day, hour - 7, minute, 0, 0)).toISOString();
-}
 
 function formatDateTime(value?: string | null): string {
   if (!value) return "—";
@@ -46,7 +41,6 @@ function formatDateTime(value?: string | null): string {
 
 interface Product { _id: string; name: string; price: number; bulkPrice?: number; packQuantity?: number; image: string; desc?: string; category: string; gameId?: string }
 interface Game { _id: string; name: string; slug: string; image?: string; active: boolean }
-interface Slot { _id: string; ownerTimezone: string; startAt: string; endAt: string; active: boolean; note?: string }
 interface LinkedUser {
   _id: string;
   discordId: string;
@@ -66,8 +60,6 @@ interface LinkedUser {
 interface LuckyWheelSlice { label: string; type: "empty" | "discount"; discountPercent: number | "" }
 interface LuckyWheelConfig { enabled: boolean; title: string; message: string; slices: LuckyWheelSlice[] }
 
-const HOUR_OPTIONS = Array.from({ length: 25 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function getMonthLabel(monthKey: string): string {
   const [year, month] = monthKey.split("-").map(Number);
@@ -95,42 +87,7 @@ function buildCalendarDays(monthKey: string): Array<{ key: string; day: number; 
   });
 }
 
-function hourToMinutes(value: string): number {
-  const [hour, minute] = String(value || "").split(":").map(Number);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return -1;
-  return hour * 60 + minute;
-}
 
-function getVietnamSlotParts(startIso: string, endIso: string): {
-  date: string;
-  startTime: string;
-  endTime: string;
-  endDate: string;
-  crossesMidnight: boolean;
-} {
-  const start = toVietnamDateTimeParts(startIso);
-  const end = toVietnamDateTimeParts(endIso);
-  const endsAtNextMidnight = end.time === "00:00" && end.date === addDaysToDateKey(start.date, 1);
-  return {
-    date: start.date,
-    startTime: start.time,
-    endTime: endsAtNextMidnight ? "24:00" : end.time,
-    endDate: end.date,
-    crossesMidnight: end.date !== start.date,
-  };
-}
-
-function getNextVietnamHourlySlot(now = new Date()): { date: string; month: string; startTime: string; endTime: string } {
-  const vietnam = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const minute = vietnam.getUTCMinutes();
-  const second = vietnam.getUTCSeconds();
-  const ms = vietnam.getUTCMilliseconds();
-  const startHour = vietnam.getUTCHours() + (minute > 0 || second > 0 || ms > 0 ? 1 : 0);
-  const start = new Date(Date.UTC(
-    vietnam.getUTCFullYear(),
-    vietnam.getUTCMonth(),
-    vietnam.getUTCDate(),
-    startHour,
     0,
     0,
     0
@@ -156,7 +113,7 @@ function getNextVietnamHourlySlot(now = new Date()): { date: string; month: stri
 
 export default function AdminPage() {
   const { user, token, isLoading } = useAuthViet();
-  const [tab, setTab] = useState<"Sản Phẩm" | "Khung Giờ Giao Hàng" | "Game" | "Cấu Hình" | "Tài Khoản Web">("Sản Phẩm");
+  const [tab, setTab] = useState<"Sản Phẩm" | "Game" | "Cấu Hình" | "Tài Khoản Web">("Sản Phẩm");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -173,19 +130,6 @@ export default function AdminPage() {
   const [showGameForm, setShowGameForm] = useState(false);
   const [editingGame, setEditingGame] = useState<string | null>(null);
   const [gameForm, setGameForm] = useState({ name: "", slug: "", image: "", active: true });
-
-  /* --- slots state --- */
-  const initialSlot = useMemo(() => getNextVietnamHourlySlot(), []);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [slotDate, setSlotDate] = useState(initialSlot.date);
-  const [slotMonth, setSlotMonth] = useState(initialSlot.month);
-  const [slotStartTime, setSlotStartTime] = useState(initialSlot.startTime);
-  const [slotEndTime, setSlotEndTime] = useState(initialSlot.endTime);
-  const [slotNote, setSlotNote] = useState("");
-  const [editingSlot, setEditingSlot] = useState<string | null>(null);
-  const [slotEditForm, setSlotEditForm] = useState({ date: "", startTime: "", endTime: "", note: "", active: true });
-  const [slotFilter, setSlotFilter] = useState<string>("");
 
   /* --- banners & best sellers state --- */
   const [banners, setBanners] = useState<string[]>([]);
@@ -234,16 +178,6 @@ export default function AdminPage() {
     setGamesLoading(false);
   };
 
-  const fetchSlots = async () => {
-    if (!token) return;
-    setSlotsLoading(true);
-    try {
-      const res = await fetch("/api/shop/delivery-slots?manage=1", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-      const data = await res.json();
-      setSlots(Array.isArray(data.slots) ? data.slots : []);
-    } catch { /* silent */ }
-    setSlotsLoading(false);
-  };
 
   const fetchConfig = async () => {
     try {
@@ -366,106 +300,16 @@ export default function AdminPage() {
     } catch { /* silent */ }
   };
 
-  /* --- BULK SLOTS (Vietnamese timezone setup) --- */
-  const createSlots = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !slotDate) return;
-    if (hourToMinutes(slotEndTime) <= hourToMinutes(slotStartTime)) {
-      setError("Gio ket thuc phai sau gio bat dau");
-      return;
-    }
-    if (new Date(toVietnamIso(slotDate, slotEndTime)) <= new Date()) {
-      setError("Khung gio nay da qua. Hay chon gio trong tuong lai.");
-      return;
-    }
-    setSubmitting(true); setError(null);
-    try {
-      const res = await fetch("/api/shop/delivery-slots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          ownerTimezone: "Asia/Ho_Chi_Minh",
-          date: slotDate,
-          ranges: [{ startTime: slotStartTime, endTime: slotEndTime, note: slotNote.trim() }],
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Tao khung gio that bai");
-      if (!Array.isArray(data?.slots) || data.slots.length === 0) {
-        throw new Error("No valid slots were created. Check start/end times.");
-      }
-      setSlotNote("");
-      await fetchSlots();
-    } catch (err) { setError(err instanceof Error ? err.message : "Tao khung gio that bai"); }
-    setSubmitting(false);
+
+
+
+ }
   };
 
-  const slotCalendarDays = useMemo(() => buildCalendarDays(slotMonth), [slotMonth]);
-
-  const formatSlotRange = useMemo(
-    () => (slot: Slot) => {
-      try {
-        const start = new Date(slot.startAt);
-        const slotParts = getVietnamSlotParts(slot.startAt, slot.endAt);
-        const dateText = new Intl.DateTimeFormat("vi-VN", {
-          timeZone: slot.ownerTimezone,
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }).format(start);
-        const endDateSuffix = slotParts.crossesMidnight && slotParts.endTime !== "24:00" ? ` (${slotParts.endDate})` : "";
-        return `${dateText} • ${slotParts.startTime} - ${slotParts.endTime}${endDateSuffix} • Giờ VN (GMT+7)`;
-      } catch {
-        return `${slot.startAt} - ${slot.endAt}`;
-      }
-    },
-    []
-  );
-
-  const filteredSlots = useMemo(() => {
-    if (!slotFilter) return slots;
-    return slots.filter((s) => {
-      const slotDateValue = toVietnamDateTimeParts(s.startAt).date.slice(0, 7);
-      return slotDateValue === slotFilter;
-    });
-  }, [slots, slotFilter]);
-
-  const toggleSlot = async (id: string, active: boolean) => {
-    if (!token) return;
-    try {
-      const res = await fetch(`/api/shop/delivery-slots/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ active }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Cap nhat khung gio that bai");
-      await fetchSlots();
-    } catch (err) { setError(err instanceof Error ? err.message : "Cap nhat khung gio that bai"); }
+ }
   };
 
-  const deleteSlot = async (id: string) => {
-    if (!token || !confirm("Xóa slot?")) return;
-    try {
-      const res = await fetch(`/api/shop/delivery-slots/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Xoa khung gio that bai");
-      await fetchSlots();
-    } catch (err) { setError(err instanceof Error ? err.message : "Xoa khung gio that bai"); }
-  };
 
-  const startEditSlot = (slot: Slot) => {
-    const slotParts = getVietnamSlotParts(slot.startAt, slot.endAt);
-    setEditingSlot(slot._id);
-    setSlotEditForm({
-      date: slotParts.date,
-      startTime: slotParts.startTime,
-      endTime: slotParts.endTime,
-      note: slot.note || "",
-      active: slot.active,
-    });
-  };
 
   const fetchLuckyWheel = async () => {
     if (!token) return;
@@ -490,37 +334,13 @@ export default function AdminPage() {
   async function fetchAll() {
     void fetchProducts();
     void fetchGames();
-    void fetchSlots();
+
     void fetchConfig();
     void fetchLuckyWheel();
     void fetchLinkedUsers(1, linkedUsersSearch);
   }
 
-  const saveSlotEdit = async () => {
-    if (!token || !editingSlot || !slotEditForm.date || !slotEditForm.startTime || !slotEditForm.endTime) return;
-    if (hourToMinutes(slotEditForm.endTime) <= hourToMinutes(slotEditForm.startTime)) {
-      setError("Gio ket thuc phai sau gio bat dau");
-      return;
-    }
-    setSubmitting(true); setError(null);
-    try {
-      const res = await fetch(`/api/shop/delivery-slots/${editingSlot}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          startAt: toVietnamIso(slotEditForm.date, slotEditForm.startTime),
-          endAt: toVietnamIso(slotEditForm.date, slotEditForm.endTime),
-          note: slotEditForm.note,
-          active: slotEditForm.active,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Luu khung gio that bai");
-      setEditingSlot(null);
-      await fetchSlots();
-    } catch (err) { setError(err instanceof Error ? err.message : "Luu khung gio that bai"); }
-    setSubmitting(false);
-  };
+
 
   /* --- BANNERS & BEST SELLERS CONFIG --- */
   const handleBannerSave = async () => {
@@ -704,7 +524,7 @@ export default function AdminPage() {
         </div>
 
         <div className="mb-6 flex gap-2 border-b border-[#1E1E1E] pb-3">
-          {(["Sản Phẩm", "Khung Giờ Giao Hàng", "Game", "Cấu Hình", "Tài Khoản Web"] as const).map((t) => (
+          {(["Sản Phẩm", "Game", "Cấu Hình", "Tài Khoản Web"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t as typeof tab)} className={"rounded-[14px] px-4 py-2 text-sm font-medium " + (tab === t ? "bg-[#2F9BE6] text-white" : "bg-[#111111] text-[#B5B5B5]/80 hover:text-[#B5B5B5]")}>
               {t}
             </button>
@@ -773,145 +593,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ─── TAB: SLOTS ─── */}
-        {tab === "Khung Giờ Giao Hàng" && (
-          <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
-            <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-4 h-fit">
-              <div>
-                <h2 className="font-semibold text-lg">Tạo khung giờ giao hàng</h2>
-                <p className="text-xs text-[#B5B5B5]/80">Chọn ngày và từng giờ theo giờ Việt Nam. Khách sẽ thấy giờ đã tự đổi theo timezone của họ.</p>
-              </div>
-
-              <form onSubmit={createSlots} className="space-y-4">
-                <div className="rounded-[16px] border border-[#1E1E1E] bg-[#050505] p-3">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <button type="button" onClick={() => setSlotMonth((current) => addMonths(current, -1))} className="rounded-[12px] bg-[#111111] p-2 text-[#B5B5B5] hover:text-white">
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <div className="text-sm font-semibold text-white">{getMonthLabel(slotMonth)}</div>
-                    <button type="button" onClick={() => setSlotMonth((current) => addMonths(current, 1))} className="rounded-[12px] bg-[#111111] p-2 text-[#B5B5B5] hover:text-white">
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-[#B5B5B5]/70">
-                    {WEEKDAY_LABELS.map((day) => <div key={day}>{day}</div>)}
-                  </div>
-                  <div className="grid grid-cols-7 gap-1">
-                    {slotCalendarDays.map((day) => (
-                      <button
-                        key={day.key}
-                        type="button"
-                        onClick={() => {
-                          setSlotDate(day.key);
-                          setSlotMonth(day.key.slice(0, 7));
-                        }}
-                        className={"h-10 rounded-[12px] text-sm font-medium transition-all " + (slotDate === day.key
-                          ? "bg-[#2F9BE6] text-white"
-                          : day.inMonth
-                            ? "bg-[#111111] text-[#B5B5B5] hover:bg-[#1E1E1E] hover:text-white"
-                            : "bg-transparent text-[#B5B5B5]/30 hover:bg-[#111111]")}
-                      >
-                        {day.day}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-xs text-[#B5B5B5]/80">Ngày đã chọn: <span className="font-medium text-white">{slotDate}</span></p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-[#B5B5B5]/60">Từ giờ</label>
-                    <select value={slotStartTime} onChange={(e) => setSlotStartTime(e.target.value)} className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-3 py-3 text-sm outline-none">
-                      {HOUR_OPTIONS.slice(0, -1).map((time) => <option key={time} value={time}>{time}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-[#B5B5B5]/60">Đến giờ</label>
-                    <select value={slotEndTime} onChange={(e) => setSlotEndTime(e.target.value)} className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-3 py-3 text-sm outline-none">
-                      {HOUR_OPTIONS.slice(1).map((time) => <option key={time} value={time}>{time}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <input
-                  placeholder="Ghi chú (tùy chọn)"
-                  value={slotNote}
-                  onChange={(e) => setSlotNote(e.target.value)}
-                  className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none"
-                />
-                <button type="submit" disabled={submitting} className="w-full rounded-[14px] bg-[#2F9BE6] px-4 py-3 text-sm font-semibold disabled:opacity-50">
-                  {submitting ? "Đang tạo..." : "Tạo khung giờ"}
-                </button>
-                <div className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] p-3 text-xs text-[#B5B5B5]/80">
-                  Slot sẽ tạo: <span className="font-medium text-white">{slotDate}</span>, <span className="font-medium text-white">{slotStartTime} - {slotEndTime}</span> giờ Việt Nam.
-                </div>
-              </form>
-            </div>
-            <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-3">
-              <h2 className="font-semibold text-lg">Khung giờ đã tạo (giờ Việt Nam)</h2>
-              <div className="mb-4 flex items-center gap-3">
-                <label className="text-sm text-[#B5B5B5]/80" htmlFor="slot-filter">Lọc theo tháng:</label>
-                <input
-                  id="slot-filter"
-                  type="month"
-                  value={slotFilter}
-                  onChange={(e) => setSlotFilter(e.target.value)}
-                  className="rounded border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none"
-                />
-                {slotFilter && (
-                  <button type="button" onClick={() => setSlotFilter("")} className="text-xs text-[#B5B5B5]/60 hover:text-white">
-                    Xóa lọc
-                  </button>
-                )}
-              </div>
-              {slotsLoading && <p className="text-[#B5B5B5]/60 text-sm">Đang tải...</p>}
-              {filteredSlots.map((s) => (
-                <div key={s._id} className={"border border-[#1E1E1E] bg-[#050505] p-4 rounded-[14px] transition-all " + (s.active ? "" : "opacity-60")}>
-                  {editingSlot === s._id ? (
-                    <div className="space-y-3 animate-fade-in">
-                      <div className="grid gap-2 md:grid-cols-3">
-                        <div className="space-y-1"><label className="text-xs text-[#B5B5B5]/60">Ngày</label><input type="date" value={slotEditForm.date} onChange={(e) => setSlotEditForm((p) => ({ ...p, date: e.target.value }))} className="w-full rounded border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none" /></div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-[#B5B5B5]/60">Từ giờ</label>
-                          <select value={slotEditForm.startTime} onChange={(e) => setSlotEditForm((p) => ({ ...p, startTime: e.target.value }))} className="w-full rounded border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none">
-                            {HOUR_OPTIONS.slice(0, -1).map((time) => <option key={time} value={time}>{time}</option>)}
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-[#B5B5B5]/60">Đến giờ</label>
-                          <select value={slotEditForm.endTime} onChange={(e) => setSlotEditForm((p) => ({ ...p, endTime: e.target.value }))} className="w-full rounded border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none">
-                            {HOUR_OPTIONS.slice(1).map((time) => <option key={time} value={time}>{time}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                      <input placeholder="Ghi chú (tùy chọn)" value={slotEditForm.note} onChange={(e) => setSlotEditForm((p) => ({ ...p, note: e.target.value }))} className="w-full rounded border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none" />
-                      <label className="flex items-center gap-2 text-sm text-[#B5B5B5]">
-                        <input type="checkbox" checked={slotEditForm.active} onChange={(e) => setSlotEditForm((p) => ({ ...p, active: e.target.checked }))} />
-                        Active
-                      </label>
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => void saveSlotEdit()} disabled={submitting} className="rounded bg-[#2F9BE6] px-4 py-2 text-xs font-semibold disabled:opacity-50">Lưu</button>
-                        <button type="button" onClick={() => setEditingSlot(null)} className="rounded bg-[#1E1E1E] px-4 py-2 text-xs">Hủy</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <div className={s.active ? "" : "line-through"}>
-                        <p className="font-medium text-sm">{formatSlotRange(s)}</p>
-                        {s.note && <p className="text-xs text-[#B5B5B5]/80 mt-1">{s.note}</p>}
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => startEditSlot(s)} className="p-2 text-[#2F9BE6] bg-[#111111] rounded" title="Sua"><Edit2 className="h-4 w-4" /></button>
-                        <button onClick={() => void toggleSlot(s._id, !s.active)} className={"p-2 rounded " + (s.active ? "text-[#2F9BE6] bg-[#111111]" : "text-[#3DDC84] bg-[#111111]")} title={s.active ? "Tat" : "Bat"}><RefreshCcw className="h-4 w-4" /></button>
-                        <button onClick={() => void deleteSlot(s._id)} className="p-2 text-[#FF4D4F] bg-[#111111] rounded" title="Xóa"><Trash2 className="h-4 w-4" /></button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ─── TAB: GAMES ─── */}
         {tab === "Game" && (

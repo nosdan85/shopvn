@@ -467,26 +467,25 @@ const buildTicketErrorResponse = (error) => {
 };
 const normalizeTicketStatus = (value) => {
     const status = String(value || '').trim().toLowerCase();
-    if (status === 'ready') return 'created';
-    if (status === 'creating') return 'creating';
-    if (status === 'created') return 'created';
-    if (status === 'failed') return 'failed';
-    if (status === 'panel') return 'panel';
-    return 'pending';
+    if (status === 'ready' || status === 'created' || status === 'da_tao') return 'da_tao';
+    if (status === 'creating' || status === 'dang_tao') return 'dang_tao';
+    if (status === 'failed' || status === 'that_bai') return 'that_bai';
+    if (status === 'closed' || status === 'dong') return 'dong';
+    return 'chua_yeu_cau';
 };
 const normalizePayPalTicketStatus = (value) => {
     const status = String(value || '').trim().toLowerCase();
-    if (status === 'creating') return 'creating';
-    if (status === 'created') return 'created';
-    if (status === 'failed') return 'failed';
-    return 'pending';
+    if (status === 'creating' || status === 'dang_tao') return 'dang_tao';
+    if (status === 'created' || status === 'da_tao') return 'da_tao';
+    if (status === 'failed' || status === 'that_bai') return 'that_bai';
+    return 'chua_yeu_cau';
 };
 const normalizeLtcTicketStatus = (value) => {
     const status = String(value || '').trim().toLowerCase();
-    if (status === 'creating') return 'creating';
-    if (status === 'created') return 'created';
-    if (status === 'failed') return 'failed';
-    return 'pending';
+    if (status === 'creating' || status === 'dang_tao') return 'dang_tao';
+    if (status === 'created' || status === 'da_tao') return 'da_tao';
+    if (status === 'failed' || status === 'that_bai') return 'that_bai';
+    return 'chua_yeu_cau';
 };
 const getLockRetryAfterMs = (lockUntil) => {
     if (!lockUntil) return 0;
@@ -514,9 +513,6 @@ const buildClientPayUrl = (orderId, extraQuery = '') => {
 const getTicketReadinessError = (order) => {
     if (!order?.robloxUsername || !order?.robloxUserId) {
         return { status: 409, error: 'Link your Roblox account before creating a ticket.', code: 'ROBLOX_LINK_REQUIRED' };
-    }
-    if (!order?.deliverySlotId || !order?.deliveryCustomerStartAt || !order?.deliveryCustomerEndAt) {
-        return { status: 409, error: 'Select a delivery time before creating a ticket.', code: 'DELIVERY_SLOT_REQUIRED' };
     }
     return null;
 };
@@ -1435,7 +1431,7 @@ const acquireOrderTicketLock = async ({ orderId, discordId }) => {
                 }
             ],
             $or: [
-                { ticketStatus: { $in: ['pending', 'failed', 'creating', 'ready', 'created'] } },
+                { ticketStatus: { $in: ['pending', 'failed', 'creating', 'ready', 'da_tao'] } },
                 { ticketStatus: null },
                 { ticketStatus: { $exists: false } }
             ]
@@ -2290,21 +2286,20 @@ router.post('/fingerprint', authRequired, async (req, res) => {
 
 router.get('/my-referral-code', authRequired, async (req, res) => {
     try {
-        const discordId = await requireAuthenticatedDiscordId(req, res);
-        if (!discordId) return;
-
-        const referralCode = buildReferralCode(discordId);
-        const rewarded = await Referral.countDocuments({
+        const viewerTaiKhoanId = String(req.user?.userId || req.user?._id || '').trim();
+        const taiKhoan = viewerTaiKhoanId ? await TaiKhoan.findById(viewerTaiKhoanId).select('referralCode referralAppliedCode').lean().catch(() => null) : null;
+        const discordId = await requireAuthenticatedDiscordId(req, res, { notLinkedStatus: 200, notLinkedMessage: 'Discord account not linked' });
+        const referralCode = String(taiKhoan?.referralCode || '').trim() || buildReferralCode(discordId || viewerTaiKhoanId || '');
+        const rewarded = discordId ? await Referral.countDocuments({
             referrerDiscordId: discordId,
             status: 'rewarded'
-        });
-        const me = await User.findOne({ discordId }).select('referralAppliedCode').lean();
+        }) : 0;
 
         return res.json({
             referralCode,
             usedCount: rewarded,
             rewardEarned: rewarded,
-            referralApplied: Boolean(me?.referralAppliedCode)
+            referralApplied: Boolean(taiKhoan?.referralAppliedCode)
         });
     } catch (error) {
         console.error('[MY_REFERRAL_CODE] Error:', error);
@@ -2897,6 +2892,8 @@ router.post('/referral/apply', authRequired, async (req, res) => {
   try {
     const discordId = await requireAuthenticatedDiscordId(req, res);
     if (!discordId) return;
+    const viewerTaiKhoanId = String(req.user?.userId || req.user?._id || '').trim();
+    const taiKhoan = viewerTaiKhoanId ? await TaiKhoan.findById(viewerTaiKhoanId).lean().catch(() => null) : null;
 
     const referralCodeRaw = String(req.body?.referralCode || '').trim();
     const validatedRefCode = normalizeReferralCode(referralCodeRaw);
@@ -2905,8 +2902,9 @@ router.post('/referral/apply', authRequired, async (req, res) => {
     // Check if user already applied a referral code (only once per account)
     const me = await User.findOne({ discordId }).lean();
     if (!me) return res.status(404).json({ error: 'User not found.' });
+    if (viewerTaiKhoanId && !taiKhoan) return res.status(404).json({ error: 'Account not found.' });
 
-    if (hasDifferentAppliedReferralCode({ requestedReferralCode: validatedRefCode, storedReferralCode: me.referralAppliedCode })) {
+    if (hasDifferentAppliedReferralCode({ requestedReferralCode: validatedRefCode, storedReferralCode: taiKhoan?.referralAppliedCode || me.referralAppliedCode })) {
       return res.status(409).json({ error: 'You have already applied an invite code. Each account can only use one invite code.' });
     }
 
@@ -2939,6 +2937,17 @@ router.post('/referral/apply', authRequired, async (req, res) => {
         }
       }
     );
+    if (viewerTaiKhoanId) {
+      await TaiKhoan.updateOne(
+        { _id: viewerTaiKhoanId },
+        {
+          $set: {
+            referralAppliedCode: validatedRefCode,
+            referralAppliedAt: new Date()
+          }
+        }
+      );
+    }
 
     return res.json({
       success: true,
@@ -2959,12 +2968,19 @@ router.post('/referral/clear', authRequired, async (req, res) => {
   try {
     const discordId = await requireAuthenticatedDiscordId(req, res);
     if (!discordId) return;
+    const viewerTaiKhoanId = String(req.user?.userId || req.user?._id || '').trim();
 
     // Clear invite code from user
     await User.updateOne(
       { discordId },
       { $unset: { referralAppliedCode: 1, referralAppliedAt: 1 } }
     );
+    if (viewerTaiKhoanId) {
+      await TaiKhoan.updateOne(
+        { _id: viewerTaiKhoanId },
+        { $unset: { referralAppliedCode: 1, referralAppliedAt: 1 } }
+      );
+    }
 
     console.log('[REFERRAL] Cleared invite code for user:', discordId);
 
@@ -3001,15 +3017,14 @@ router.post('/referral/admin-clear', authRequired, async (req, res) => {
 
 router.get('/referral/status', authRequired, async (req, res) => {
   try {
-    const discordId = await requireAuthenticatedDiscordId(req, res);
-    if (!discordId) return;
+    const viewerTaiKhoanId = String(req.user?.userId || req.user?._id || '').trim();
+    const taiKhoan = viewerTaiKhoanId ? await TaiKhoan.findById(viewerTaiKhoanId).select('referralAppliedCode').lean().catch(() => null) : null;
 
-    const user = await User.findOne({ discordId }).select('referralAppliedCode').lean();
-    const hasApplied = Boolean(normalizeReferralCode(user?.referralAppliedCode || ''));
+    const hasApplied = Boolean(normalizeReferralCode(taiKhoan?.referralAppliedCode || ''));
 
     return res.json({
       hasApplied,
-      referralCode: hasApplied ? String(user.referralAppliedCode) : ''
+      referralCode: hasApplied ? String(taiKhoan?.referralAppliedCode || '') : ''
     });
   } catch (error) {
     console.error('Referral status error:', error);
@@ -3032,6 +3047,7 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
     try {
         const viewer = getOptionalRequestUser(req);
         const discordId = String(viewer?.discordId || '').trim();
+        const viewerTaiKhoanId = String(viewer?.userId || viewer?._id || '').trim();
         const cartItems = Array.isArray(req.body?.cartItems) ? req.body.cartItems : [];
         const couponCodeRaw = req.body?.couponCode;
 
@@ -3042,6 +3058,7 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
 
         checkoutStep = 'load_user';
         const dbUser = discordId ? await User.findOne({ discordId }).lean() : null;
+        const taiKhoan = viewerTaiKhoanId ? await TaiKhoan.findById(viewerTaiKhoanId).lean().catch(() => null) : null;
 
         // Debug logging
         log.info('[CHECKOUT] User referral status', {
@@ -3054,7 +3071,7 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
         const referralCodeRequested = req.body?.referralCode;
         const referralCodeApplied = resolveAppliedReferralCode({
             requestedReferralCode: referralCodeRequested,
-            storedReferralCode: dbUser?.referralAppliedCode || ''
+            storedReferralCode: taiKhoan?.referralAppliedCode || dbUser?.referralAppliedCode || ''
         });
         let validatedRefCode = referralCodeApplied;
 
@@ -3082,6 +3099,9 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
                 validatedRefCode = '';
                 referralDiscountPercent = 0;
                 await User.updateOne({ discordId }, { $unset: { referralAppliedCode: 1, referralAppliedAt: 1 } }).catch(() => {});
+                if (taiKhoan?._id) {
+                    await TaiKhoan.updateOne({ _id: taiKhoan._id }, { $unset: { referralAppliedCode: 1, referralAppliedAt: 1 } }).catch(() => {});
+                }
             }
         } else {
             log.info('[CHECKOUT] No referral code applied', { requestId: req.requestId });
@@ -3136,6 +3156,7 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
         let newOrder = null;
         let orderId = '';
         let products = [];
+        const accountReferralCode = String(taiKhoan?.referralCode || '').trim().toUpperCase();
 
         for (let attempt = 0; attempt < 3; attempt += 1) {
             checkoutStep = 'counter_increment';
@@ -3168,17 +3189,17 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
                     couponDiscountPercent,
                     referralDiscountPercent,
                     couponCode,
-                    referralCode: validatedRefCode,
+                    referralCode: validatedRefCode || accountReferralCode,
                     referredByDiscordId,
                     total: totalAmount,
                     totalAmount,
-                    paymentMethod: 'paypal_ff',
-                    paymentStatus: 'pending',
+                    paymentMethod: 'wallet',
+                    paymentStatus: 'paid',
                     memoExpected: buildMemoExpected({ orderId }),
-                    txnId: '',
-                    paidAt: null,
+                    txnId: `WALLET_${orderId}`,
+                    paidAt: new Date(),
                     status: 'da_thanh_toan',
-                    ticketStatus: 'pending',
+                    ticketStatus: 'chua_yeu_cau',
                     ticketError: ''
                 });
 
@@ -3244,12 +3265,12 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
             totalAmount: newOrder.totalAmount,
             items: newOrder.items || [],
             customerEmail: '',
-            paymentMethod: 'paypal_ff',
-            paymentStatus: 'pending',
+            paymentMethod: 'wallet',
+            paymentStatus: 'paid',
             memoExpected: newOrder.memoExpected || buildMemoExpected(newOrder),
             ticketMode: 'bot',
             channelId: null,
-            ticketStatus: 'pending',
+            ticketStatus: 'chua_yeu_cau',
             ticketError: ''
         });
     } catch (err) {
@@ -3452,7 +3473,6 @@ router.post('/create-payment', async (req, res) => {
             });
 
             await Order.findByIdAndUpdate(order._id, {
-                paymentMethod: 'ltc',
                 paymentStatus: 'pending'
             });
             return res.json({
@@ -4335,7 +4355,6 @@ router.post('/create-ticket-ltc', authRequired, ticketCreateLimiter, requirePaym
         if (readinessError) return res.status(readinessError.status).json(readinessError);
 
         if (isPanelTicketMode()) {
-            await Order.findByIdAndUpdate(order._id, { paymentMethod: 'ltc' });
             return res.json({
                 mode: 'panel',
                 panelUrl: getTicketPanelUrl(),
@@ -4453,10 +4472,9 @@ router.post('/create-ticket-ltc', authRequired, ticketCreateLimiter, requirePaym
             { _id: lockedOrder._id, ltcTicketLockUntil: lockAcquiredUntil },
             {
                 $set: {
-                    paymentMethod: 'ltc',
                     ltcTicketChannel: channelName,
                     ltcTicketChannelId: channelId,
-                    ltcTicketStatus: 'created',
+                    ltcTicketStatus: 'da_tao',
                     ltcTicketError: ''
                 },
                 $unset: { ltcTicketLockUntil: 1 }
@@ -4489,10 +4507,9 @@ router.post('/create-ticket-ltc', authRequired, ticketCreateLimiter, requirePaym
                 },
                 {
                     $set: {
-                        paymentMethod: 'ltc',
                         ltcTicketChannel: channelName,
                         ltcTicketChannelId: channelId,
-                        ltcTicketStatus: 'created',
+                        ltcTicketStatus: 'da_tao',
                         ltcTicketError: ''
                     },
                     $unset: { ltcTicketLockUntil: 1 }
@@ -4660,19 +4677,14 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
             {
                 $set: {
                     channelId,
-                    ticketStatus: 'created',
+                    ticketStatus: 'da_tao',
                     ticketError: '',
-                    paymentMethod: 'cashapp',
-        status: lockedOrder.status === 'cho_xu_ly' ? 'da_thanh_toan' : lockedOrder.status
+                    paymentMethod: 'wallet',
+                    status: lockedOrder.status === 'cho_xu_ly' ? 'da_thanh_toan' : lockedOrder.status
                 },
                 $unset: { ticketLockUntil: 1 }
             }
         );
-
-        await Referral.updateOne(
-            { refereeDiscordId: lockedOrder.discordId, status: 'pending' },
-            { $set: { status: 'consumed' } }
-        ).catch(err => console.error('[REFERRAL] Mark consumed error:', err));
         if (!persistResult?.matchedCount) {
             const fresh = await Order.findById(lockedOrder._id).lean();
             if (fresh?.channelId) {
@@ -4695,9 +4707,9 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
                 {
                     $set: {
                         channelId,
-                        ticketStatus: 'created',
+                        ticketStatus: 'da_tao',
                         ticketError: '',
-                        paymentMethod: 'cashapp',
+                        paymentMethod: 'wallet',
             status: lockedOrder.status === 'cho_xu_ly' ? 'da_thanh_toan' : lockedOrder.status
                     },
                     $unset: { ticketLockUntil: 1 }

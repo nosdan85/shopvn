@@ -1,162 +1,169 @@
-# Kế hoạch sửa lỗi auth/admin và 401 toàn hệ thống
+# Kế hoạch sửa lỗi mới: checkout 500, referral code, đơn vị tiền VND, bỏ delivery slots, và lỗi 400 thêm sản phẩm
 
-## Mục tiêu
-- Xóa tình trạng `Authentication required` xuất hiện ở toàn bộ màn hình quản trị khi user đã đăng nhập admin hợp lệ.
-- Sửa các endpoint admin/owner/settings để nhận đúng loại token hiện tại của web admin (`webToken` từ `AuthVietContext`), không chỉ Discord token.
-- Đồng bộ các proxy route Next.js trong `web/app/api/*` để truyền Authorization ổn định, parse lỗi an toàn, và tránh gây 401 giả do route mismatch.
-- Rà soát các chỗ gọi sai endpoint ở màn hình quản trị khiến thao tác “save setting” không apply được.
-- Sau sửa, đảm bảo các luồng quản trị chính hoạt động: products, games, banners, best sellers, lucky wheel, delivery slots, linked users, dashboard analytics/admin orders.
+## Chẩn đoán nhanh từ lỗi mới
 
-## Phát hiện chính
+### 1) Lỗi 400 khi thêm sản phẩm ở `/api/shop/owner/products`
+Nguyên nhân có khả năng cao là **mismatch schema dữ liệu giữa admin UI và backend**:
+- `web/app/admin/page.tsx` đang gửi:
+  - `price`
+  - `bulkPrice`
+  - `packQuantity`
+  - `image`
+  - `category`
+  - `gameId`
+- backend `api/routes/shopRoutes.js` validate các field này và yêu cầu `image` bắt buộc.
+- UI trước đó không hiện message backend thật, nên chỉ thấy HTTP 400 ở DevTools.
 
-### 1) Nguyên nhân gốc của 401 ở admin/owner
-Backend `api/routes/shopRoutes.js` đang bảo vệ hầu hết endpoint owner/admin theo mẫu:
-- `authRequired`
-- sau đó đọc `req.user.discordId`
-- nếu không có `discordId` thì trả `401 Authentication required`
+Đợt sửa vừa rồi đã cho frontend hiện lỗi thật từ backend, nhưng để xử lý triệt để vẫn cần kiểm tra:
+- `image` có đang để rỗng hoặc chỉ nhập path không hợp lệ không
+- `gameId` có bị gửi chuỗi rỗng/invalid ObjectId ở một số nhánh không
+- `price` đang mang ý nghĩa VND nhưng backend/product model/shop-side khác vẫn đang dùng format USD
 
-Trong khi web admin hiện đang dùng `AuthVietContext` với token lưu ở `webToken`, lấy từ `/api/tai-khoan/dang-nhap`. Token này là web-account token (`_id`, `tenDangNhap`, `vaiTro`), **không nhất thiết có `discordId`**.
+### 2) Lỗi checkout 500 với thông báo enum `paymentMethod: 'paypal_ff'` và `ticketStatus: 'pending'`
+Đây là lỗi **mismatch giữa code cũ và model `Order` mới**.
 
-Kết quả:
-- middleware `authRequired` cho qua vì token hợp lệ
-- nhưng controller/route owner lại tự fail vì không tìm thấy `req.user.discordId`
-- nên toàn bộ trang admin/settings báo 401 dù đã login
+`api/models/Order.js` hiện đã refactor theo shop VN:
+- `paymentMethod` enum chỉ còn: `['wallet']`
+- `ticketStatus` enum chỉ còn:
+  - `chua_yeu_cau`
+  - `dang_tao`
+  - `da_tao`
+  - `that_bai`
+  - `dong`
 
-Đây là lỗi kiến trúc auth không đồng nhất giữa:
-- web account auth (`TaiKhoan`)
-- discord/shop owner auth (`User` + discordId)
-- admin auth (`role: admin`)
+Nhưng một số flow checkout / ticket / payment cũ trong code vẫn còn gán:
+- `paymentMethod = 'paypal_ff'`
+- `ticketStatus = 'pending'`
 
-### 2) Một số route web gọi sai endpoint backend
-Đã thấy ít nhất các mismatch sau:
-- `web/app/admin/page.tsx` gọi `DELETE /api/shop/owner/web-accounts/:id/cart`
-  - backend thật có: `DELETE /api/shop/owner/linked-users/:discordId/cart`
-- `web/app/api/shop/delivery-slots/route.ts`
-  - GET manage dùng `/api/shop/delivery-slots/manage` ✅
-  - POST lại dùng `/api/shop/delivery-slots/bulk` ✅
-  - nhưng UI/admin code có nhiều đoạn cũ cần rà consistency
+=> chỉ cần save order là Mongoose nổ validation error, gây checkout 500.
 
-### 3) Proxy Next.js không thống nhất chất lượng
-Nhiều route trong `web/app/api/*`:
-- copy-paste `API_BASE_URL` thay vì dùng helper `backendUrl`
-- không luôn parse JSON an toàn
-- không luôn thêm `no-store`
-- không luôn forward status/body ổn định
+### 3) Mỗi tài khoản phải có 1 mã mời và phải nhập được
+Hiện repo có **2 hệ account/user song song**:
+- `TaiKhoan` (web account Việt hóa)
+- `User` (Discord-linked shop user cũ)
 
-Điều này không nhất thiết gây 401 gốc, nhưng làm debug khó, khiến frontend thấy lỗi mơ hồ hoặc lỗi không đồng nhất.
+Referral code hiện thiên về `User.referralCode` / `buildReferralCode(discordId)`.
+Nếu mục tiêu mới là **mỗi tài khoản web phải luôn có 1 mã mời**, thì cần chuyển logic referral theo `TaiKhoan` hoặc đồng bộ chắc chắn từ `TaiKhoan` sang `User`.
 
-### 4) Admin analytics dùng nhánh auth khác với owner settings
-- `/api/admin/*` dùng `requireOwnerOrAdmin`
-- `/api/shop/owner/*` dùng `authRequired` + `canAccessOwnerEndpoints(discordId)`
+Cần quyết định và triển khai nhất quán:
+- web user login bằng `TaiKhoan`
+- mã mời cũng phải bám `TaiKhoan`
+- nhập mã mời/preview/apply/checkout phải đọc cùng một nguồn dữ liệu
 
-Tức là analytics/admin orders có thể dùng được với admin token, còn owner config/settings thì lại chết nếu thiếu `discordId`.
+### 4) Giá nhập là VND nhưng UI/logic đang hiểu như USD
+Codebase đang bị **lai 2 hệ tiền tệ**:
+- nhánh VN mới dùng `priceVnd`, `subtotalVnd`, `amountVnd`, `soDuVnd`
+- nhánh shop cũ vẫn dùng `price`, `totalAmount`, `USD`, `formatMoney`, PayPal/LTC/CashApp
+
+Ví dụ:
+- `api/models/Product.js` vẫn lưu `price` kiểu generic
+- `web/app/shop/page.tsx` hiển thị giá theo format cũ
+- `web/app/cua-hang/page.tsx` checkout VN dùng `donGiaVnd`
+
+=> khi nhập `10000`, một số màn coi đó là `$10000` thay vì `10.000 VND`.
+
+### 5) Bỏ hẳn tạo khung giờ giao hàng
+Hiện delivery slots đang xuất hiện ở nhiều nơi:
+- backend routes `api/routes/shopRoutes.js`
+- admin tab trong `web/app/admin/page.tsx`
+- shop page chọn timezone/slot trong `web/app/shop/page.tsx`
+- test và proxy liên quan `web/app/api/shop/delivery-slots/*`
+
+Nếu muốn **bỏ hẳn**, cần gỡ đồng bộ UI + proxy + backend, không chỉ ẩn nút.
+
+---
 
 ## Hướng sửa đề xuất
 
-### A. Chuẩn hóa cách backend nhận diện owner/admin
-Tạo helper auth/identity dùng chung ở backend (ví dụ ngay trong `shopRoutes.js` hoặc tách ra util/middleware mới) với logic:
-1. Nếu `req.user.role === 'admin'` hoặc payload web account có `vaiTro=quan_tri` / owner account -> cho qua owner endpoints.
-2. Nếu có `req.user.discordId` -> vẫn hỗ trợ owner Discord flow cũ.
-3. Nếu token là web account (`_id`, `userId`, `tenDangNhap`) thì resolve `TaiKhoan` từ DB để kiểm tra role admin/owner.
-4. Chỉ trả 401 khi token thật sự không hợp lệ / không có user identity.
-5. Trả 403 khi đã xác thực nhưng không đủ quyền.
+### A. Sửa dứt điểm checkout 500 trước
+Ưu tiên cao nhất vì đang chặn flow mua hàng.
 
-Cách này xử lý tận gốc lỗi “đăng nhập rồi mà vẫn Authentication required”.
+Việc cần làm:
+1. Tìm tất cả chỗ đang gán `paymentMethod = 'paypal_ff'`, `'ltc'`, `'cashapp'`, `'pending'` ticket status cũ.
+2. Đồng bộ chúng về model mới:
+   - `paymentMethod: 'wallet'` (hoặc mở lại enum nếu bạn muốn giữ nhiều phương thức)
+   - `ticketStatus` dùng enum mới (`chua_yeu_cau`, `dang_tao`, ...)
+3. Kiểm tra file checkout VN (`web/app/cua-hang/page.tsx`, `api/routes/donHangRoutes.js`) để chắc chỉ đi qua flow VND mới.
 
-### B. Tách rõ 2 khái niệm
-- `requireAuthenticatedUser`: chỉ cần token hợp lệ
-- `requireOwnerAccess`: token hợp lệ + có quyền owner/admin
+### B. Chuẩn hóa giá sản phẩm sang VND
+Có 2 hướng, nhưng mình đề xuất hướng an toàn nhất:
+- **Giữ `Product.price` nhưng định nghĩa rõ đó là VND** trong admin/shop VN hiện tại.
+- Sửa toàn bộ UI shop/admin để hiển thị bằng `vi-VN` và hậu tố `VND`, không dùng format `$`.
+- Loại bỏ hoặc cô lập các helper USD ở flow người dùng VN.
 
-Áp dụng vào toàn bộ route owner:
-- `/owner/products*`
-- `/owner/games*`
-- `/owner/config/*`
-- `/owner/lucky-wheel`
-- `/owner/linked-users*`
-- `/delivery-slots/manage`
-- `/delivery-slots/bulk`
-- `/delivery-slots/:id` (PATCH/DELETE)
-- các route quản trị proof/confirmed orders nếu cùng quyền
+Việc cần làm:
+1. sửa admin form/product list để label rõ `VND`
+2. sửa product rendering ở `shop/page.tsx` và các component liên quan
+3. rà helper format tiền / checkout summary / cart / proof / ticket nếu đang hiển thị `$`
 
-### C. Sửa UI admin đang gọi sai route
-Trong `web/app/admin/page.tsx`:
-- đổi `owner/web-accounts/:id/cart` -> `owner/linked-users/:discordId/cart`
-- rà thêm các action save/delete để chắc route khớp backend thật
+### C. Làm mã mời cho mỗi tài khoản web
+Triển khai theo `TaiKhoan` để khớp luồng đăng nhập hiện tại.
 
-### D. Chuẩn hóa các Next proxy route
-Ưu tiên sửa toàn bộ nhóm đang liên quan trực tiếp admin/settings/401:
-- `web/app/api/admin/orders/route.ts`
-- `web/app/api/admin/order/[id]/route.ts`
-- `web/app/api/admin/analytics/*`
-- `web/app/api/shop/owner/**/*`
-- `web/app/api/shop/delivery-slots/**/*`
+Việc cần làm:
+1. sinh referral code ổn định cho mỗi `TaiKhoan` nếu chưa có
+2. expose API lấy mã mời theo account đang login
+3. sửa preview/apply/checkout để đọc mã mời từ hệ account web
+4. vẫn tương thích với Discord-linked side nếu cần
 
-Chuẩn hóa theo pattern:
-- dùng `backendUrl()` và `noStoreHeaders()`
-- forward `Authorization` nguyên vẹn
-- `parseJsonSafe`
-- trả nguyên `status` backend
-- `cache: 'no-store'`
+### D. Gỡ hẳn delivery slots
+Việc cần làm:
+1. bỏ tab “Khung Giờ Giao Hàng” khỏi `web/app/admin/page.tsx`
+2. bỏ các phần shop page đang tải/chọn slot nếu còn dùng
+3. gỡ proxy `web/app/api/shop/delivery-slots/*`
+4. vô hiệu hóa hoặc giữ route backend nhưng không còn được gọi từ UI
 
-### E. Rà soát phản hồi 401/403 để frontend hiển thị đúng
-Hiện nhiều chỗ trả `401 Authentication required` dù thực tế là thiếu quyền hoặc thiếu discord binding.
-Cần đổi cho chính xác:
-- 401: chưa đăng nhập / token sai / token hết hạn
-- 403: đã đăng nhập nhưng không phải owner/admin
+### E. Sửa lỗi 400 thêm sản phẩm
+Việc cần làm:
+1. giữ hiển thị lỗi backend thật (đã làm)
+2. thêm validate frontend trước submit:
+   - tên bắt buộc
+   - category bắt buộc
+   - giá > 0
+   - image bắt buộc
+3. nếu `gameId === ''` thì gửi `null`, không gửi chuỗi rỗng
+4. nếu backend còn reject vì image/path/schema thì sửa route/model tương ứng
 
-Điều này giúp log Chrome và debug frontend rõ hơn.
+---
 
 ## File dự kiến chỉnh sửa
 
 ### Backend
+- `api/models/Order.js`
+- `api/routes/donHangRoutes.js`
 - `api/routes/shopRoutes.js`
-  - refactor toàn bộ gate owner/admin
-  - thêm helper resolve owner/admin từ `req.user`
-  - sửa các route owner để không phụ thuộc cứng vào `req.user.discordId`
-- có thể cần:
-  - `api/middleware/authMiddleware.js` (nếu cần bổ sung metadata token/user)
-  - `api/utils/ownerAccess.js` (nếu muốn gom logic role)
-  - `api/routes/adminRoutes.js` (kiểm tra đồng bộ payload role)
+- `api/models/Product.js` (nếu cần làm rõ semantics VND)
+- `api/utils/orderPaymentInfo.js`
+- `api/utils/paymentProofLog.js`
+- có thể thêm/sửa logic referral ở:
+  - `api/models/TaiKhoan.js`
+  - `api/routes/taiKhoanRoutes.js`
+  - `api/utils/referralRewards.js`
 
-### Frontend / Next proxies
+### Frontend
+- `web/app/cua-hang/page.tsx`
+- `web/app/shop/page.tsx`
 - `web/app/admin/page.tsx`
-- `web/app/api/admin/orders/route.ts`
-- `web/app/api/admin/order/[id]/route.ts`
-- `web/app/api/admin/analytics/sales/route.ts`
-- `web/app/api/admin/analytics/recent-orders/route.ts`
-- `web/app/api/admin/analytics/top-products/route.ts`
-- `web/app/api/admin/analytics/proof-stats/route.ts`
-- `web/app/api/shop/owner/config/banners/route.ts`
-- `web/app/api/shop/owner/config/banners/upload/route.ts`
-- `web/app/api/shop/owner/config/best-sellers/route.ts`
-- `web/app/api/shop/owner/games/route.ts`
-- `web/app/api/shop/owner/games/[id]/route.ts`
-- `web/app/api/shop/owner/linked-users/route.ts`
-- `web/app/api/shop/owner/linked-users/[discordId]/route.ts`
-- `web/app/api/shop/owner/linked-users/[discordId]/cart/route.ts`
-- `web/app/api/shop/owner/linked-users/[discordId]/lucky-wheel-ticket/route.ts`
-- `web/app/api/shop/owner/lucky-wheel/route.ts`
-- `web/app/api/shop/owner/product-images/upload/route.ts`
 - `web/app/api/shop/owner/products/route.ts`
-- `web/app/api/shop/owner/products/[id]/route.ts`
+- `web/app/api/shop/orders/[orderId]/route.ts` (nếu liên quan checkout/ticket)
 - `web/app/api/shop/delivery-slots/route.ts`
 - `web/app/api/shop/delivery-slots/[id]/route.ts`
+- component/product display nếu đang format USD
 
-## Các bước thực hiện
-1. Xây helper backend để xác định actor hiện tại từ token (`admin`, `web TaiKhoan`, `discord owner`).
-2. Refactor các route owner trong `shopRoutes.js` sang helper này.
-3. Sửa route mismatch trong `web/app/admin/page.tsx`.
-4. Chuẩn hóa các Next API proxy liên quan admin/owner/settings.
-5. Chạy test/search xác nhận không còn các điểm 401 do `req.user.discordId` bắt buộc.
-6. Nếu cần, chạy app/test để verify các thao tác admin chính.
+---
 
-## Rủi ro / lưu ý
-- `shopRoutes.js` là file lớn và chứa rất nhiều business logic; cần sửa cẩn thận, ưu tiên thay đổi tối thiểu, không động vào logic thanh toán nếu không cần.
-- Có nhiều hệ auth trong repo (`auth.js`, `authMiddleware.js`, `taiKhoanRoutes`, `adminRoutes`), nên phải tránh vô tình phá luồng user thường.
-- Một số lỗi 401 trong Chrome có thể đến từ request public gọi nhầm private endpoint; sau khi sửa auth gốc vẫn cần rà network paths thêm.
+## Thứ tự triển khai
+1. Fix checkout 500 / enum mismatch
+2. Fix VND display + semantics ở admin/shop
+3. Fix referral code “mỗi tài khoản có 1 mã mời”
+4. Gỡ delivery slots khỏi UI và proxy
+5. Siết validate thêm sản phẩm để hết lỗi 400 khó hiểu
+6. Chạy test/rà hồi quy
 
-## Kết quả mong đợi sau khi triển khai
-- Admin login xong mở dashboard/settings không còn `Authentication required` hàng loạt.
-- Save banners / best sellers / lucky wheel / products / games / delivery slots apply được.
-- Linked users và clear cart hoạt động đúng route.
-- Số lượng lỗi 401 trong console/network giảm mạnh, chỉ còn các trường hợp thật sự chưa login hoặc không đủ quyền.
+---
+
+## Kết quả mong đợi
+- Checkout không còn 500 do enum cũ
+- Nhập giá 10000 sẽ hiển thị là 10.000 VND thay vì $10000
+- Mỗi tài khoản web có mã mời riêng và nhập mã mời được
+- Không còn UI tạo khung giờ giao hàng
+- Thêm sản phẩm nếu lỗi sẽ báo đúng nguyên nhân, và nếu dữ liệu hợp lệ sẽ tạo được bình thường

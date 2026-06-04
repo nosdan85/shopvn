@@ -1,6 +1,7 @@
 ﻿const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { isOwnerDiscordId } = require('../utils/ownerAccess');
+const { buildReferralCode } = require('../utils/referralRewards');
 
 const taiKhoanSchema = new mongoose.Schema({
     tenDangNhap: {
@@ -42,6 +43,25 @@ const taiKhoanSchema = new mongoose.Schema({
         trim: true
     },
     discordDaLienKetLuc: {
+        type: Date,
+        default: null
+    },
+    // Ma moi / referral cua tai khoan web
+    referralCode: {
+        type: String,
+        default: '',
+        trim: true,
+        uppercase: true,
+        index: true
+    },
+    referralAppliedCode: {
+        type: String,
+        default: '',
+        trim: true,
+        uppercase: true,
+        index: true
+    },
+    referralAppliedAt: {
         type: Date,
         default: null
     },
@@ -102,10 +122,15 @@ taiKhoanSchema.methods.laAdminDiscord = function() {
 };
 
 // Auto-promote to admin nếu là admin Discord
+// Đồng thời đảm bảo mỗi tài khoản luôn có referral code riêng
 taiKhoanSchema.pre('save', function(next) {
     if (this.laAdminDiscord() && this.vaiTro !== 'quan_tri') {
         this.vaiTro = 'quan_tri';
         console.log(`[AUTO_ADMIN] Promoted ${this.tenDangNhap} (${this.discordId}) to admin`);
+    }
+    if (!String(this.referralCode || '').trim()) {
+        const sourceId = this.discordId || this._id;
+        this.referralCode = buildReferralCode(sourceId);
     }
     next();
 });

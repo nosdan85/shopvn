@@ -138,6 +138,7 @@ router.post('/dang-ky', signupLimiter, async (req, res) => {
             email: taiKhoanMoi.email,
             soDuVnd: taiKhoanMoi.soDuVnd || 0,
             vaiTro: taiKhoanMoi.vaiTro,
+            referralCode: taiKhoanMoi.referralCode || '',
             ngayTao: taiKhoanMoi.ngayTao
         };
 
@@ -220,6 +221,7 @@ router.post('/dang-nhap', loginLimiter, async (req, res) => {
             email: taiKhoan.email,
             soDuVnd: taiKhoan.soDuVnd || 0,
             vaiTro: taiKhoan.vaiTro,
+            referralCode: taiKhoan.referralCode || '',
             ngayTao: taiKhoan.ngayTao
         };
 
@@ -251,6 +253,7 @@ router.get('/thong-tin', xacThuc, async (req, res) => {
             email: taiKhoan.email,
             soDuVnd: taiKhoan.soDuVnd || 0,
             vaiTro: taiKhoan.vaiTro,
+            referralCode: taiKhoan.referralCode || '',
             daLienKetDiscord: Boolean(taiKhoan.discordId && taiKhoan.discordId.trim()),
             discordTenHienThi: taiKhoan.discordTenHienThi || '',
             ngayTao: taiKhoan.ngayTao

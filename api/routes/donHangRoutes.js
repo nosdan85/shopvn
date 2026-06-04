@@ -322,7 +322,7 @@ router.get('/lich-su', xacThucDonHang, async (req, res) => {
             trangThai: dh.status,
             status: dh.status, // Keep for backward compat
             ticketStatus: dh.ticketStatus,
-            daTaoTicket: dh.ticketStatus === 'created' || dh.ticketStatus === 'pending',
+            daTaoTicket: dh.ticketStatus === 'da_tao' || dh.ticketStatus === 'dang_tao',
             ticketChannelName: dh.ticketChannelName,
             discordDaLienKet: !!dh.discordId,
             discordDaJoinServer: true, // Assume true if has discordId
