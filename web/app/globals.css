@@ -179,21 +179,33 @@ body * { -webkit-tap-highlight-color: transparent; }
   content-visibility: auto;
   contain-intrinsic-size: 280px 360px;
   background: var(--glass-bg);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
   border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--glass-shadow), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  overflow: hidden;
 }
 
 .product-card::before,
 .motion-panel::before {
   content: "";
   position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.product-card::after {
+  content: "";
+  position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  background: linear-gradient(105deg, transparent 18%, rgba(255, 255, 255, 0.12) 38%, rgba(255, 255, 255, 0.05) 42%, transparent 56%);
-  transform: translateX(-120%) skewX(-18deg);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(79, 140, 255, 0.05) 100%);
   border-radius: inherit;
 }
 
@@ -280,8 +292,8 @@ a {
 
   .motion-panel:hover {
     transform: translateY(-2px);
-    border-color: rgba(47, 155, 230, 0.24);
-    box-shadow: 0 16px 38px rgba(0, 0, 0, 0.26);
+    border-color: rgba(79, 140, 255, 0.3);
+    box-shadow: 0 20px 50px rgba(30, 144, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
   button:active,

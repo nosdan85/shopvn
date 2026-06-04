@@ -868,10 +868,19 @@ export default function ShopPage() {
     setSearchQuery(searchInput);
   };
 
-  if (loading) return <div className="min-h-screen bg-gradient-to-br from-sky-950 via-blue-950/90 to-cyan-950/80"><Navbar showCart={step === "shop"} cartCount={cartCount} onCartClick={openCart} /><LogoLoader /></div>;
+  if (loading) return <div className="min-h-screen bg-gradient-to-br from-sky-950 via-blue-950/90 to-cyan-950/80 relative overflow-hidden">
+          {/* Glow orbs for depth */}
+          <div className="glow-orb glow-orb-1"></div>
+          <div className="glow-orb glow-orb-2"></div>
+          <div className="glow-orb glow-orb-3"></div>
+          <Navbar showCart={step === "shop"} cartCount={cartCount} onCartClick={openCart} /><LogoLoader /></div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-950 via-blue-950/90 to-cyan-950/80 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-sky-950 via-blue-950/90 to-cyan-950/80 text-white relative overflow-hidden">
+          {/* Glow orbs for depth */}
+          <div className="glow-orb glow-orb-1"></div>
+          <div className="glow-orb glow-orb-2"></div>
+          <div className="glow-orb glow-orb-3"></div>
       <Navbar cartCount={cartCount} showCart={step === "shop" && cartCount > 0} onCartClick={openCart} />
 
       {welcomeVoucherVisible && (
