@@ -127,25 +127,6 @@ function DonHangPage() {
     }
   }, [authLoading, user, orders]);
 
-  // Handle Discord OAuth callback
-  useEffect(() => {
-    const discordStatus = searchParams.get("discord");
-    if (discordStatus === "success") {
-      setSuccessMessage("Lien ket Discord thanh cong!");
-      layThongTin().catch(() => {});
-    } else if (discordStatus === "error") {
-      setError("Lien ket Discord that bai. Vui long thu lai.");
-    }
-  }, [searchParams, layThongTin]);
-
-  // Clear success message after 5 seconds
-  useEffect(() => {
-    if (successMessage) {
-      const timer = window.setTimeout(() => setSuccessMessage(null), 5000);
-      return () => window.clearTimeout(timer);
-    }
-  }, [successMessage]);
-
   const loadOrders = useCallback(async () => {
     if (!token) return;
 
@@ -180,6 +161,24 @@ function DonHangPage() {
       loadOrders();
     }
   }, [authLoading, user, router, loadOrders]);
+
+  // Handle Discord OAuth callback
+  useEffect(() => {
+    const discordStatus = searchParams.get("discord");
+    if (discordStatus === "success") {
+      // Refresh user data to get updated Discord link status
+      layThongTin().catch(() => {});
+      setSuccessMessage("Lien ket Discord thanh cong!");
+      // Refresh orders to get updated discordDaLienKet status
+      loadOrders();
+    } else if (discordStatus === "error") {
+      setError("Lien ket Discord that bai. Vui long thu lai.");
+    }
+    // Clear the URL params after processing
+    if (discordStatus) {
+      router.replace("/don-hang");
+    }
+  }, [searchParams, router, layThongTin, loadOrders]);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
