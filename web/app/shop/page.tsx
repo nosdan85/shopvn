@@ -132,34 +132,34 @@ const ProductCard = memo(function ProductCard({
   return (
     <div
       onClick={handleOpen}
-      className="group product-card cursor-pointer overflow-hidden rounded-[28px] border border-[#4F8CFF]/20 bg-gradient-to-b from-[#111111]/90 to-[#0a1628]/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_1px_rgba(79,140,255,0.1)] transition-all duration-300 active:scale-[0.98] animate-card-in md:transition-transform md:duration-200 md:hover:scale-[1.03] md:hover:border-[#4F8CFF]/40 md:hover:shadow-[0_12px_40px_rgba(79,140,255,0.25)]"
+      className="group product-card cursor-pointer overflow-hidden rounded-[24px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_8px_32px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-500 active:scale-[0.98] animate-card-in md:transition-transform md:duration-300 md:hover:scale-[1.02] md:hover:border-white/20 md:hover:shadow-[0_20px_60px_rgba(30,144,255,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]"
       style={{ animationDelay: `${index * (variant === "bestSeller" ? 0.08 : 0.05)}s` }}
     >
-      <div className="aspect-square bg-gradient-to-br from-[#071326] to-[#0a1628] overflow-hidden">
+      <div className="aspect-square bg-gradient-to-br from-blue-500/10 via-transparent to-cyan-500/10 overflow-hidden">
         {product.image ? (
-          <img src={imgUrl(product.image)} alt={product.name} loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <img src={imgUrl(product.image)} alt={product.name} loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
         ) : (
-          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-[#7EE7FF]/40" /></div>
+          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-blue-300/50" /></div>
         )}
       </div>
       {variant === "bestSeller" ? (
         <div className="p-4">
-          <p className="line-clamp-2 text-sm font-semibold leading-5 text-white">{product.name}</p>
-          <p className="text-xs text-[#7EE7FF] mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          {product.desc && <p className="text-xs text-[#7EE7FF]/70 mt-1 line-clamp-2">{product.desc}</p>}
+          <p className="line-clamp-2 text-sm font-semibold leading-5 text-white/90">{product.name}</p>
+          <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
+          {product.desc && <p className="text-xs text-white/50 mt-1 line-clamp-2">{product.desc}</p>}
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-sm font-bold bg-gradient-to-r from-[#3DDC84] to-[#4F8CFF] bg-clip-text text-transparent">{formatMoney(product.price)}</span>
-            <span className="text-xs text-[#8B7CFF] font-medium">Xem</span>
+            <span className="text-sm font-bold text-blue-300">{formatMoney(product.price)}</span>
+            <span className="text-xs text-cyan-300/80 font-medium">Xem</span>
           </div>
         </div>
       ) : (
         <div className="space-y-1.5 sm:space-y-2 p-4 sm:p-5">
-          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-white">{product.name}</h3>
-          <p className="text-xs text-[#7EE7FF] mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          <p className="text-xs text-[#7EE7FF]/60">{product.category}</p>
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-white/90">{product.name}</h3>
+          <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
+          <p className="text-xs text-white/40">{product.category}</p>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-lg font-bold bg-gradient-to-r from-[#3DDC84] to-[#4F8CFF] bg-clip-text text-transparent">{formatMoney(product.price)}</span>
-            <span className="text-xs text-[#8B7CFF] font-medium">Xem</span>
+            <span className="text-lg font-bold text-blue-300">{formatMoney(product.price)}</span>
+            <span className="text-xs text-cyan-300/80 font-medium">Xem</span>
           </div>
         </div>
       )}
@@ -169,12 +169,13 @@ const ProductCard = memo(function ProductCard({
 
 function LogoLoader() {
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-gradient-to-br from-[#071326] via-[#0a1628] to-[#102347]">
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-gradient-to-br from-sky-950 via-blue-950/80 to-cyan-950">
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#4F8CFF] to-[#8B7CFF] rounded-full blur-xl opacity-50 animate-pulse"></div>
-        <Loader2 className="h-12 w-12 animate-spin text-[#7EE7FF]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/30 via-cyan-400/30 to-blue-300/30 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute inset-4 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full blur-2xl"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-blue-300/80" />
       </div>
-      <p className="mt-4 text-sm font-medium bg-gradient-to-r from-[#7EE7FF] to-[#8B7CFF] bg-clip-text text-transparent">Đang tải cửa hàng...</p>
+      <p className="mt-4 text-sm font-medium text-blue-200/80">Đang tải cửa hàng...</p>
     </div>
   );
 }
@@ -867,10 +868,10 @@ export default function ShopPage() {
     setSearchQuery(searchInput);
   };
 
-  if (loading) return <div className="min-h-screen bg-gradient-to-br from-[#071326] via-[#0a1628] to-[#102347]"><Navbar showCart={step === "shop"} cartCount={cartCount} onCartClick={openCart} /><LogoLoader /></div>;
+  if (loading) return <div className="min-h-screen bg-gradient-to-br from-sky-950 via-blue-950/90 to-cyan-950/80"><Navbar showCart={step === "shop"} cartCount={cartCount} onCartClick={openCart} /><LogoLoader /></div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#071326] via-[#0a1628] to-[#102347] text-white">
+    <div className="min-h-screen bg-gradient-to-br from-sky-950 via-blue-950/90 to-cyan-950/80 text-white">
       <Navbar cartCount={cartCount} showCart={step === "shop" && cartCount > 0} onCartClick={openCart} />
 
       {welcomeVoucherVisible && (

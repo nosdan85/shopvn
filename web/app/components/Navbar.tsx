@@ -122,12 +122,11 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
 
   return (
     <nav className={`
-      sticky top-0 z-50 h-[68px] transition-all duration-300
-      bg-gradient-to-r from-[#071326] via-[#0a1628] to-[#102347]/80
-      backdrop-blur-2xl border-b border-[#4F8CFF]/20
-      shadow-[0_4px_30px_rgba(79,140,255,0.15)]
+      sticky top-0 z-50 h-[68px] transition-all duration-500
+      bg-white/5 backdrop-blur-2xl border-b border-white/10
+      shadow-[0_4px_30px_rgba(30,144,255,0.1),inset_0_1px_0_rgba(255,255,255,0.1)]
       ${isScrolled
-        ? "bg-gradient-to-r from-[#071326]/95 via-[#0a1628]/95 to-[#102347]/95"
+        ? "bg-white/10 backdrop-blur-3xl shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.15)]"
         : ""}
     `}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
@@ -138,8 +137,8 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
             alt="NOS"
             className="h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
           />
-          <span className="text-base font-bold bg-gradient-to-r from-[#7EE7FF] via-[#4F8CFF] to-[#8B7CFF] bg-clip-text text-transparent tracking-tight sm:text-xl drop-shadow-[0_0_8px_rgba(79,140,255,0.5)]">
-            NOS<span className="text-[#4F8CFF]">Market</span>
+          <span className="text-base font-bold text-blue-200 tracking-tight sm:text-xl drop-shadow-[0_2px_10px_rgba(100,180,255,0.5)]">
+            NOS<span className="text-blue-300">Market</span>
           </span>
         </Link>
 
@@ -148,34 +147,34 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
           <Link
             href="/shop"
             onClick={clearCheckoutResume}
-            className="relative px-3 py-2 text-[#7EE7FF] hover:text-white transition-colors duration-200 font-medium text-sm group"
+            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90 transition-colors duration-300 font-medium text-sm group"
           >
             Cua Hang
-            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-to-r from-[#4F8CFF] to-[#8B7CFF] scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left rounded-full shadow-[0_0_10px_rgba(79,140,255,0.5)]" />
+            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-blue-400/50 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full shadow-[0_0_10px_rgba(100,180,255,0.5)]" />
           </Link>
           <Link
             href="/proofs"
-            className="relative px-3 py-2 text-[#7EE7FF] hover:text-white transition-colors duration-200 font-medium text-sm group"
+            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90 transition-colors duration-300 font-medium text-sm group"
           >
             Danh Gia
-            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-to-r from-[#4F8CFF] to-[#8B7CFF] scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left rounded-full shadow-[0_0_10px_rgba(79,140,255,0.5)]" />
+            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-blue-400/50 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full shadow-[0_0_10px_rgba(100,180,255,0.5)]" />
           </Link>
           <a
             href={SUPPORT_DISCORD_URL}
             target="_blank"
             rel="noreferrer"
-            className="relative px-3 py-2 text-[#7EE7FF] hover:text-white transition-colors duration-200 font-medium text-sm group"
+            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90 transition-colors duration-300 font-medium text-sm group"
           >
             Ho Tro
-            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-to-r from-[#4F8CFF] to-[#8B7CFF] scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left rounded-full shadow-[0_0_10px_rgba(79,140,255,0.5)]" />
+            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-blue-400/50 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full shadow-[0_0_10px_rgba(100,180,255,0.5)]" />
           </a>
           {isAdminRole(user?.vaiTro) && (
             <Link
               href="/admin"
-              className="relative px-3 py-2 text-[#8B7CFF] hover:text-white transition-colors duration-200 font-medium text-sm group"
+              className="relative px-3 py-2 text-cyan-300/80 hover:text-white/90 transition-colors duration-300 font-medium text-sm group"
             >
               Quan Tri
-              <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-to-r from-[#8B7CFF] to-[#7EE7FF] scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left rounded-full shadow-[0_0_10px_rgba(139,124,255,0.5)]" />
+              <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-cyan-400/50 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full shadow-[0_0_10px_rgba(100,200,255,0.5)]" />
             </Link>
           )}
         </div>
@@ -186,11 +185,11 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
             <button
               type="button"
               onClick={onCartClick}
-              className="relative rounded-xl p-2 text-[#B5B5B5] transition-colors duration-200 hover:text-white active:scale-95"
+              className="relative rounded-xl p-2 text-blue-200/60 transition-colors duration-300 hover:text-white/90 active:scale-95"
             >
               <ShoppingCart className="w-5 h-5" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-gradient-to-r from-[#4F8CFF] to-[#8B7CFF] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_12px_rgba(79,140,255,0.6)] animate-bounce-in">
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-gradient-to-r from-blue-400 to-cyan-400 text-white/90 text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(100,180,255,0.6)] animate-bounce-in">
                   {cartCount}
                 </span>
               )}
@@ -200,7 +199,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
           {/* User Section Desktop */}
           <div className="hidden md:block">
             {isLoading ? (
-              <div className="flex items-center gap-2 text-[#B5B5B5]">
+              <div className="flex items-center gap-2 text-blue-200/60">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">Dang tai...</span>
               </div>
@@ -208,23 +207,23 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-[#1E1E1E] bg-[#111111]/60 hover:bg-[#161616] hover:border-[#2F9BE6]/30 transition-all duration-200 group"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-[#1E1E1E] bg-white/5/60 hover:bg-[#161616] hover:border-[#2F9BE6]/30 transition-all duration-200 group"
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-semibold text-xs ${getAvatarInitial(user.tenDangNhap).color}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white/90 font-semibold text-xs ${getAvatarInitial(user.tenDangNhap).color}`}>
                     {getAvatarInitial(user.tenDangNhap).initial}
                   </div>
-                  <span className="text-sm font-medium text-white max-w-[100px] truncate">{user.tenDangNhap}</span>
+                  <span className="text-sm font-medium text-white/90 max-w-[100px] truncate">{user.tenDangNhap}</span>
                 </button>
 
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-[#111111] border border-[#1E1E1E] rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden animate-fade-in z-50">
+                  <div className="absolute right-0 mt-2 w-64 bg-white/5 border border-[#1E1E1E] rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden animate-fade-in z-50">
                     <div className="px-4 py-3 border-b border-[#1E1E1E] bg-[#161616]">
-                      <p className="text-sm font-semibold text-white truncate">{user.tenDangNhap}</p>
-                      <p className="text-xs text-[#B5B5B5] mt-0.5 truncate">{user.email}</p>
+                      <p className="text-sm font-semibold text-white/90 truncate">{user.tenDangNhap}</p>
+                      <p className="text-xs text-blue-200/60 mt-0.5 truncate">{user.email}</p>
                     </div>
 
                     <div className="px-4 py-3 border-b border-[#1E1E1E] bg-[#0A0A0A]">
-                      <p className="text-xs text-[#B5B5B5] mb-1">So du</p>
+                      <p className="text-xs text-blue-200/60 mb-1">So du</p>
                       <p className="text-sm font-semibold text-[#10B981]">
                         {soDuVnd.toLocaleString("vi-VN")} VND
                       </p>
@@ -233,7 +232,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                     <Link
                       href="/nap-tien"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 px-4 py-3 text-white hover:bg-[#161616] transition-colors duration-150 border-b border-[#1E1E1E]"
+                      className="flex items-center gap-2 px-4 py-3 text-white/90 hover:bg-[#161616] transition-colors duration-150 border-b border-[#1E1E1E]"
                     >
                       <Wallet className="w-4 h-4 text-[#2F9BE6]" />
                       <span className="text-sm font-medium">Nap Tien</span>
@@ -242,7 +241,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                     <Link
                       href="/don-hang"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 px-4 py-3 text-white hover:bg-[#161616] transition-colors duration-150 border-b border-[#1E1E1E]"
+                      className="flex items-center gap-2 px-4 py-3 text-white/90 hover:bg-[#161616] transition-colors duration-150 border-b border-[#1E1E1E]"
                     >
                       <ShoppingBag className="w-4 h-4 text-[#2F9BE6]" />
                       <span className="text-sm font-medium">Don Hang</span>
@@ -251,7 +250,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                     <button
                       type="button"
                       onClick={daLienKetDiscord ? handleDiscordUnlink : handleDiscordLink}
-                      className="w-full flex items-center gap-2 px-4 py-3 text-white hover:bg-[#161616] transition-colors duration-150 border-b border-[#1E1E1E]"
+                      className="w-full flex items-center gap-2 px-4 py-3 text-white/90 hover:bg-[#161616] transition-colors duration-150 border-b border-[#1E1E1E]"
                     >
                       <User className="w-4 h-4 text-[#5865F2]" />
                       <span className="text-sm font-medium">
@@ -276,13 +275,13 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               <div className="flex items-center gap-2">
                 <Link
                   href="/dang-nhap"
-                  className="px-4 py-2 rounded-[28px] border-2 border-[#4F8CFF]/50 text-[#7EE7FF] font-medium text-sm transition-all duration-300 hover:bg-[#4F8CFF]/10 backdrop-blur-md active:scale-95"
+                  className="px-4 py-2 rounded-full border border-blue-400/30 text-blue-200/80 font-medium text-sm transition-all duration-300 hover:bg-white/5 backdrop-blur-md active:scale-95"
                 >
                   Dang Nhap
                 </Link>
                 <Link
                   href="/dang-ky"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#4F8CFF] via-[#8B7CFF] to-[#7EE7FF] hover:from-[#7EE7FF] hover:via-[#8B7CFF] hover:to-[#4F8CFF] text-white rounded-[28px] font-medium text-sm transition-all duration-500 shadow-[0_0_25px_rgba(79,140,255,0.4),inset_0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(79,140,255,0.6),inset_0_0_25px_rgba(255,255,255,0.15)] hover:scale-[1.03]"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 text-white/90 rounded-full font-medium text-sm transition-all duration-500 shadow-[0_4px_30px_rgba(30,144,255,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:scale-[1.03]"
                 >
                   Dang Ky
                 </Link>
@@ -293,7 +292,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
           {/* Hamburger Icon Mobile */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-[#B5B5B5] hover:text-white transition-colors"
+            className="md:hidden p-2 text-blue-200/60 hover:text-white/90 transition-colors"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -302,7 +301,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
 
       {/* Mobile Fullscreen Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden absolute left-0 right-0 top-full z-[9998] bg-gradient-to-b from-[#071326] via-[#0a1628] to-[#102347]/95 backdrop-blur-2xl border-b border-[#4F8CFF]/20 animate-fade-in shadow-[0_8px_40px_rgba(79,140,255,0.2)]">
+        <div className="md:hidden absolute left-0 right-0 top-full z-[9998] bg-white/10 backdrop-blur-3xl border-b border-white/10 animate-fade-in shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]">
           <div className="max-h-[calc(100dvh-68px)] min-h-[calc(100dvh-68px)] overflow-y-auto px-4 py-6 flex flex-col gap-3">
             <Link
               href="/shop"
@@ -310,14 +309,14 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                 clearCheckoutResume();
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center rounded-[28px] bg-gradient-to-r from-[#0a1628]/80 to-[#111111]/60 backdrop-blur-md border border-[#4F8CFF]/30 px-5 py-4 text-lg font-semibold text-white transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[#4F8CFF]/50"
+              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
             >
               Cua Hang
             </Link>
             <Link
               href="/proofs"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center rounded-[28px] bg-gradient-to-r from-[#0a1628]/80 to-[#111111]/60 backdrop-blur-md border border-[#4F8CFF]/30 px-5 py-4 text-lg font-semibold text-white transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[#4F8CFF]/50"
+              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
             >
               Danh Gia
             </Link>
@@ -326,7 +325,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               target="_blank"
               rel="noreferrer"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center rounded-[28px] bg-gradient-to-r from-[#0a1628]/80 to-[#111111]/60 backdrop-blur-md border border-[#4F8CFF]/30 px-5 py-4 text-lg font-semibold text-white transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[#4F8CFF]/50"
+              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
             >
               Ho Tro
             </a>
@@ -334,33 +333,33 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               <Link
                 href="/admin"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center rounded-[28px] bg-gradient-to-r from-[#4F8CFF]/20 to-[#8B7CFF]/20 backdrop-blur-md border border-[#8B7CFF]/50 px-5 py-4 text-lg font-semibold text-[#8B7CFF] transition-all active:scale-[0.98] shadow-[0_0_15px_rgba(139,124,255,0.2)]"
+                className="flex items-center rounded-2xl bg-blue-500/10 backdrop-blur-xl border border-blue-400/20 px-5 py-4 text-lg font-semibold text-blue-200/90 transition-all active:scale-[0.98] shadow-[0_0_15px_rgba(30,144,255,0.15)]"
               >
                 Quan Tri
               </Link>
             )}
 
             {/* Mobile Auth Section */}
-            <div className="border-t border-[#4F8CFF]/20 pt-4 mt-auto">
+            <div className="border-t border-white/10 pt-4 mt-auto">
               {isLoading ? (
-                <div className="flex items-center justify-center py-3 text-[#7EE7FF] gap-2">
+                <div className="flex items-center justify-center py-3 text-blue-200/80 gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span>Dang tai...</span>
                 </div>
               ) : daDangNhap && user ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 px-2 py-2">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarInitial(user.tenDangNhap).color}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white/90 font-semibold text-sm ${getAvatarInitial(user.tenDangNhap).color}`}>
                       {getAvatarInitial(user.tenDangNhap).initial}
                     </div>
                     <div>
-                      <p className="font-semibold text-white truncate max-w-[180px]">{user.tenDangNhap}</p>
-                      <p className="text-xs text-[#7EE7FF]/70 truncate max-w-[180px]">{user.email}</p>
+                      <p className="font-semibold text-white/90 truncate max-w-[180px]">{user.tenDangNhap}</p>
+                      <p className="text-xs text-blue-200/80/70 truncate max-w-[180px]">{user.email}</p>
                     </div>
                   </div>
 
-                  <div className="px-3 py-2 bg-gradient-to-r from-[#071326]/80 to-[#0a1628]/60 backdrop-blur-md rounded-[20px] border border-[#4F8CFF]/30 shadow-[0_0_15px_rgba(79,140,255,0.15)]">
-                    <p className="text-xs text-[#7EE7FF]/70 mb-1">So du</p>
+                  <div className="px-3 py-2 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
+                    <p className="text-xs text-blue-200/80/70 mb-1">So du</p>
                     <p className="text-sm font-semibold bg-gradient-to-r from-[#3DDC84] to-[#4F8CFF] bg-clip-text text-transparent">
                       {soDuVnd.toLocaleString("vi-VN")} VND
                     </p>
@@ -369,7 +368,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                   <Link
                     href="/nap-tien"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[#4F8CFF]/20 to-[#8B7CFF]/20 backdrop-blur-md border border-[#4F8CFF]/40 text-[#7EE7FF] rounded-[28px] transition-all font-medium shadow-[0_0_15px_rgba(79,140,255,0.2)] active:scale-[0.98]"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 backdrop-blur-md border border-white/10 text-blue-200/80 rounded-[28px] transition-all font-medium shadow-[0_0_15px_rgba(79,140,255,0.2)] active:scale-[0.98]"
                   >
                     <Wallet className="w-5 h-5" />
                     <span>Nap Tien</span>
@@ -378,7 +377,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                   <Link
                     href="/don-hang"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[#4F8CFF]/20 to-[#8B7CFF]/20 backdrop-blur-md border border-[#4F8CFF]/40 text-[#7EE7FF] rounded-[28px] transition-all font-medium shadow-[0_0_15px_rgba(79,140,255,0.2)] active:scale-[0.98]"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 backdrop-blur-md border border-white/10 text-blue-200/80 rounded-[28px] transition-all font-medium shadow-[0_0_15px_rgba(79,140,255,0.2)] active:scale-[0.98]"
                   >
                     <ShoppingBag className="w-5 h-5" />
                     <span>Don Hang</span>
@@ -407,14 +406,14 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                   <Link
                     href="/dang-nhap"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full flex items-center justify-center py-3 border-2 border-[#4F8CFF]/50 text-[#7EE7FF] rounded-[28px] transition-all font-medium backdrop-blur-md active:scale-[0.98]"
+                    className="w-full flex items-center justify-center py-3 border-2 border-[#4F8CFF]/50 text-blue-200/80 rounded-[28px] transition-all font-medium backdrop-blur-md active:scale-[0.98]"
                   >
                     Dang Nhap
                   </Link>
                   <Link
                     href="/dang-ky"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-[#4F8CFF] via-[#8B7CFF] to-[#7EE7FF] text-white rounded-[28px] transition-all font-medium shadow-[0_0_25px_rgba(79,140,255,0.4)] active:scale-[0.98]"
+                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-[#4F8CFF] via-[#8B7CFF] to-[#7EE7FF] text-white/90 rounded-[28px] transition-all font-medium shadow-[0_0_25px_rgba(79,140,255,0.4)] active:scale-[0.98]"
                   >
                     Dang Ky
                   </Link>
