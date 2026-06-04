@@ -88,29 +88,6 @@ function buildCalendarDays(monthKey: string): Array<{ key: string; day: number; 
 }
 
 
-    0,
-    0,
-    0
-  ));
-  const end = new Date(Date.UTC(
-    start.getUTCFullYear(),
-    start.getUTCMonth(),
-    start.getUTCDate(),
-    start.getUTCHours() + 1,
-    0,
-    0,
-    0
-  ));
-  const date = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}-${String(start.getUTCDate()).padStart(2, "0")}`;
-  const endTime = end.getUTCDate() !== start.getUTCDate() ? "24:00" : `${String(end.getUTCHours()).padStart(2, "0")}:00`;
-  return {
-    date,
-    month: date.slice(0, 7),
-    startTime: `${String(start.getUTCHours()).padStart(2, "0")}:00`,
-    endTime,
-  };
-}
-
 export default function AdminPage() {
   const { user, token, isLoading } = useAuthViet();
   const [tab, setTab] = useState<"Sản Phẩm" | "Game" | "Cấu Hình" | "Tài Khoản Web">("Sản Phẩm");
@@ -301,13 +278,6 @@ export default function AdminPage() {
   };
 
 
-
-
- }
-  };
-
- }
-  };
 
 
 
