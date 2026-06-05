@@ -35,7 +35,7 @@ interface AuthVietContextType {
   lienKetDiscord: (maDiscord: string) => Promise<void>;
   huyLienKetDiscord: () => Promise<void>;
   lamMoiVi: () => Promise<void>;
-  getDiscordOAuthUrl: () => string;
+  getDiscordOAuthUrl: (returnTo?: string) => string;
 }
 
 const AuthVietContext = createContext<AuthVietContextType | undefined>(undefined);
@@ -238,7 +238,7 @@ export function AuthVietProvider({ children }: { children: ReactNode }) {
     await layThongTin();
   };
 
-  const getDiscordOAuthUrl = (): string => {
+  const getDiscordOAuthUrl = (returnTo?: string): string => {
     if (typeof window === "undefined") return "";
 
     const clientId = String(
@@ -251,6 +251,11 @@ export function AuthVietProvider({ children }: { children: ReactNode }) {
 
     if (!clientId) {
       return "#discord-env-missing";
+    }
+
+    // Save return URL to localStorage so callback knows where to redirect
+    if (returnTo) {
+      localStorage.setItem('discord_return_to', returnTo);
     }
 
     const params = new URLSearchParams({

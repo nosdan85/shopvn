@@ -460,22 +460,22 @@ export default function AdminPage() {
   };
 
 
-  if (isLoading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#2F9BE6]" /></div>;
+  if (isLoading) return <div className="min-h-screen bg-[#071326] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-300/80" /></div>;
 
   if (!user || !isAdminRole(user.vaiTro)) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full rounded-[18px] border border-red-500/20 bg-[#111111] p-8 text-center">
-          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-[#FF4D4F]" />
+      <div className="min-h-screen bg-[#071326] text-white/90 flex items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-[18px] border border-red-400/20 bg-white/5 p-8 text-center">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-400" />
           <h1 className="text-xl font-semibold">Bạn không có quyền truy cập</h1>
-          <p className="mt-2 text-[#B5B5B5]/80 text-sm">Yêu cầu đăng nhập bằng tài khoản quản trị viên.</p>
+          <p className="mt-2 text-blue-200/70/80 text-sm">Yêu cầu đăng nhập bằng tài khoản quản trị viên.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-12">
+    <div className="min-h-screen bg-[#071326] text-white/90 pb-12">
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 py-8">
@@ -485,51 +485,51 @@ export default function AdminPage() {
         <div className="mb-8 flex flex-wrap gap-4 items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Quản Trị</h1>
-            <p className="text-[#B5B5B5]/80 text-sm">Quản lý sản phẩm, khung giờ giao hàng, game, banner và tài khoản web.</p>
+            <p className="text-blue-200/70/80 text-sm">Quản lý sản phẩm, khung giờ giao hàng, game, banner và tài khoản web.</p>
           </div>
           <div className="flex gap-3">
-            <a href="/shop" className="flex items-center gap-2 rounded-[14px] bg-[#111111] border border-[#1E1E1E] px-4 py-2 text-sm text-[#B5B5B5] hover:text-white hover:border-[#2F9BE6]/30 transition-all">← Về cửa hàng</a>
-            <button onClick={() => void fetchAll()} className="flex items-center gap-2 rounded-[14px] bg-[#111111] border border-[#1E1E1E] px-4 py-2 text-sm"><RefreshCcw className="h-4 w-4" /> Đồng bộ</button>
+            <a href="/shop" className="flex items-center gap-2 rounded-[14px] bg-white/5 border border-white/10 px-4 py-2 text-sm text-blue-200/70 hover:text-white/90 hover:border-[#2F9BE6]/30 transition-all">← Về cửa hàng</a>
+            <button onClick={() => void fetchAll()} className="flex items-center gap-2 rounded-[14px] bg-white/5 border border-white/10 px-4 py-2 text-sm"><RefreshCcw className="h-4 w-4" /> Đồng bộ</button>
           </div>
         </div>
 
-        <div className="mb-6 flex gap-2 border-b border-[#1E1E1E] pb-3">
+        <div className="mb-6 flex gap-2 border-b border-white/10 pb-3">
           {(["Sản Phẩm", "Game", "Cấu Hình", "Tài Khoản Web"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t as typeof tab)} className={"rounded-[14px] px-4 py-2 text-sm font-medium " + (tab === t ? "bg-[#2F9BE6] text-white" : "bg-[#111111] text-[#B5B5B5]/80 hover:text-[#B5B5B5]")}>
+            <button key={t} onClick={() => setTab(t as typeof tab)} className={"rounded-[14px] px-4 py-2 text-sm font-medium " + (tab === t ? "bg-[#2F9BE6] text-white/90" : "bg-white/5 text-blue-200/70/80 hover:text-blue-200/70")}>
               {t}
             </button>
           ))}
         </div>
 
-        {error && <div className="mb-4 rounded-[16px] border border-red-500/20 bg-[#FF4D4F]/10 px-4 py-3 text-sm text-[#FF4D4F]">{error}</div>}
+        {error && <div className="mb-4 rounded-[16px] border border-red-400/20 bg-[#FF4D4F]/10 px-4 py-3 text-sm text-red-400">{error}</div>}
 
         {/* ─── TAB: PRODUCTS ─── */}
         {tab === "Sản Phẩm" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between border border-[#1E1E1E] bg-[#111111] p-4 rounded-[16px]">
-              <div><h2 className="font-semibold text-lg">Danh sách mặt hàng</h2><p className="text-xs text-[#B5B5B5]/80">Thêm, sửa, hoặc xóa mặt hàng.</p></div>
+            <div className="flex items-center justify-between border border-white/10 bg-white/5 p-4 rounded-[16px]">
+              <div><h2 className="font-semibold text-lg">Danh sách mặt hàng</h2><p className="text-xs text-blue-200/70/80">Thêm, sửa, hoặc xóa mặt hàng.</p></div>
               <button onClick={() => { setProductForm({ name: "", price: "", bulkPrice: "", packQuantity: "", image: "", desc: "", category: "", gameId: "" }); setEditingProduct(null); setShowProductForm(true); }} className="flex items-center gap-2 rounded-[14px] bg-[#2F9BE6] px-4 py-2 text-sm font-medium"><Plus className="h-4 w-4" /> Thêm Sản Phẩm</button>
             </div>
 
             {showProductForm && (
-              <form onSubmit={submitProduct} className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-4">
+              <form onSubmit={submitProduct} className="rounded-[16px] border border-white/10 bg-white/5 p-5 space-y-4">
                 <h3 className="font-medium">{editingProduct ? "Chỉnh sửa mặt hàng" : "Thêm mặt hàng mới"}</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <input required value={productForm.name} onChange={(e) => setProductForm((p) => ({ ...p, name: e.target.value }))} placeholder="Tên mặt hàng (ví dụ: Aura Crate)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input required value={productForm.category} onChange={(e) => setProductForm((p) => ({ ...p, category: e.target.value }))} placeholder="Danh Mục (ví dụ: Chest, Trait, Race...)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input required type="number" step="0.01" value={productForm.price} onChange={(e) => setProductForm((p) => ({ ...p, price: e.target.value }))} placeholder="Giá (VND)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input type="number" step="0.01" value={productForm.bulkPrice} onChange={(e) => setProductForm((p) => ({ ...p, bulkPrice: e.target.value }))} placeholder="Giá sỉ (tùy chọn, VND)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input type="number" step="1" min="1" value={productForm.packQuantity} onChange={(e) => setProductForm((p) => ({ ...p, packQuantity: e.target.value }))} placeholder="Số lượng mỗi gói (ví dụ: 50, 100, 1000...)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <select value={productForm.gameId} onChange={(e) => setProductForm((p) => ({ ...p, gameId: e.target.value }))} className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none">
+                  <input required value={productForm.name} onChange={(e) => setProductForm((p) => ({ ...p, name: e.target.value }))} placeholder="Tên mặt hàng (ví dụ: Aura Crate)" className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
+                  <input required value={productForm.category} onChange={(e) => setProductForm((p) => ({ ...p, category: e.target.value }))} placeholder="Danh Mục (ví dụ: Chest, Trait, Race...)" className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
+                  <input required type="number" step="0.01" value={productForm.price} onChange={(e) => setProductForm((p) => ({ ...p, price: e.target.value }))} placeholder="Giá (VND)" className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
+                  <input type="number" step="0.01" value={productForm.bulkPrice} onChange={(e) => setProductForm((p) => ({ ...p, bulkPrice: e.target.value }))} placeholder="Giá sỉ (tùy chọn, VND)" className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
+                  <input type="number" step="1" min="1" value={productForm.packQuantity} onChange={(e) => setProductForm((p) => ({ ...p, packQuantity: e.target.value }))} placeholder="Số lượng mỗi gói (ví dụ: 50, 100, 1000...)" className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
+                  <select value={productForm.gameId} onChange={(e) => setProductForm((p) => ({ ...p, gameId: e.target.value }))} className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none">
                     <option value="">Chọn Game</option>
                     {games.map((g) => <option key={g._id} value={g._id}>{g.name}</option>)}
                   </select>
                 </div>
-                <textarea value={productForm.desc} onChange={(e) => setProductForm((p) => ({ ...p, desc: e.target.value }))} placeholder="Mô tả chi tiết..." rows={3} className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
+                <textarea value={productForm.desc} onChange={(e) => setProductForm((p) => ({ ...p, desc: e.target.value }))} placeholder="Mô tả chi tiết..." rows={3} className="w-full rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
                 <div className="space-y-2">
-                  <label className="text-xs text-[#B5B5B5]/80">URL Ảnh Sản Phẩm</label>
-                  <input value={productForm.image} onChange={(e) => setProductForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL ảnh (Cloudinary / ImgBB) hoặc đường dẫn /products/..." className="w-full rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-2 outline-none" />
-                  {productForm.image && <img src={imgUrl(productForm.image)} alt="preview" className="mt-2 h-20 w-20 rounded border border-[#1E1E1E] object-cover" />}
+                  <label className="text-xs text-blue-200/70/80">URL Ảnh Sản Phẩm</label>
+                  <input value={productForm.image} onChange={(e) => setProductForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL ảnh (Cloudinary / ImgBB) hoặc đường dẫn /products/..." className="w-full rounded-[14px] border border-white/10 bg-[#071326] px-4 py-2 outline-none" />
+                  {productForm.image && <img src={imgUrl(productForm.image)} alt="preview" className="mt-2 h-20 w-20 rounded border border-white/10 object-cover" />}
                 </div>
                 <div className="flex gap-2">
                   <button type="submit" disabled={submitting} className="rounded-[14px] bg-[#2F9BE6] px-5 py-2.5 text-sm font-medium disabled:opacity-50">Lưu</button>
@@ -539,23 +539,23 @@ export default function AdminPage() {
             )}
 
             <div className="grid gap-3">
-              {productsLoading && <p className="text-[#B5B5B5]/60 text-sm">Đang tải...</p>}
+              {productsLoading && <p className="text-blue-200/70/60 text-sm">Đang tải...</p>}
               {products.map((p) => (
-                <div key={p._id} className="flex gap-4 items-center justify-between border border-[#1E1E1E] bg-[#111111] p-4 rounded-[16px]">
+                <div key={p._id} className="flex gap-4 items-center justify-between border border-white/10 bg-white/5 p-4 rounded-[16px]">
                   <div className="flex gap-3 items-center min-w-0">
-                    <img src={imgUrl(p.image)} alt="" className="h-12 w-12 rounded-[14px] object-cover bg-[#050505]" />
+                    <img src={imgUrl(p.image)} alt="" className="h-12 w-12 rounded-[14px] object-cover bg-[#071326]" />
                     <div className="min-w-0">
                       <p className="font-medium truncate text-sm">{p.name}</p>
-                  <p className="text-xs text-[#B5B5B5]/80">{p.category} • {p.price.toLocaleString('vi-VN')} VND{<span className="text-[#2F9BE6] ml-2">(x{p.packQuantity || 1})</span>}</p>
+                  <p className="text-xs text-blue-200/70/80">{p.category} • {p.price.toLocaleString('vi-VN')} VND{<span className="text-blue-300/80 ml-2">(x{p.packQuantity || 1})</span>}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => void toggleBestSeller(p._id)} className={"rounded px-3 py-1.5 text-xs font-semibold " + (bestSellers.includes(p._id) ? "bg-[#2F9BE6] text-white" : "bg-[#1E1E1E] text-[#B5B5B5]/80")}>Bán chạy</button>
+                    <button onClick={() => void toggleBestSeller(p._id)} className={"rounded px-3 py-1.5 text-xs font-semibold " + (bestSellers.includes(p._id) ? "bg-[#2F9BE6] text-white/90" : "bg-[#1E1E1E] text-blue-200/70/80")}>Bán chạy</button>
                     <button onClick={() => {
                       setProductForm({ name: p.name, price: String(p.price), bulkPrice: p.bulkPrice ? String(p.bulkPrice) : "", packQuantity: p.packQuantity ? String(p.packQuantity) : "1", image: p.image, desc: p.desc || "", category: p.category, gameId: p.gameId || "" });
                       setEditingProduct(p._id); setShowProductForm(true);
-                    }} className="p-2 text-[#2F9BE6] bg-[#161616]/50 rounded-[14px]"><Edit2 className="h-4 w-4" /></button>
-                    <button onClick={() => void deleteProduct(p._id)} className="p-2 text-[#FF4D4F] bg-[#161616]/50 rounded-[14px]"><Trash2 className="h-4 w-4" /></button>
+                    }} className="p-2 text-blue-300/80 bg-white/8/50 rounded-[14px]"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => void deleteProduct(p._id)} className="p-2 text-red-400 bg-white/8/50 rounded-[14px]"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>
               ))}
@@ -567,23 +567,23 @@ export default function AdminPage() {
         {/* ─── TAB: GAMES ─── */}
         {tab === "Game" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between border border-[#1E1E1E] bg-[#111111] p-4 rounded-[16px]">
-              <div><h2 className="font-semibold text-lg">Danh mục Game</h2><p className="text-xs text-[#B5B5B5]/80">Quản lý danh sách game.</p></div>
+            <div className="flex items-center justify-between border border-white/10 bg-white/5 p-4 rounded-[16px]">
+              <div><h2 className="font-semibold text-lg">Danh mục Game</h2><p className="text-xs text-blue-200/70/80">Quản lý danh sách game.</p></div>
               <button onClick={() => { setEditingGame(null); setGameForm({ name: "", slug: "", image: "", active: true }); setShowGameForm(true); }} className="flex items-center gap-2 rounded-[14px] bg-[#2F9BE6] px-4 py-2 text-sm font-medium"><Plus className="h-4 w-4" /> Thêm Game</button>
             </div>
 
             {showGameForm && (
-              <form onSubmit={submitGame} className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-4">
+              <form onSubmit={submitGame} className="rounded-[16px] border border-white/10 bg-white/5 p-5 space-y-4">
                 <h3 className="font-medium">{editingGame ? "Chỉnh sửa Game" : "Thêm Game mới"}</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <input required value={gameForm.name} onChange={(e) => setGameForm((p) => ({ ...p, name: e.target.value }))} placeholder="Tên Game" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input required value={gameForm.slug} onChange={(e) => setGameForm((p) => ({ ...p, slug: e.target.value }))} placeholder="Slug Game" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
-                  <input value={gameForm.image} onChange={(e) => setGameForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL Ảnh (tùy chọn)" className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 outline-none" />
+                  <input required value={gameForm.name} onChange={(e) => setGameForm((p) => ({ ...p, name: e.target.value }))} placeholder="Tên Game" className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
+                  <input required value={gameForm.slug} onChange={(e) => setGameForm((p) => ({ ...p, slug: e.target.value }))} placeholder="Slug Game" className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
+                  <input value={gameForm.image} onChange={(e) => setGameForm((p) => ({ ...p, image: e.target.value }))} placeholder="URL Ảnh (tùy chọn)" className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none" />
                 </div>
                 {gameForm.image.trim() && (
-                  <div className="flex items-center gap-3 rounded-[14px] border border-[#1E1E1E] bg-[#050505] p-3">
+                  <div className="flex items-center gap-3 rounded-[14px] border border-white/10 bg-[#071326] p-3">
                     <img src={imgUrl(gameForm.image)} alt="Game icon preview" className="h-12 w-12 rounded object-cover" />
-                    <p className="break-all text-xs text-[#B5B5B5]/70">{imgUrl(gameForm.image)}</p>
+                    <p className="break-all text-xs text-blue-200/70/70">{imgUrl(gameForm.image)}</p>
                   </div>
                 )}
                 <div className="flex gap-2">
@@ -594,16 +594,16 @@ export default function AdminPage() {
             )}
 
             <div className="grid gap-3">
-              {gamesLoading && <p className="text-[#B5B5B5]/60 text-sm">Đang tải...</p>}
+              {gamesLoading && <p className="text-blue-200/70/60 text-sm">Đang tải...</p>}
               {games.map((g) => (
-                <div key={g._id} className="flex items-center justify-between border border-[#1E1E1E] bg-[#111111] p-4 rounded-[16px]">
+                <div key={g._id} className="flex items-center justify-between border border-white/10 bg-white/5 p-4 rounded-[16px]">
                   <div className="flex items-center gap-3">
                     {g.image && <img src={imgUrl(g.image)} alt="" className="h-10 w-10 rounded object-cover" />}
-                    <p className="font-medium text-sm">{g.name} <span className="text-xs text-[#B5B5B5]/60">({g.slug})</span></p>
+                    <p className="font-medium text-sm">{g.name} <span className="text-xs text-blue-200/70/60">({g.slug})</span></p>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => { setGameForm({ name: g.name, slug: g.slug, image: g.image || "", active: g.active }); setEditingGame(g._id); setShowGameForm(true); }} className="p-2 text-[#2F9BE6] bg-[#161616]/50 rounded-[14px]"><Edit2 className="h-4 w-4" /></button>
-                    <button onClick={() => void deleteGame(g._id)} className="p-2 text-[#FF4D4F] bg-[#161616]/50 rounded-[14px]"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => { setGameForm({ name: g.name, slug: g.slug, image: g.image || "", active: g.active }); setEditingGame(g._id); setShowGameForm(true); }} className="p-2 text-blue-300/80 bg-white/8/50 rounded-[14px]"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => void deleteGame(g._id)} className="p-2 text-red-400 bg-white/8/50 rounded-[14px]"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>
               ))}
@@ -614,34 +614,34 @@ export default function AdminPage() {
         {/* ─── TAB: CONFIG (BANNERS) ─── */}
         {tab === "Cấu Hình" && (
           <div className="space-y-6">
-            <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-6">
-              <div><h2 className="font-semibold text-lg">Banner Cửa Hàng</h2><p className="text-xs text-[#B5B5B5]/80">Chỉ 1 banner hiện có. Dán URL ảnh để thay thế.</p></div>
+            <div className="rounded-[16px] border border-white/10 bg-white/5 p-5 space-y-6">
+              <div><h2 className="font-semibold text-lg">Banner Cửa Hàng</h2><p className="text-xs text-blue-200/70/80">Chỉ 1 banner hiện có. Dán URL ảnh để thay thế.</p></div>
               <div className="flex items-center gap-3 flex-wrap">
                 <input
                   value={newBannerUrl}
                   onChange={(e) => setNewBannerUrl(e.target.value)}
                   placeholder="Dán URL ảnh Banner"
-                  className="min-w-[280px] flex-1 rounded border border-[#1E1E1E] bg-[#050505] p-2 text-sm outline-none"
+                  className="min-w-[280px] flex-1 rounded border border-white/10 bg-[#071326] p-2 text-sm outline-none"
                 />
                 <button onClick={() => void handleBannerSave()} disabled={submitting || !newBannerUrl.trim()} className="rounded bg-[#2F9BE6] px-4 py-2 text-sm font-semibold disabled:opacity-50">Lưu Banner</button>
               </div>
               {banners[0] ? (
-                <div className="relative group overflow-hidden rounded-[14px] border border-[#1E1E1E]">
+                <div className="relative group overflow-hidden rounded-[14px] border border-white/10">
                   <img src={imgUrl(banners[0])} alt="" className="w-full object-cover" style={{ maxHeight: "360px" }} />
-                  <button onClick={() => void deleteBanner(banners[0])} className="absolute top-2 right-2 bg-[#FF4D4F] text-white rounded p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => void deleteBanner(banners[0])} className="absolute top-2 right-2 bg-[#FF4D4F] text-white/90 rounded p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ) : (
-                <div className="rounded-[14px] border border-dashed border-[#1E1E1E] bg-[#050505] p-8 text-center text-sm text-[#B5B5B5]/60">Chưa có banner.</div>
+                <div className="rounded-[14px] border border-dashed border-white/10 bg-[#071326] p-8 text-center text-sm text-blue-200/70/60">Chưa có banner.</div>
               )}
             </div>
 
-            <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-5">
+            <div className="rounded-[16px] border border-white/10 bg-white/5 p-5 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-semibold text-lg">Vòng Quay May Mắn</h2>
-                  <p className="text-xs text-[#B5B5B5]/80">Bật/tắt event và cấu hình các ô quay. Ô empty là chúc may mắn lần sau.</p>
+                  <p className="text-xs text-blue-200/70/80">Bật/tắt event và cấu hình các ô quay. Ô empty là chúc may mắn lần sau.</p>
                 </div>
-                <label className="flex items-center gap-2 text-sm text-[#B5B5B5]">
+                <label className="flex items-center gap-2 text-sm text-blue-200/70">
                   <input
                     type="checkbox"
                     checked={luckyWheel.enabled}
@@ -651,19 +651,19 @@ export default function AdminPage() {
                 </label>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <input value={luckyWheel.title} onChange={(e) => setLuckyWheel((current) => ({ ...current, title: e.target.value }))} className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none" placeholder="Tiêu đề event" />
-                <input value={luckyWheel.message} onChange={(e) => setLuckyWheel((current) => ({ ...current, message: e.target.value }))} className="rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none" placeholder="Thông báo popup" />
+                <input value={luckyWheel.title} onChange={(e) => setLuckyWheel((current) => ({ ...current, title: e.target.value }))} className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 text-sm outline-none" placeholder="Tiêu đề event" />
+                <input value={luckyWheel.message} onChange={(e) => setLuckyWheel((current) => ({ ...current, message: e.target.value }))} className="rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 text-sm outline-none" placeholder="Thông báo popup" />
               </div>
               <div className="space-y-3">
                 {luckyWheel.slices.map((slice, index) => (
-                  <div key={index} className="grid gap-2 rounded-[14px] border border-[#1E1E1E] bg-[#050505] p-3 md:grid-cols-[1fr_140px_120px_auto]">
-                    <input value={slice.label} onChange={(e) => updateWheelSlice(index, { label: e.target.value })} className="rounded-[12px] border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none" placeholder="Tên" />
-                    <select value={slice.type} onChange={(e) => updateWheelSlice(index, { type: e.target.value as LuckyWheelSlice["type"] })} className="rounded-[12px] border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none">
+                  <div key={index} className="grid gap-2 rounded-[14px] border border-white/10 bg-[#071326] p-3 md:grid-cols-[1fr_140px_120px_auto]">
+                    <input value={slice.label} onChange={(e) => updateWheelSlice(index, { label: e.target.value })} className="rounded-[12px] border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none" placeholder="Tên" />
+                    <select value={slice.type} onChange={(e) => updateWheelSlice(index, { type: e.target.value as LuckyWheelSlice["type"] })} className="rounded-[12px] border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none">
                       <option value="empty">Trống</option>
                       <option value="discount">Giảm giá</option>
                     </select>
-                    <input type="number" min="0" max="100" value={slice.discountPercent} onChange={(e) => updateWheelSlice(index, { discountPercent: e.target.value === "" ? "" : Number(e.target.value) })} disabled={slice.type === "empty"} className="rounded-[12px] border border-[#1E1E1E] bg-[#111111] px-3 py-2 text-sm outline-none disabled:opacity-50" placeholder="%" />
-                    <button onClick={() => removeWheelSlice(index)} className="rounded-[12px] bg-[#FF4D4F]/15 px-3 py-2 text-sm text-[#FF4D4F]">Xóa</button>
+                    <input type="number" min="0" max="100" value={slice.discountPercent} onChange={(e) => updateWheelSlice(index, { discountPercent: e.target.value === "" ? "" : Number(e.target.value) })} disabled={slice.type === "empty"} className="rounded-[12px] border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none disabled:opacity-50" placeholder="%" />
+                    <button onClick={() => removeWheelSlice(index)} className="rounded-[12px] bg-[#FF4D4F]/15 px-3 py-2 text-sm text-red-400">Xóa</button>
                   </div>
                 ))}
               </div>
@@ -677,13 +677,13 @@ export default function AdminPage() {
 
         {tab === "Tài Khoản Web" && (
           <div className="space-y-6">
-            <div className="rounded-[16px] border border-[#1E1E1E] bg-[#111111] p-5 space-y-4">
+            <div className="rounded-[16px] border border-white/10 bg-white/5 p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-semibold text-lg">Tài Khoản Web</h2>
-                  <p className="text-xs text-[#B5B5B5]/80">Quản lý tài khoản web người dùng, ví VND, giỏ hàng, và liên kết Discord.</p>
+                  <p className="text-xs text-blue-200/70/80">Quản lý tài khoản web người dùng, ví VND, giỏ hàng, và liên kết Discord.</p>
                 </div>
-                <button onClick={() => void fetchLinkedUsers(linkedUsersPage, linkedUsersSearch)} className="rounded-[14px] border border-[#1E1E1E] bg-[#161616] px-4 py-2 text-sm">
+                <button onClick={() => void fetchLinkedUsers(linkedUsersPage, linkedUsersSearch)} className="rounded-[14px] border border-white/10 bg-white/8 px-4 py-2 text-sm">
                   Làm Mới
                 </button>
               </div>
@@ -693,7 +693,7 @@ export default function AdminPage() {
                   value={linkedUsersSearch}
                   onChange={(e) => setLinkedUsersSearch(e.target.value)}
                   placeholder="Tìm theo tên đăng nhập hoặc email"
-                  className="min-w-[280px] flex-1 rounded-[14px] border border-[#1E1E1E] bg-[#050505] px-4 py-3 text-sm outline-none"
+                  className="min-w-[280px] flex-1 rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 text-sm outline-none"
                 />
                 <button
                   onClick={() => void fetchLinkedUsers(1, linkedUsersSearch)}
@@ -704,35 +704,35 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              <div className="text-sm text-[#B5B5B5]/80">Tổng tài khoản: {linkedUsersTotal}</div>
+              <div className="text-sm text-blue-200/70/80">Tổng tài khoản: {linkedUsersTotal}</div>
 
               <div className="grid gap-3">
-                {linkedUsersLoading && <p className="text-sm text-[#B5B5B5]/60">Đang tải...</p>}
+                {linkedUsersLoading && <p className="text-sm text-blue-200/70/60">Đang tải...</p>}
                 {!linkedUsersLoading && linkedUsers.length === 0 && (
-                  <div className="rounded-[14px] border border-dashed border-[#1E1E1E] bg-[#050505] p-6 text-sm text-[#B5B5B5]/60">
+                  <div className="rounded-[14px] border border-dashed border-white/10 bg-[#071326] p-6 text-sm text-blue-200/70/60">
                     Không có dữ liệu.
                   </div>
                 )}
                 {linkedUsers.map((linkedUser) => (
-                  <div key={linkedUser._id} className="rounded-[16px] border border-[#1E1E1E] bg-[#050505] p-4">
+                  <div key={linkedUser._id} className="rounded-[16px] border border-white/10 bg-[#071326] p-4">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-white">{linkedUser.discordUsername || "Không rõ Discord"}</p>
-                        <p className="text-xs text-[#B5B5B5]/80">Discord ID: {linkedUser.discordId || "-"}</p>
+                        <p className="text-sm font-semibold text-white/90">{linkedUser.discordUsername || "Không rõ Discord"}</p>
+                        <p className="text-xs text-blue-200/70/80">Discord ID: {linkedUser.discordId || "-"}</p>
                         <div className="flex flex-wrap gap-2 pt-1 text-xs">
-                          <span className={"rounded-full px-2 py-1 " + (linkedUser.hasAccessToken ? "bg-[#3DDC84]/15 text-[#3DDC84]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]")}>
+                          <span className={"rounded-full px-2 py-1 " + (linkedUser.hasAccessToken ? "bg-[#3DDC84]/15 text-green-400" : "bg-[#FF4D4F]/10 text-red-400")}>
                             Access token: {linkedUser.hasAccessToken ? "Có" : "Không"}
                           </span>
-                          <span className={"rounded-full px-2 py-1 " + (linkedUser.hasRefreshToken ? "bg-[#3DDC84]/15 text-[#3DDC84]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]")}>
+                          <span className={"rounded-full px-2 py-1 " + (linkedUser.hasRefreshToken ? "bg-[#3DDC84]/15 text-green-400" : "bg-[#FF4D4F]/10 text-red-400")}>
                             Refresh token: {linkedUser.hasRefreshToken ? "Có" : "Không"}
                           </span>
-                          <span className="rounded-full bg-[#5865F2]/15 px-2 py-1 text-[#7289DA]">
+                          <span className="rounded-full bg-[#5865F2]/15 px-2 py-1 text-blue-200/70">
                             Vé quay: {linkedUser.luckyWheelTickets}
                           </span>
-                          <span className="rounded-full bg-[#2F9BE6]/15 px-2 py-1 text-[#49B6FF]">
+                          <span className="rounded-full bg-[#2F9BE6]/15 px-2 py-1 text-blue-200/70">
                             Admin cấp: {linkedUser.luckyWheelTicketsGrantedByAdmin}
                           </span>
-                          <span className="rounded-full bg-[#161616] px-2 py-1 text-[#B5B5B5]">
+                          <span className="rounded-full bg-white/8 px-2 py-1 text-blue-200/70">
                             Giỏ hàng: {linkedUser.cartItemsCount} mục
                           </span>
                         </div>
@@ -742,21 +742,21 @@ export default function AdminPage() {
                         <button
                           onClick={() => void grantLuckyWheelTicket(linkedUser.discordId)}
                           disabled={submitting || !linkedUser.discordId}
-                          className="rounded-[14px] bg-[#2F9BE6]/15 px-4 py-2 text-sm text-[#49B6FF] disabled:opacity-50"
+                          className="rounded-[14px] bg-[#2F9BE6]/15 px-4 py-2 text-sm text-blue-200/70 disabled:opacity-50"
                         >
                           Cấp vòng quay
                         </button>
                         <button
                           onClick={() => void clearLinkedUserCart(linkedUser.discordId)}
                           disabled={submitting || !linkedUser.discordId}
-                          className="rounded-[14px] bg-[#FF4D4F]/15 px-4 py-2 text-sm text-[#FF4D4F] disabled:opacity-50"
+                          className="rounded-[14px] bg-[#FF4D4F]/15 px-4 py-2 text-sm text-red-400 disabled:opacity-50"
                         >
                           Xóa giỏ
                         </button>
                       </div>
                     </div>
 
-                    <div className="mt-3 grid gap-2 text-xs text-[#B5B5B5]/80 md:grid-cols-2">
+                    <div className="mt-3 grid gap-2 text-xs text-blue-200/70/80 md:grid-cols-2">
                       <div>Cập nhật giỏ hàng: {formatDateTime(linkedUser.cartUpdatedAt)}</div>
                       <div>Tham gia: {formatDateTime(linkedUser.joinedAt)}</div>
                       <div>Token hết hạn: {formatDateTime(linkedUser.tokenExpiresAt)}</div>
@@ -770,15 +770,15 @@ export default function AdminPage() {
                 <button
                   onClick={() => void fetchLinkedUsers(Math.max(1, linkedUsersPage - 1), linkedUsersSearch)}
                   disabled={linkedUsersPage <= 1 || linkedUsersLoading}
-                  className="rounded-[14px] border border-[#1E1E1E] bg-[#161616] px-4 py-2 text-sm disabled:opacity-40"
+                  className="rounded-[14px] border border-white/10 bg-white/8 px-4 py-2 text-sm disabled:opacity-40"
                 >
                   Trang trước
                 </button>
-                <span className="text-sm text-[#B5B5B5]/80">Trang {linkedUsersPage} / {linkedUsersTotalPages}</span>
+                <span className="text-sm text-blue-200/70/80">Trang {linkedUsersPage} / {linkedUsersTotalPages}</span>
                 <button
                   onClick={() => void fetchLinkedUsers(Math.min(linkedUsersTotalPages, linkedUsersPage + 1), linkedUsersSearch)}
                   disabled={linkedUsersPage >= linkedUsersTotalPages || linkedUsersLoading}
-                  className="rounded-[14px] border border-[#1E1E1E] bg-[#161616] px-4 py-2 text-sm disabled:opacity-40"
+                  className="rounded-[14px] border border-white/10 bg-white/8 px-4 py-2 text-sm disabled:opacity-40"
                 >
                   Trang sau
                 </button>

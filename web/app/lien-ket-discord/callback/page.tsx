@@ -87,7 +87,20 @@ function LinkDiscordCallbackContent() {
         setStatus("success");
         setMessage("Liên kết Discord thành công!");
         setError(null);
-        setTimeout(() => router.push("/shop"), 2000);
+
+        // Get return URL from localStorage (set by checkout/profile)
+        const returnTo = typeof window !== 'undefined'
+          ? localStorage.getItem('discord_return_to')
+          : null;
+
+        // Clean up
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('discord_return_to');
+        }
+
+        // Redirect to saved URL or default to /shop
+        const redirectPath = returnTo || '/shop';
+        setTimeout(() => router.push(redirectPath), 2000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định";
         setStatus("error");
@@ -100,31 +113,31 @@ function LinkDiscordCallbackContent() {
   }, [searchParams, layThongTin, router]);
 
   return (
-    <div className="max-w-lg w-full rounded-2xl border border-[#1E1E1E] bg-[#111111] p-8 text-center shadow-xl animate-fade-in-up">
+    <div className="max-w-lg w-full rounded-2xl border border-white/10 bg-white/5 p-8 text-center shadow-xl animate-fade-in-up">
       {status === "processing" && (
         <>
           <Loader2 className="mx-auto mb-4 h-16 w-16 animate-spin text-blue-400" />
-          <h1 className="mb-3 text-2xl font-bold text-white">{message}</h1>
-          <p className="text-[#B5B5B5]">Vui lòng đợi trong khi chúng tôi liên kết tài khoản Discord của bạn.</p>
+          <h1 className="mb-3 text-2xl font-bold text-white/90">{message}</h1>
+          <p className="text-blue-200/70">Vui lòng đợi trong khi chúng tôi liên kết tài khoản Discord của bạn.</p>
         </>
       )}
       {status === "success" && (
         <>
           <CheckCircle2 className="mx-auto mb-4 h-16 w-16 text-green-500" />
-          <h1 className="mb-2 text-2xl font-bold text-white">{message}</h1>
-          <p className="text-[#B5B5B5]">Bạn sẽ được chuyển hướng trở lại Cửa Hàng trong 2 giây.</p>
+          <h1 className="mb-2 text-2xl font-bold text-white/90">{message}</h1>
+          <p className="text-blue-200/70">Bạn sẽ được chuyển hướng trở lại Cửa Hàng trong 2 giây.</p>
         </>
       )}
       {status === "error" && (
         <>
           <AlertCircle className="mx-auto mb-4 h-16 w-16 text-red-500" />
-          <h1 className="mb-3 text-2xl font-bold text-white">{message}</h1>
-          <div className="mb-6 rounded-lg border border-[#1E1E1E] bg-[#050505] p-4 text-left">
-            <p className="text-sm text-[#B5B5B5]">{error}</p>
+          <h1 className="mb-3 text-2xl font-bold text-white/90">{message}</h1>
+          <div className="mb-6 rounded-lg border border-white/10 bg-[#071326] p-4 text-left">
+            <p className="text-sm text-blue-200/70">{error}</p>
           </div>
           <button
             onClick={() => router.push("/shop")}
-            className="rounded-lg bg-[#161616] px-6 py-3 font-medium text-white transition-all duration-200 hover:scale-105 hover:bg-[#1E1E1E]"
+            className="rounded-lg bg-white/8 px-6 py-3 font-medium text-white/90 transition-all duration-200 hover:scale-105 hover:bg-[#1E1E1E]"
           >
             Quay về Đơn Hàng
           </button>
@@ -136,15 +149,15 @@ function LinkDiscordCallbackContent() {
 
 export default function LinkDiscordCallbackPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#050505] px-4 text-white">
+    <div className="min-h-screen flex items-center justify-center bg-[#071326] px-4 text-white/90">
       <div className="absolute left-4 top-4">
         <BackButton href="/shop" label="Cửa Hàng" variant="back" />
       </div>
       <Suspense
         fallback={
-          <div className="max-w-lg w-full rounded-2xl border border-[#1E1E1E] bg-[#111111] p-8 text-center shadow-xl animate-fade-in-up">
+          <div className="max-w-lg w-full rounded-2xl border border-white/10 bg-white/5 p-8 text-center shadow-xl animate-fade-in-up">
             <Loader2 className="mx-auto mb-4 h-16 w-16 animate-spin text-blue-400" />
-            <h1 className="mb-3 text-2xl font-bold text-white">Đang tải...</h1>
+            <h1 className="mb-3 text-2xl font-bold text-white/90">Đang tải...</h1>
           </div>
         }
       >

@@ -325,7 +325,7 @@ router.get('/lich-su', xacThucDonHang, async (req, res) => {
             daTaoTicket: dh.ticketStatus === 'da_tao' || dh.ticketStatus === 'dang_tao',
             ticketChannelName: dh.ticketChannelName,
             discordDaLienKet: dh.discordDaLienKet === true,
-            discordDaJoinServer: dh.discordDaJoinServer === true
+            discordDaJoinServer: dh.discordDaJoinServer === true,
             ngayTao: dh.createdAt,
             createdAt: dh.createdAt // Keep for backward compat
         }));
