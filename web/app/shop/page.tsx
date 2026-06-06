@@ -210,7 +210,7 @@ export default function ShopPage() {
   const [cartPulse, setCartPulse] = useState(false);
   const [robloxUsernameInput, setRobloxUsernameInput] = useState("");
   const [robloxSearchResult, setRobloxSearchResult] = useState<null | { userId: string; username: string; displayName: string; avatar: string }>(null);
-    const [ticketResult, setTicketResult] = useState<TicketResult | null>(null);
+  const [ticketResult, setTicketResult] = useState<TicketResult | null>(null);
   const [showVisitorNotice, setShowVisitorNotice] = useState(false);
   const [showLuckyWheelNotice, setShowLuckyWheelNotice] = useState(false);
   const [luckyWheel, setLuckyWheel] = useState<LuckyWheelConfig | null>(null);
@@ -1137,7 +1137,7 @@ export default function ShopPage() {
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-4 sm:py-6 animate-page-enter">
         {step !== "shop" && (
           <div className="mx-auto max-w-2xl space-y-6 animate-page-enter">
-            <button onClick={() => (() => { setStep("shop"); setOrderId(null); setCheckoutSummary(null); selectPaymentProofFile(null); clearPendingCheckout(); })()} className="flex items-center gap-2 text-sm text-blue-200/70 hover:text-white/90 transition-colors">
+            <button onClick={() => { setStep("shop"); setOrderId(null); setCheckoutSummary(null); clearPendingCheckout(); }} className="flex items-center gap-2 text-sm text-blue-200/70 hover:text-white/90 transition-colors">
               <ArrowLeft className="h-4 w-4" /> Quay lại cửa hàng
             </button>
             <div className="flex gap-2">{(["roblox", "ticket"] as const).map((s) => (
