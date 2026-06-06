@@ -1395,7 +1395,8 @@ const joinGuildWithAccessToken = async (guildId, userId, accessToken) => {
 const getOwnedOrder = async (orderId, discordId) => {
     const order = await Order.findOne({ orderId });
     if (!order) return { order: null, status: 404, error: 'Order not found' };
-    if (order.discordId && order.discordId !== discordId) return { order: null, status: 403, error: 'You do not own this order' };
+    // If order has no discordId set, allow any authenticated user (web user flow)
+    if (order.discordId && discordId && order.discordId !== discordId) return { order: null, status: 403, error: 'You do not own this order' };
     return { order, status: 200, error: null };
 };
 
@@ -3873,7 +3874,15 @@ router.get('/roblox/search', async (req, res) => {
 router.post('/orders/:orderId/link-roblox', authRequired, async (req, res) => {
     try {
         const orderId = String(req.params?.orderId || '').trim();
-        const discordId = String(req.user?.discordId || '').trim();
+        let discordId = String(req.user?.discordId || '').trim();
+
+        // Web users (TaiKhoan) don't have discordId in JWT — look it up from their account
+        if (!discordId && (req.user?.userId || req.user?._id)) {
+            const tkUserId = req.user?.userId || req.user?._id;
+            const tk = await TaiKhoan.findById(tkUserId).select('discordId').lean();
+            discordId = String(tk?.discordId || '').trim();
+        }
+
         const robloxUserId = String(req.body?.robloxUserId || '').trim();
         const robloxUsername = String(req.body?.robloxUsername || '').trim();
         const robloxDisplayName = String(req.body?.robloxDisplayName || '').trim();
