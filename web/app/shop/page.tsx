@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type SyntheticEvent } from "react";
 import Navbar from "../components/Navbar";
-import { useAuth } from "../context/AuthContext";
+import { useAuthViet } from "../context/AuthVietContext";
 import { resolveImageUrl } from "@/lib/imageUrl";
 import { getDeviceFingerprintHash } from "@/lib/fingerprint";
 import {
@@ -181,7 +181,7 @@ function LogoLoader() {
 }
 
 export default function ShopPage() {
-  const { user, token, isLoading: authLoading, getOAuthUrl } = useAuth();
+  const { user, token, isLoading: authLoading, daLienKetDiscord, discordTenHienThi, getDiscordOAuthUrl } = useAuthViet();
   const [products, setProducts] = useState<Product[]>([]);
   const [games, setGames] = useState<Game[]>([]);
   const [banners, setBanners] = useState<string[]>([]);
@@ -790,7 +790,7 @@ export default function ShopPage() {
 
   const spinLuckyWheel = async () => {
     if (!token) {
-      window.location.href = getOAuthUrl("/shop");
+      window.location.href = getDiscordOAuthUrl("/shop");
       return;
     }
     setLuckyWheelLoading(true);
@@ -1200,13 +1200,18 @@ export default function ShopPage() {
                 <div className="space-y-4">
                   <div className="rounded-[16px] border border-white/10 bg-[#071326] p-4">
                     <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-white/90"><DiscordIcon className="h-5 w-5 text-blue-200/70" />Đăng nhập Discord</h3>
-                    {token && user ? (
+                    {daLienKetDiscord ? (
                       <div className="rounded-[14px] border border-[#3DDC84]/25 bg-[#3DDC84]/10 px-4 py-3 text-sm text-green-400">
-                        Đã đăng nhập với {user.discordUsername}
+                        ✓ Đã liên kết Discord: {discordTenHienThi}
                       </div>
                     ) : (
                       <a
-                        href={getOAuthUrl("/shop")}
+                        href={getDiscordOAuthUrl("/shop")}
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('discord_return_to', '/shop');
+                          }
+                        }}
                         className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 text-center font-medium text-white/90 transition-all hover:bg-[#6875ff]"
                       >
                         <DiscordIcon className="h-5 w-5" />
