@@ -16,6 +16,7 @@ import {
   Loader2,
   CheckCircle2,
   ArrowLeft,
+  Copy,
   AlertCircle,
 } from "lucide-react";
 
