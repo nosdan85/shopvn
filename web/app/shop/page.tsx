@@ -104,7 +104,6 @@ interface CheckoutSummary {
 
 type Step = "shop" | "roblox" | "ticket";
 type PriceSort = "none" | "low-high" | "high-low";
-type PriceSort = "none" | "low-high" | "high-low";
 
 const BEST_SELLERS_PER_PAGE = 4;
 const PENDING_CHECKOUT_KEY = "pendingCheckout";
