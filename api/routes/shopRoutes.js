@@ -4572,9 +4572,6 @@ router.post('/create-ticket-ltc', authRequired, ticketCreateLimiter, requirePaym
 });
 
 router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res) => {
-    let lockAcquiredOrderId = '';
-    let lockAcquiredDiscordId = '';
-    let lockAcquiredUntil = null;
     let userTicketLockDiscordId = '';
     let userTicketLockUntil = null;
     try {
@@ -4625,66 +4622,9 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
             });
         }
 
-        const userTicketLock = await acquireUserTicketCreationLock(req.user.discordId);
-        if (!userTicketLock.user) {
-            const creatingTicketOrder = await findUserCreatingTicketOrder(req.user.discordId, order.orderId);
-            if (creatingTicketOrder) {
-                return res.status(409).json(
-                    buildInProgressPayload(
-                        creatingTicketOrder?.ticketLockUntil || creatingTicketOrder?.paypalTicketLockUntil || creatingTicketOrder?.ltcTicketLockUntil,
-                        'A ticket is already being created for your account. Please wait a moment.',
-                        'USER_TICKET_CREATION_IN_PROGRESS'
-                    )
-                );
-            }
+        // Create ticket without locking — allow any order with linked Roblox
 
-            return res.status(409).json({
-                error: 'A ticket request is already in progress for your account. Please wait a moment.',
-                code: 'USER_TICKET_CREATION_IN_PROGRESS'
-            });
-        }
-        userTicketLockDiscordId = req.user.discordId;
-        userTicketLockUntil = userTicketLock.lockUntil;
-
-        const { lockedOrder, lockUntil } = await acquireOrderTicketLock({
-            orderId,
-            discordId: req.user.discordId
-        });
-        if (!lockedOrder) {
-            const fresh = await Order.findOne({ orderId, discordId: req.user.discordId }).lean();
-            if (!fresh) {
-                return res.status(404).json({ error: 'Order not found' });
-            }
-            if (fresh?.channelId) {
-                return res.json({
-                    success: true,
-                    alreadyExists: true,
-                    channelId: fresh.channelId,
-                    guildId: process.env.DISCORD_GUILD_ID || ''
-                });
-            }
-
-            if (normalizeTicketStatus(fresh?.ticketStatus) === 'creating') {
-                return res.status(409).json(
-                    buildInProgressPayload(
-                        fresh?.ticketLockUntil,
-                        'Ticket is already being created. Please wait a moment.',
-                        'TICKET_CREATION_IN_PROGRESS'
-                    )
-                );
-            }
-
-            return res.status(409).json({
-                error: 'Ticket cannot be created right now. Please retry shortly.',
-                code: 'TICKET_NOT_READY'
-            });
-        }
-
-        lockAcquiredOrderId = lockedOrder.orderId;
-        lockAcquiredDiscordId = lockedOrder.discordId;
-        lockAcquiredUntil = lockUntil;
-
-        const channelId = await Promise.resolve(createOrderTicket(lockedOrder));
+        const channelId = await Promise.resolve(createOrderTicket(order));
         if (!channelId) {
             throw new DiscordBotError('Could not create ticket channel', {
                 status: 503,
@@ -4692,50 +4632,18 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
             });
         }
 
-        const persistResult = await Order.updateOne(
-            { _id: lockedOrder._id, ticketLockUntil: lockAcquiredUntil },
+        await Order.updateOne(
+            { _id: order._id },
             {
                 $set: {
                     channelId,
                     ticketStatus: 'da_tao',
                     ticketError: '',
                     paymentMethod: 'wallet',
-                    status: lockedOrder.status === 'cho_xu_ly' ? 'da_thanh_toan' : lockedOrder.status
-                },
-                $unset: { ticketLockUntil: 1 }
+                    status: order.status === 'cho_xu_ly' ? 'da_thanh_toan' : order.status
+                }
             }
         );
-        if (!persistResult?.matchedCount) {
-            const fresh = await Order.findById(lockedOrder._id).lean();
-            if (fresh?.channelId) {
-                return res.json({
-                    success: true,
-                    alreadyExists: true,
-                    channelId: fresh.channelId,
-                    guildId: process.env.DISCORD_GUILD_ID || ''
-                });
-            }
-            await Order.updateOne(
-                {
-                    _id: lockedOrder._id,
-                    $or: [
-                        { channelId: null },
-                        { channelId: '' },
-                        { channelId: { $exists: false } }
-                    ]
-                },
-                {
-                    $set: {
-                        channelId,
-                        ticketStatus: 'da_tao',
-                        ticketError: '',
-                        paymentMethod: 'wallet',
-            status: lockedOrder.status === 'cho_xu_ly' ? 'da_thanh_toan' : lockedOrder.status
-                    },
-                    $unset: { ticketLockUntil: 1 }
-                }
-            );
-        }
 
         await clearUserCart(req.user.discordId).catch(() => {});
         await releaseUserTicketCreationLock(userTicketLockDiscordId, userTicketLockUntil).catch(() => {});
@@ -4748,14 +4656,6 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
     } catch (err) {
         console.error('Create ticket error:', err);
         const { status, payload } = buildTicketErrorResponse(err);
-        if (lockAcquiredOrderId && lockAcquiredDiscordId) {
-            await releaseOrderTicketLockAsFailed(
-                lockAcquiredOrderId,
-                lockAcquiredDiscordId,
-                lockAcquiredUntil,
-                payload.error || 'Ticket creation failed.'
-            ).catch(() => {});
-        }
         if (userTicketLockDiscordId) {
             await releaseUserTicketCreationLock(userTicketLockDiscordId, userTicketLockUntil).catch(() => {});
         }
