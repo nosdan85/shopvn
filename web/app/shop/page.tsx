@@ -17,8 +17,7 @@ import {
   CheckCircle2,
   ArrowLeft,
   Copy,
-  CreditCard,
-  QrCode,
+  Copy,
   AlertCircle,
 } from "lucide-react";
 
@@ -107,12 +106,10 @@ interface CheckoutSummary {
 
 type Step = "shop" | "roblox" | "ticket";
 type PriceSort = "none" | "low-high" | "high-low";
-type PaymentGuide = "paypal_ff" | "ltc";
+type PriceSort = "none" | "low-high" | "high-low";
 
 const BEST_SELLERS_PER_PAGE = 4;
 const PENDING_CHECKOUT_KEY = "pendingCheckout";
-const PAYPAL_EMAIL = "nguyenquanghuy111106@gmail.com";
-const LTC_ADDRESS = "ltc1ququ7e6ryccpnu7jgy0l4vukgc3mventxyulyge";
 const WHEEL_SPIN_DURATION_MS = 4200;
 const WELCOME_VOUCHER_CODE = "WELCOME20";
 
@@ -215,10 +212,7 @@ export default function ShopPage() {
   const [cartPulse, setCartPulse] = useState(false);
   const [robloxUsernameInput, setRobloxUsernameInput] = useState("");
   const [robloxSearchResult, setRobloxSearchResult] = useState<null | { userId: string; username: string; displayName: string; avatar: string }>(null);
-  const [selectedPaymentGuide, setSelectedPaymentGuide] = useState<PaymentGuide>("paypal_ff");
-  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
-  const [paymentProofPreviewUrl, setPaymentProofPreviewUrl] = useState("");
-  const [ticketResult, setTicketResult] = useState<TicketResult | null>(null);
+    const [ticketResult, setTicketResult] = useState<TicketResult | null>(null);
   const [showVisitorNotice, setShowVisitorNotice] = useState(false);
   const [showLuckyWheelNotice, setShowLuckyWheelNotice] = useState(false);
   const [luckyWheel, setLuckyWheel] = useState<LuckyWheelConfig | null>(null);
@@ -715,7 +709,7 @@ export default function ShopPage() {
 
   const linkRobloxUsername = async () => {
     if (!token) {
-      setError("Vui lòng đăng nhập Discord trước.");
+      setError("Vui lòng đăng nhập trước.");
       return;
     }
     if (!robloxSearchResult || !orderId) return;
@@ -732,62 +726,29 @@ export default function ShopPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Liên kết Roblox thất bại");
+
+      // Sau khi link Roblox thành công, tự động tạo ticket
+      setSubmitting(true);
+      setError(null);
+      const ticketRes = await fetch(`/api/shop/orders/${orderId}?action=create-ticket`, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId }),
+      });
+      const ticketData = await ticketRes.json();
+      if (!ticketRes.ok) throw new Error(ticketData?.error || "Tạo ticket thất bại");
+
+      const ticketUrl = ticketData?.guildId && ticketData?.channelId
+        ? `https://discord.com/channels/${ticketData.guildId}/${ticketData.channelId}`
+        : ticketData?.panelUrl || "";
+      setTicketResult({ channelId: ticketData.channelId || "", guildId: ticketData.guildId, url: ticketUrl });
       setStep("ticket");
-    } catch (e) { setError(e instanceof Error ? e.message : "Liên kết Roblox thất bại"); }
+      clearPendingCheckout();
+      clearCartState();
+    } catch (e) { setError(e instanceof Error ? e.message : "Có lỗi xảy ra"); }
     finally { setSubmitting(false); }
   };
 
-  const copyPaymentValue = async (value: string) => {
-    if (!value) return;
-    await navigator.clipboard.writeText(value);
-  };
-
-  const selectPaymentGuide = (method: PaymentGuide) => {
-    setSelectedPaymentGuide(method);
-    setPaymentProofFile(null);
-    if (paymentProofPreviewUrl) URL.revokeObjectURL(paymentProofPreviewUrl);
-    setPaymentProofPreviewUrl("");
-  };
-
-  const selectPaymentProofFile = (file: File | null) => {
-    if (paymentProofPreviewUrl) URL.revokeObjectURL(paymentProofPreviewUrl);
-    setPaymentProofFile(file);
-    setPaymentProofPreviewUrl(file ? URL.createObjectURL(file) : "");
-  };
-
-  const createTicket = async (method: PaymentGuide = selectedPaymentGuide) => {
-    if (!canAct()) return;
-    if (!orderId || !token || submitting) return;
-    if (ticketInFlightRef.current) return;
-    if (!paymentProofFile) {
-      setError("Hãy tải ảnh thanh toán trước khi tạo ticket.");
-      return;
-    }
-    const action = method === "ltc" ? "create-ticket-ltc" : "create-ticket-paypal-ff";
-    ticketInFlightRef.current = true;
-    setSubmitting(true); setError(null);
-    try {
-      const formData = new FormData();
-      formData.append("orderId", orderId);
-      formData.append("method", method);
-      formData.append("paymentProof", paymentProofFile);
-      const res = await fetch(`/api/shop/orders/${orderId}?action=${action}`, {
-        method: "POST", headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Tạo ticket thất bại");
-      const ticketUrl = data?.guildId && data?.channelId
-        ? `https://discord.com/channels/${data.guildId}/${data.channelId}`
-        : data?.panelUrl || "";
-      setTicketResult({ channelId: data.channelId, guildId: data.guildId, url: ticketUrl });
-      clearPendingCheckout();
-      clearCartState();
-      if (ticketUrl) window.location.href = ticketUrl;
-    } catch (e) { setError(e instanceof Error ? e.message : "Tạo ticket thất bại"); }
-    finally { setSubmitting(false); ticketInFlightRef.current = false; }
-  };
-
+  
   const spinLuckyWheel = async () => {
     if (!token) {
       window.location.href = getDiscordOAuthUrl("/shop");
@@ -1286,60 +1247,40 @@ export default function ShopPage() {
               )}
               {step === "ticket" && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Chọn phương thức thanh toán</h3>
-                  {!ticketResult ? (
-                    <div className="space-y-4">
-                      <div className="rounded-[16px] border border-white/10 bg-[#071326] p-4 text-sm text-blue-200/70">
-                        <p className="font-medium text-white/90">Bước giao hàng đã được gỡ bỏ.</p>
-                        <p className="mt-1">Sau khi liên kết Roblox, bạn có thể tạo ticket thanh toán ngay.</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => selectPaymentGuide("paypal_ff")}
-                          className={"flex items-center justify-center gap-2 rounded-[14px] border px-4 py-3 text-sm font-medium transition-all " + (selectedPaymentGuide === "paypal_ff" ? "border-[#2F9BE6] bg-[#49B6FF]/10 text-white/90" : "border-white/10 bg-[#071326] text-blue-200/70 hover:text-white/90")}
-                        >
-                          <CreditCard className="h-4 w-4" />
-                          PayPal
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => selectPaymentGuide("ltc")}
-                          className={"flex items-center justify-center gap-2 rounded-[14px] border px-4 py-3 text-sm font-medium transition-all " + (selectedPaymentGuide === "ltc" ? "border-[#2F9BE6] bg-[#49B6FF]/10 text-white/90" : "border-white/10 bg-[#071326] text-blue-200/70 hover:text-white/90")}
-                        >
-                          <QrCode className="h-4 w-4" />
-                          Litecoin
-                        </button>
-                      </div>
-                      <div className="rounded-[16px] border border-white/10 bg-[#071326] p-4">
-                        <p className="text-sm font-semibold text-white/90">{selectedPaymentGuide === "ltc" ? "Thanh toán bằng Litecoin" : "Thanh toán bằng PayPal Friends & Family"}</p>
-                        {selectedPaymentGuide === "ltc" ? (
-                          <div className="mt-3 space-y-3">
-                            <div className="rounded-[12px] border border-white/10 bg-white/5 px-4 py-3 font-mono text-xs break-all">{LTC_ADDRESS}</div>
-                            <button type="button" onClick={() => void copyPaymentValue(LTC_ADDRESS)} className="rounded-[12px] bg-[#1E1E1E] px-4 py-2 text-sm">Sao chép địa chỉ</button>
-                          </div>
-                        ) : (
-                          <div className="mt-3 space-y-3">
-                            <div className="rounded-[12px] border border-white/10 bg-white/5 px-4 py-3 font-mono text-sm break-all">{PAYPAL_EMAIL}</div>
-                            <button type="button" onClick={() => void copyPaymentValue(PAYPAL_EMAIL)} className="rounded-[12px] bg-[#1E1E1E] px-4 py-2 text-sm">Sao chép email PayPal</button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="rounded-[16px] border border-white/10 bg-[#071326] p-4">
-                        <label className="mb-2 block text-sm font-medium text-white/90">Ảnh chứng minh thanh toán</label>
-                        <input type="file" accept="image/*" onChange={(e) => selectPaymentProofFile(e.target.files?.[0] || null)} className="block w-full text-sm text-blue-200/70" />
-                        {paymentProofPreviewUrl && <img src={paymentProofPreviewUrl} alt="preview" className="mt-3 max-h-56 rounded-[12px] border border-white/10 object-contain" />}
-                      </div>
-                      <button onClick={() => void createTicket()} disabled={submitting || !paymentProofFile} className="w-full rounded-[14px] bg-[#2F9BE6] py-3 font-medium primary-hover-glow disabled:opacity-50">{submitting ? "Đang tạo ticket..." : "Tạo ticket thanh toán"}</button>
-                    </div>
-                  ) : (
+                  {ticketResult ? (
                     <div className="space-y-4">
                       <div className="rounded-[16px] border border-[#3DDC84]/30 bg-[#3DDC84]/10 p-4 text-sm text-green-400">
                         Ticket đã được tạo thành công.
                       </div>
-                      {ticketResult.url ? (
-                        <a href={ticketResult.url} className="block w-full rounded-[14px] bg-[#2F9BE6] py-3 text-center font-medium text-white/90 primary-hover-glow">Mở ticket Discord</a>
-                      ) : null}
+                      {ticketResult.url && (
+                        <a
+                          href={ticketResult.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 font-medium text-white/90 transition-all hover:bg-[#6875ff]"
+                        >
+                          <DiscordIcon className="h-5 w-5" />
+                          Mở ticket Discord
+                        </a>
+                      )}
+                      <button
+                        onClick={() => {
+                          setStep("shop");
+                          setOrderId(null);
+                          setCheckoutSummary(null);
+                          setRobloxSearchResult(null);
+                          setRobloxUsernameInput("");
+                          setTicketResult(null);
+                        }}
+                        className="w-full rounded-[14px] bg-[#1E1E1E] py-3 font-medium text-white/90 transition-colors hover:bg-[#2A2A2A]"
+                      >
+                        Tiếp tục mua sắm
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
+                      <span className="ml-3 text-sm text-blue-200/70">Đang tạo ticket...</span>
                     </div>
                   )}
                 </div>

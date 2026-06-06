@@ -4002,7 +4002,11 @@ router.post('/orders/:orderId/delivery-slot', authRequired, async (req, res) => 
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');
         const orderId = String(req.params?.orderId || '').trim();
-        const discordId = String(req.user?.discordId || '').trim();
+        let discordId = String(req.user?.discordId || '').trim();
+        if (!discordId && (req.user?.userId || req.user?._id)) {
+            const tk = await TaiKhoan.findById(req.user?.userId || req.user?._id).select('discordId').lean();
+            discordId = String(tk?.discordId || '').trim();
+        }
         const requestedSlotId = String(req.body?.slotId || '').trim();
         const slotId = normalizeDeliverySlotId(requestedSlotId);
         const customerTimezone = String(req.body?.customerTimezone || 'UTC').trim();
@@ -4048,7 +4052,11 @@ router.post('/orders/:orderId/delivery-slot', authRequired, async (req, res) => 
 router.post('/orders/:orderId/confirm-delivery', authRequired, async (req, res) => {
     try {
         const orderId = String(req.params?.orderId || '').trim();
-        const discordId = String(req.user?.discordId || '').trim();
+        let discordId = String(req.user?.discordId || '').trim();
+        if (!discordId && (req.user?.userId || req.user?._id)) {
+            const tk = await TaiKhoan.findById(req.user?.userId || req.user?._id).select('discordId').lean();
+            discordId = String(tk?.discordId || '').trim();
+        }
         const { order, status, error } = await getOwnedOrder(orderId, discordId);
         if (!order) return res.status(status).json({ error });
         if (!order.deliveredAt) {
@@ -4573,21 +4581,24 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
         const { orderId } = req.body || {};
         if (!orderId) return res.status(400).json({ error: 'Missing orderId' });
 
-        const { order, status, error } = await getOwnedOrder(orderId, req.user.discordId);
+        let discordId = String(req.user?.discordId || '').trim();
+        if (!discordId && (req.user?.userId || req.user?._id)) {
+            const tk = await TaiKhoan.findById(req.user?.userId || req.user?._id).select('discordId').lean();
+            discordId = String(tk?.discordId || '').trim();
+        }
+        const { order, status, error } = await getOwnedOrder(orderId, discordId);
         if (!order) return res.status(status).json({ error });
         // Payment check removed - ticket creation allowed before payment (manual payment confirmation)
-        if (!order.discordId) {
-            const dbUser = await User.findOne({ discordId: req.user.discordId }).lean();
-            order.discordId = req.user.discordId;
-            order.discordUsername = dbUser?.discordUsername || req.user.discordUsername || '';
+        if (!order.discordId && discordId) {
+            const dbUser = await User.findOne({ discordId }).lean();
+            order.discordId = discordId;
+            order.discordUsername = dbUser?.discordUsername || req.user?.discordUsername || '';
             await order.save();
         }
         if (!order.robloxUsername) {
             return res.status(409).json({ error: 'Link your Roblox account before creating a ticket.', code: 'ROBLOX_LINK_REQUIRED' });
         }
-        if (!order.deliverySlotId || !order.deliveryCustomerStartAt || !order.deliveryCustomerEndAt) {
-            return res.status(409).json({ error: 'Select a delivery time before creating a ticket.', code: 'DELIVERY_SLOT_REQUIRED' });
-        }
+        // Delivery slot removed - payment step eliminated
 
         if (isPanelTicketMode()) {
             await Order.findByIdAndUpdate(order._id, {
