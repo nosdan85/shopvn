@@ -4572,8 +4572,6 @@ router.post('/create-ticket-ltc', authRequired, ticketCreateLimiter, requirePaym
 });
 
 router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res) => {
-    let userTicketLockDiscordId = '';
-    let userTicketLockUntil = null;
     try {
         const { orderId } = req.body || {};
         if (!orderId) return res.status(400).json({ error: 'Missing orderId' });
@@ -4646,7 +4644,6 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
         );
 
         await clearUserCart(req.user.discordId).catch(() => {});
-        await releaseUserTicketCreationLock(userTicketLockDiscordId, userTicketLockUntil).catch(() => {});
 
         return res.json({
             success: true,
@@ -4656,9 +4653,6 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
     } catch (err) {
         console.error('Create ticket error:', err);
         const { status, payload } = buildTicketErrorResponse(err);
-        if (userTicketLockDiscordId) {
-            await releaseUserTicketCreationLock(userTicketLockDiscordId, userTicketLockUntil).catch(() => {});
-        }
         if (payload.code === 'USER_NOT_IN_GUILD') {
             return res.status(status).json({
                 ...payload,
