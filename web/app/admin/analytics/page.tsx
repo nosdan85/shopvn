@@ -85,11 +85,11 @@ export default function AnalyticsPage() {
 
   if (isLoading || !isAdminRole(user?.vaiTro)) {
     return (
-      <div className="min-h-screen bg-white/60 backdrop-blur-xl">
+      <div className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           {isLoading ? (
-            <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
           ) : (
             <p className="text-slate-600">Bạn không có quyền truy cập</p>
           )}
@@ -99,7 +99,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
+    <div className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-4">
@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
           <h1 className="text-3xl font-bold">Thống Kê</h1>
           <button
             onClick={() => void fetchAnalytics()}
-            className="flex items-center gap-2 rounded-[14px] bg-white/60 px-4 py-2 text-sm hover:bg-white/70"
+            className="flex items-center gap-2 rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-2 text-sm hover:bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md"
           >
             <RefreshCw className="h-4 w-4" />
             Làm Mới
@@ -123,26 +123,26 @@ export default function AnalyticsPage() {
               { label: "Tuần Này", data: sales.week, icon: ShoppingCart },
               { label: "Tháng Này", data: sales.month, icon: Package }
             ].map(({ label, data, icon: Icon }) => (
-              <div key={label} className="rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-xl p-6">
+              <div key={label} className="rounded-[16px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600">{label}</p>
-                    <p className="mt-2 text-2xl font-bold text-green-600">{data.revenue.toLocaleString('vi-VN')} VND</p>
+                    <p className="mt-2 text-2xl font-bold text-emerald-700">{data.revenue.toLocaleString('vi-VN')} VND</p>
                     <p className="text-xs text-slate-500">{data.orders} đơn hàng</p>
                   </div>
-                  <Icon className="h-8 w-8 text-slate-600" />
+                  <Icon className="h-8 w-8 text-blue-300/80" />
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <div className="mb-8 rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-xl p-6">
+        <div className="mb-8 rounded-[16px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-6">
           <h2 className="mb-4 text-xl font-semibold">Đơn Hàng Gần Đây</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/50">
+                <tr className="border-b border-white/40">
                   <th className="px-4 py-2 text-left text-slate-600">Mã Đơn</th>
                   <th className="px-4 py-2 text-left text-slate-600">Roblox</th>
                   <th className="px-4 py-2 text-left text-slate-600">Số Tiền</th>
@@ -151,12 +151,12 @@ export default function AnalyticsPage() {
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.orderId} className="border-b border-white/50 hover:bg-white/60">
+                  <tr key={order.orderId} className="border-b border-white/40 hover:bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]/50">
                     <td className="px-4 py-2 font-mono text-xs">{order.orderId}</td>
                     <td className="px-4 py-2">{order.robloxUsername || "-"}</td>
                     <td className="px-4 py-2">{order.totalAmount.toLocaleString('vi-VN')} VND</td>
                     <td className="px-4 py-2">
-                      <span className={`rounded px-2 py-1 text-xs ${order.paymentStatus === "paid" ? "bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/20 text-green-600" : "bg-white/40 text-slate-600"}`}>
+                      <span className={`rounded px-2 py-1 text-xs ${order.paymentStatus === "paid" ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]/20 text-emerald-700" : "bg-white/40 backdrop-blur-sm text-blue-300/80"}`}>
                         {order.paymentStatus}
                       </span>
                     </td>
@@ -168,14 +168,14 @@ export default function AnalyticsPage() {
         </div>
 
         {products.length > 0 && (
-          <div className="mb-8 rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-xl p-6">
+          <div className="mb-8 rounded-[16px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-6">
             <h2 className="mb-4 text-xl font-semibold">Sản Phẩm Bán Chạy</h2>
             <div className="space-y-2">
               {products.map((p) => (
-                <div key={p._id} className="flex items-center justify-between rounded-[14px] border border-white/50 bg-white/70 p-3">
+                <div key={p._id} className="flex items-center justify-between rounded-[14px] border border-white/40 bg-white/40 backdrop-blur-sm border border-white/50 p-3">
                   <span className="text-sm">{p._id}</span>
                   <div className="text-right">
-                    <p className="font-semibold text-green-600">{p.revenue.toLocaleString('vi-VN')} VND</p>
+                    <p className="font-semibold text-emerald-700">{p.revenue.toLocaleString('vi-VN')} VND</p>
                     <p className="text-xs text-slate-500">{p.quantity} bán</p>
                   </div>
                 </div>
@@ -185,26 +185,26 @@ export default function AnalyticsPage() {
         )}
 
         {proofStats && (
-          <div className="rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-xl p-6">
+          <div className="rounded-[16px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-6">
             <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
               Đánh Giá
             </h2>
             <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-3">
-              <div className="rounded-[14px] bg-white/70 p-4">
+              <div className="rounded-[14px] bg-white/40 backdrop-blur-sm border border-white/50 p-4">
                 <p className="text-xs text-slate-600">Tổng Đánh Giá</p>
-                <p className="mt-1 text-2xl font-bold text-slate-600">{proofStats.totalProofs}</p>
+                <p className="mt-1 text-2xl font-bold text-blue-300/80">{proofStats.totalProofs}</p>
               </div>
-              <div className="rounded-[14px] bg-white/70 p-4">
+              <div className="rounded-[14px] bg-white/40 backdrop-blur-sm border border-white/50 p-4">
                 <p className="text-xs text-slate-600">Tuần Này</p>
-                <p className="mt-1 text-2xl font-bold text-slate-600">{proofStats.weekProofs}</p>
+                <p className="mt-1 text-2xl font-bold text-blue-300/80">{proofStats.weekProofs}</p>
               </div>
             </div>
             {proofStats.recentProofs.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm text-slate-600">Đánh Giá Gần Đây</p>
                 {proofStats.recentProofs.map((proof) => (
-                  <div key={proof.id} className="flex items-center justify-between rounded-[14px] border border-white/50 bg-white/70 p-3">
+                  <div key={proof.id} className="flex items-center justify-between rounded-[14px] border border-white/40 bg-white/40 backdrop-blur-sm border border-white/50 p-3">
                     <div>
                       <p className="text-sm font-medium">{proof.robloxUsername || "Không rõ"}</p>
                       <p className="text-xs text-slate-500">{proof.totalAmount.toLocaleString('vi-VN')} VND</p>

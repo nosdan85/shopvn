@@ -88,9 +88,9 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://cdn.discordapp.com" />
         <link rel="preconnect" href="https://i.ibb.co" />
-        <meta name="theme-color" content="#071326" />
+        <meta name="theme-color" content="#ffffff" />
       </head>
-      <body className="min-h-full flex flex-col bg-white/60 backdrop-blur-xl text-[#071326] relative">
+      <body className="min-h-full flex flex-col bg-transparent text-[#071326]/90 relative">
         {/* Glow orbs for Apple Liquid Glass effect */}
         <div className="glow-orb glow-orb-1" />
         <div className="glow-orb glow-orb-2" />

@@ -88,31 +88,31 @@ function DiscordCallbackContent() {
   }, [searchParams, router, layThongTin]);
 
   return (
-    <div className="max-w-lg w-full bg-white/60 border border-white/50 rounded-2xl p-8 text-center shadow-xl animate-fade-in-up">
+    <div className="max-w-lg w-full bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 rounded-2xl p-8 text-center shadow-xl animate-fade-in-up">
       {status === "processing" && (
         <>
-          <Loader2 className="w-16 h-16 text-slate-600 mx-auto mb-4 animate-spin" />
-          <h1 className="text-2xl font-bold mb-3 text-[#071326]/90">{message}</h1>
+          <Loader2 className="w-16 h-16 text-blue-400 mx-auto mb-4 animate-spin" />
+          <h1 className="text-2xl font-bold mb-3 text-[#071326]/90/90">{message}</h1>
           <p className="text-slate-600">Vui lòng đợi trong khi chúng tôi xử lý xác thực Discord.</p>
         </>
       )}
       {status === "success" && (
         <>
           <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2 text-[#071326]/90">{message}</h1>
+          <h1 className="text-2xl font-bold mb-2 text-[#071326]/90/90">{message}</h1>
           <p className="text-slate-600">Bạn sẽ được chuyển hướng trong 2 giây.</p>
         </>
       )}
       {status === "error" && (
         <>
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-3 text-[#071326]/90">{message}</h1>
-          <div className="bg-white/60 backdrop-blur-xl border border-white/50 rounded-lg p-4 mb-6 text-left">
+          <h1 className="text-2xl font-bold mb-3 text-[#071326]/90/90">{message}</h1>
+          <div className="bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 rounded-lg p-4 mb-6 text-left">
             <p className="text-sm text-slate-600">{error}</p>
           </div>
           <button
             onClick={() => router.push("/dang-ky")}
-            className="px-6 py-3 bg-white/70 hover:bg-white/70 text-[#071326]/90 rounded-lg font-medium transition-all duration-200 hover:scale-105"
+            className="px-6 py-3 bg-white/40 backdrop-blur-sm border border-white/50 hover:bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md text-[#071326]/90/90 rounded-lg font-medium transition-all duration-200 hover:scale-105"
           >
             Quay về Đăng Ký
           </button>
@@ -124,12 +124,12 @@ function DiscordCallbackContent() {
 
 export default function DiscordCallbackPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white/60 backdrop-blur-xl text-[#071326]/90 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90 px-4">
       <Suspense
         fallback={
-          <div className="max-w-lg w-full bg-white/60 border border-white/50 rounded-2xl p-8 text-center shadow-xl">
-            <Loader2 className="w-16 h-16 text-slate-600 mx-auto mb-4 animate-spin" />
-            <h1 className="text-2xl font-bold mb-3 text-[#071326]/90">Đang tải...</h1>
+          <div className="max-w-lg w-full bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 rounded-2xl p-8 text-center shadow-xl">
+            <Loader2 className="w-16 h-16 text-blue-400 mx-auto mb-4 animate-spin" />
+            <h1 className="text-2xl font-bold mb-3 text-[#071326]/90/90">Đang tải...</h1>
           </div>
         }
       >

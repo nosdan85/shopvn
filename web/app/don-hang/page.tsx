@@ -82,16 +82,16 @@ function formatDateVn(dateStr: string | undefined | null): string {
 
 function OrderCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-[18px] border border-white/50 bg-white/60 p-4">
+    <div className="animate-pulse rounded-[18px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-4">
       <div className="flex items-start justify-between">
-        <div className="h-4 w-24 rounded bg-white/80" />
-        <div className="h-4 w-16 rounded bg-white/80" />
+        <div className="h-4 w-24 rounded bg-white/60 backdrop-blur-md" />
+        <div className="h-4 w-16 rounded bg-white/60 backdrop-blur-md" />
       </div>
-      <div className="mt-3 h-3 w-32 rounded bg-white/80" />
-      <div className="mt-2 h-5 w-20 rounded bg-white/80" />
+      <div className="mt-3 h-3 w-32 rounded bg-white/60 backdrop-blur-md" />
+      <div className="mt-2 h-5 w-20 rounded bg-white/60 backdrop-blur-md" />
       <div className="mt-3 space-y-2">
-        <div className="h-3 w-full rounded bg-white/80" />
-        <div className="h-3 w-3/4 rounded bg-white/80" />
+        <div className="h-3 w-full rounded bg-white/60 backdrop-blur-md" />
+        <div className="h-3 w-3/4 rounded bg-white/60 backdrop-blur-md" />
       </div>
     </div>
   );
@@ -274,23 +274,23 @@ function DonHangPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-white/60 backdrop-blur-xl">
+      <div className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]">
         <div className="flex items-center justify-center pt-32">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
+    <div className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90">
       {/* Header */}
-      <div className="sticky top-0 z-30 border-b border-white/50 bg-white/70 backdrop-blur-xl backdrop-blur-sm">
+      <div className="sticky top-0 z-30 border-b border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md border border-white/50 shadow-lg backdrop-blur-sm">
         <div className="mx-auto max-w-3xl px-4 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold">Don Hang Cua Toi</h1>
             {!loading && orders.length > 0 && (
-              <span className="rounded-full bg-white/40 px-3 py-1 text-xs font-medium text-slate-600">
+              <span className="rounded-full bg-white/40 backdrop-blur-sm px-3 py-1 text-xs font-medium text-blue-300/80">
                 {orders.length} don
               </span>
             )}
@@ -303,7 +303,7 @@ function DonHangPage() {
         <div className="mt-4">
         {/* Success Message */}
         {successMessage && (
-          <div className="mb-4 flex items-center gap-2 rounded-[12px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/20 px-4 py-3 text-sm text-green-600">
+          <div className="mb-4 flex items-center gap-2 rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]/20 px-4 py-3 text-sm text-emerald-700">
             <CheckCircle className="h-4 w-4" />
             {successMessage}
           </div>
@@ -311,7 +311,7 @@ function DonHangPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 flex items-center gap-2 rounded-[12px] bg-[#FF4D4F]/20 px-4 py-3 text-sm text-red-600">
+          <div className="mb-4 flex items-center gap-2 rounded-[12px] bg-[#FF4D4F]/20 px-4 py-3 text-sm text-red-400">
             <AlertTriangle className="h-4 w-4" />
             {error}
           </div>
@@ -319,15 +319,15 @@ function DonHangPage() {
 
         {/* Discord Link Required Modal */}
         {showDiscordModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/400 p-4">
-            <div className="w-full max-w-md rounded-[22px] border border-white/50 bg-white/60 p-6 shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/40 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md rounded-[22px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-6 shadow-2xl">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#5865F2]/20">
                 <svg className="h-6 w-6 text-slate-600" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
                 </svg>
               </div>
 
-              <h2 className="mb-2 text-xl font-bold text-[#071326]/90">Liên Kết Discord Để Nhận Hàng</h2>
+              <h2 className="mb-2 text-xl font-bold text-[#071326]/90/90">Liên Kết Discord Để Nhận Hàng</h2>
 
               <p className="mb-6 text-sm text-slate-600">
                 Bạn có đơn hàng đã thanh toán! Để nhận hàng, vui lòng liên kết tài khoản Discord của bạn.
@@ -337,13 +337,13 @@ function DonHangPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDiscordModal(false)}
-                  className="flex-1 rounded-[14px] border border-white/50 bg-white/400 backdrop-blur-xl py-3 text-sm font-medium text-[#071326]/90 transition-all hover:bg-white/70"
+                  className="flex-1 rounded-[14px] border border-white/40 bg-white/30 backdrop-blur-md border border-white/50 shadow-lg py-3 text-sm font-medium text-[#071326]/90/90 transition-all hover:bg-white/40 backdrop-blur-sm border border-white/50"
                 >
                   Để sau
                 </button>
                 <button
                   onClick={handleLinkDiscord}
-                  className="flex-1 rounded-[14px] bg-[#5865F2] py-3 text-sm font-medium text-[#071326]/90 transition-all hover:bg-[#4752C4] flex items-center justify-center gap-2"
+                  className="flex-1 rounded-[14px] bg-[#5865F2] py-3 text-sm font-medium text-[#071326]/90/90 transition-all hover:bg-[#4752C4] flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
@@ -367,11 +367,11 @@ function DonHangPage() {
         {/* Empty State */}
         {!loading && orders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <ShoppingBag className="h-16 w-16 text-slate-500" />
+            <ShoppingBag className="h-16 w-16 text-slate-600/50" />
             <p className="mt-4 text-slate-600">Ban chua co don hang nao</p>
             <Link
               href="/shop"
-              className="mt-4 rounded-[14px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-6 py-2.5 text-sm font-medium text-[#071326]/90 transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] primary-hover-glow"
+              className="mt-4 rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-6 py-2.5 text-sm font-medium text-[#071326]/90/90 transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] primary-hover-glow"
             >
               Di mua sam
             </Link>
@@ -396,7 +396,7 @@ function DonHangPage() {
               return (
                 <div
                   key={order._id}
-                  className="overflow-hidden rounded-[18px] border border-white/50 bg-white/60"
+                  className="overflow-hidden rounded-[18px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]"
                 >
                   {/* Order Header */}
                   <div
@@ -453,7 +453,7 @@ function DonHangPage() {
                     </div>
 
                     <div className="mt-2 flex items-baseline justify-between">
-                      <p className="text-lg font-bold text-green-600">
+                      <p className="text-lg font-bold text-emerald-700">
                         {formatVnd(order.tongTienVnd)} VND
                       </p>
                     </div>
@@ -470,7 +470,7 @@ function DonHangPage() {
                           </p>
                         ))}
                         {order.items.length > 2 && (
-                          <p className="text-xs text-slate-600">
+                          <p className="text-xs text-blue-300/80">
                             +{order.items.length - 2} san pham khac
                           </p>
                         )}
@@ -480,7 +480,7 @@ function DonHangPage() {
 
                   {/* Order Detail (Expanded) */}
                   {isExpanded && (
-                    <div className="border-t border-white/50 px-4 pb-4">
+                    <div className="border-t border-white/40 px-4 pb-4">
                       {/* Item List */}
                       <div className="mt-4 space-y-3">
                         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600">
@@ -489,7 +489,7 @@ function DonHangPage() {
                         {order.items.map((item, idx) => (
                           <div
                             key={idx}
-                            className="flex items-start justify-between rounded-[12px] bg-white/400 backdrop-blur-xl p-3"
+                            className="flex items-start justify-between rounded-[12px] bg-white/30 backdrop-blur-md border border-white/50 shadow-lg p-3"
                           >
                             <div className="flex-1 min-w-0">
                               <p className="truncate text-sm">{item.name}</p>
@@ -498,7 +498,7 @@ function DonHangPage() {
                                 {formatVnd(item.priceVnd)} VND
                               </p>
                             </div>
-                            <p className="ml-3 whitespace-nowrap text-sm font-medium text-green-600">
+                            <p className="ml-3 whitespace-nowrap text-sm font-medium text-emerald-700">
                               {formatVnd(item.lineTotalVnd)} VND
                             </p>
                           </div>
@@ -506,20 +506,20 @@ function DonHangPage() {
                       </div>
 
                       {/* Summary */}
-                      <div className="mt-4 space-y-2 rounded-[12px] bg-white/400 backdrop-blur-xl p-3">
+                      <div className="mt-4 space-y-2 rounded-[12px] bg-white/30 backdrop-blur-md border border-white/50 shadow-lg p-3">
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-600">Subtotal</span>
                           <span>{formatVnd(order.subtotalVnd)} VND</span>
                         </div>
                         {order.giamGiaVnd > 0 && (
-                          <div className="flex justify-between text-sm text-green-600">
+                          <div className="flex justify-between text-sm text-emerald-700">
                             <span>Giam gia</span>
                             <span>-{formatVnd(order.giamGiaVnd)} VND</span>
                           </div>
                         )}
-                        <div className="flex justify-between border-t border-white/50 pt-2 text-base font-semibold">
+                        <div className="flex justify-between border-t border-white/40 pt-2 text-base font-semibold">
                           <span>Tong</span>
-                          <span className="text-green-600">
+                          <span className="text-emerald-700">
                             {formatVnd(order.tongTienVnd)} VND
                           </span>
                         </div>
@@ -534,14 +534,14 @@ function DonHangPage() {
                         {/* Discord Link Warning */}
                         {showDiscordWarning && (
                           <div className="flex items-start gap-3 rounded-[12px] bg-[#FF4D4F]/10 p-3">
-                            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-600" />
+                            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-400" />
                             <div className="flex-1">
                               <p className="text-sm text-slate-600">
                                 Ban can lien ket Discord de tao ticket
                               </p>
                               <button
                                 onClick={handleLinkDiscord}
-                                className="mt-2 rounded-[10px] bg-[#5865F2] px-4 py-2 text-sm font-medium text-[#071326]/90 transition-all hover:bg-[#7289DA]"
+                                className="mt-2 rounded-[10px] bg-[#5865F2] px-4 py-2 text-sm font-medium text-[#071326]/90/90 transition-all hover:bg-[#7289DA]"
                               >
                                 Lien Ket Discord
                               </button>
@@ -554,14 +554,14 @@ function DonHangPage() {
                           order.discordDaLienKet &&
                           !order.discordDaJoinServer && (
                             <div className="flex items-start gap-3 rounded-[12px] bg-[#FF4D4F]/10 p-3">
-                              <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-600" />
+                              <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-400" />
                               <div className="flex-1">
                                 <p className="text-sm text-slate-600">
                                   Ban can tham gia server Discord
                                 </p>
                                 <button
                                   onClick={handleJoinServer}
-                                  className="mt-2 flex items-center gap-2 rounded-[10px] bg-[#5865F2] px-4 py-2 text-sm font-medium text-[#071326]/90 transition-all hover:bg-[#7289DA]"
+                                  className="mt-2 flex items-center gap-2 rounded-[10px] bg-[#5865F2] px-4 py-2 text-sm font-medium text-[#071326]/90/90 transition-all hover:bg-[#7289DA]"
                                 >
                                   Tham Gia Server
                                   <ExternalLink className="h-3.5 w-3.5" />
@@ -575,7 +575,7 @@ function DonHangPage() {
                           <button
                             onClick={() => handleCreateTicket(order._id)}
                             disabled={submitting === order._id}
-                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326] transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] disabled:opacity-50"
+                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-slate-600 transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] disabled:opacity-50"
                           >
                             {submitting === order._id ? (
                               <>
@@ -593,17 +593,17 @@ function DonHangPage() {
 
                         {/* Existing Ticket Info */}
                         {order.daTaoTicket && order.ticketChannelName && (
-                          <div className="flex items-center gap-3 rounded-[12px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/10 p-3">
-                            <CheckCircle className="h-5 w-5 flex-shrink-0 text-green-600" />
+                          <div className="flex items-center gap-3 rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]/10 p-3">
+                            <CheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-700" />
                             <div>
-                              <p className="text-sm text-green-600">
+                              <p className="text-sm text-emerald-700">
                                 Da tao ticket
                               </p>
                               <p className="text-xs text-slate-600">
                                 Channel: {order.ticketChannelName}
                               </p>
                               {order.ticketStatus && (
-                                <p className="mt-1 text-xs text-slate-600">
+                                <p className="mt-1 text-xs text-blue-300/80">
                                   Trang thai: {order.ticketStatus}
                                 </p>
                               )}
@@ -619,14 +619,14 @@ function DonHangPage() {
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => setCancelConfirm(null)}
-                                className="flex-1 rounded-[12px] bg-white/70 px-4 py-2 text-sm font-medium text-[#071326]/90"
+                                className="flex-1 rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md px-4 py-2 text-sm font-medium text-[#071326]/90/90"
                               >
                                 Khong
                               </button>
                               <button
                                 onClick={() => handleCancelOrder(order._id)}
                                 disabled={submitting === order._id}
-                                className="flex-1 rounded-[12px] bg-[#FF4D4F] px-4 py-2 text-sm font-medium text-[#071326]/90 disabled:opacity-50"
+                                className="flex-1 rounded-[12px] bg-[#FF4D4F] px-4 py-2 text-sm font-medium text-[#071326]/90/90 disabled:opacity-50"
                               >
                                 {submitting === order._id ? (
                                   <Loader2 className="h-4 w-4 animate-spin mx-auto" />
@@ -638,7 +638,7 @@ function DonHangPage() {
                           ) : (
                             <button
                               onClick={() => setCancelConfirm(order._id)}
-                              className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-[#FF4D4F]/30 px-4 py-2.5 text-sm font-medium text-red-600 transition-all hover:bg-[#FF4D4F]/10"
+                              className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-[#FF4D4F]/30 px-4 py-2.5 text-sm font-medium text-red-400 transition-all hover:bg-[#FF4D4F]/10"
                             >
                               <Trash2 className="h-4 w-4" />
                               Huy don hang
@@ -663,9 +663,9 @@ export default function DonHangPageWrapper() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-white/60 backdrop-blur-xl">
+        <div className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]">
           <div className="flex items-center justify-center pt-32">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
           </div>
         </div>
       }

@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 
 const TaiKhoan = require('../models/TaiKhoan');
+const User = require('../models/User');
 const { xacThuc } = require('../middleware/auth');
 const { resolveDiscordRedirectUri } = require('../utils/discordOauth');
 const { isOwnerDiscordId } = require('../utils/ownerAccess');
@@ -448,7 +449,6 @@ router.post('/huy-lien-ket-discord', xacThuc, async (req, res) => {
 
         // SYNC: Also remove from User model
         try {
-            const User = require('../models/User');
             await User.findOneAndUpdate(
                 { discordId: taiKhoan.discordId },
                 {

@@ -75,7 +75,9 @@ async function goiApi<T>(
       duLieu.chiTiet?.message ||
       `Lỗi ${phanHoi.status}: ${phanHoi.statusText}`;
 
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage) as any;
+    error.status = phanHoi.status;
+    throw error;
   }
 
   return duLieu;
@@ -113,11 +115,13 @@ export function AuthVietProvider({ children }: { children: ReactNode }) {
           setDiscordTenHienThiState(duLieu.discordTenHienThi || null);
           localStorage.setItem("webUser", JSON.stringify(duLieu));
         })
-        .catch(() => {
-          localStorage.removeItem("webToken");
-          localStorage.removeItem("webUser");
-          setToken(null);
-          setUser(null);
+        .catch((err: any) => {
+          if (err?.status === 401 || err?.status === 403) {
+            localStorage.removeItem("webToken");
+            localStorage.removeItem("webUser");
+            setToken(null);
+            setUser(null);
+          }
         })
         .finally(() => {
           setIsLoading(false);

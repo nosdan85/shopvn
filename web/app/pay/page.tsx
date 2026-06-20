@@ -71,8 +71,8 @@ function formatPurchasedQtyLabel(item: OrderItem): string {
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+    <div className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90 flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
     </div>
   );
 }
@@ -169,12 +169,12 @@ function PayContent() {
 
   if (!orderId) {
     return (
-      <main className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">No Order ID</h1>
           <p className="text-slate-600 mb-6">Open this page from checkout so your order can be loaded.</p>
-          <a href="/shop" className="inline-block bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] px-6 py-3 rounded-[14px] font-medium transition-colors">Go to Shop</a>
+          <a href="/shop" className="inline-block bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] px-6 py-3 rounded-[14px] font-medium transition-colors">Go to Shop</a>
         </div>
       </main>
     );
@@ -182,12 +182,12 @@ function PayContent() {
 
   if (errorParam) {
     return (
-      <main className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Payment Error</h1>
           <p className="text-slate-600 mb-6">{errorParam}</p>
-          <a href="/shop" className="inline-block bg-white/70 hover:bg-white/70 px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
+          <a href="/shop" className="inline-block bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md hover:bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
         </div>
       </main>
     );
@@ -195,12 +195,12 @@ function PayContent() {
 
   if (order?.error) {
     return (
-      <main className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Order Error</h1>
           <p className="text-slate-600 mb-6">{order.error}</p>
-          <a href="/shop" className="inline-block bg-white/70 hover:bg-white/70 px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
+          <a href="/shop" className="inline-block bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md hover:bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
         </div>
       </main>
     );
@@ -208,13 +208,13 @@ function PayContent() {
 
   if (isPaidRedirect || order?.isPaid) {
     return (
-      <main className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
+          <CheckCircle2 className="h-16 w-16 text-emerald-700 mx-auto mb-4" />
           <h1 className="text-3xl font-bold mb-2">Payment Complete</h1>
           <p className="text-slate-600 mb-2">Order <span className="font-mono">{orderId}</span></p>
           <p className="text-slate-600 mb-6">Thank you for your purchase.</p>
-          <a href="/shop" className="inline-block bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] px-6 py-3 rounded-[14px] font-medium transition-colors">Continue Shopping</a>
+          <a href="/shop" className="inline-block bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] px-6 py-3 rounded-[14px] font-medium transition-colors">Continue Shopping</a>
         </div>
       </main>
     );
@@ -238,20 +238,20 @@ function PayContent() {
   return (
     <>
       {paymentError && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/400 p-4 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md rounded-[20px] border border-[#FF4D4F]/30 bg-white/60 p-6 shadow-2xl animate-bounce-in">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/40 backdrop-blur-sm p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-[20px] border border-[#FF4D4F]/30 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-6 shadow-2xl animate-bounce-in">
             <div className="mb-4 flex items-start gap-4">
               <div className="flex-shrink-0 rounded-full bg-[#FF4D4F]/10 p-3">
-                <AlertCircle className="h-6 w-6 text-red-600" />
+                <AlertCircle className="h-6 w-6 text-red-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-[#071326]/90 mb-2">Error</h3>
+                <h3 className="text-lg font-semibold text-[#071326]/90/90 mb-2">Error</h3>
                 <p className="text-sm text-slate-600 leading-relaxed break-words">{paymentError}</p>
               </div>
             </div>
             <button
               onClick={() => setPaymentError(null)}
-              className="w-full rounded-[14px] bg-[#FF4D4F] px-4 py-3 text-sm font-medium text-[#071326]/90 hover:bg-[#FF6B6B] transition-colors"
+              className="w-full rounded-[14px] bg-[#FF4D4F] px-4 py-3 text-sm font-medium text-[#071326]/90/90 hover:bg-[#FF6B6B] transition-colors"
             >
               Close
             </button>
@@ -263,17 +263,17 @@ function PayContent() {
         <section className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Complete Payment</h1>
-            <p className="text-slate-600 mt-2">Order: <span className="text-[#071326]/90 font-mono">{orderId}</span></p>
+            <p className="text-slate-600 mt-2">Order: <span className="text-[#071326]/90/90 font-mono">{orderId}</span></p>
           </div>
 
-          <div className="bg-white/60 border border-white/50 rounded-[16px] p-6 space-y-4">
+          <div className="bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 rounded-[16px] p-6 space-y-4">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h2 className="text-lg font-semibold">Payment Method</h2>
                 <p className="text-sm text-slate-600">Select a method to generate payment instructions.</p>
               </div>
               {paymentLoading && (
-                <div className="flex items-center gap-2 text-sm text-slate-700">
+                <div className="flex items-center gap-2 text-sm text-blue-300">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Loading
                 </div>
@@ -285,7 +285,7 @@ function PayContent() {
                 <button
                   key={paymentMethod.value}
                   onClick={() => selectPaymentMethod(paymentMethod.value)}
-                  className={"px-4 py-2 rounded-[14px] border text-sm font-medium transition-all " + (selectedMethod === paymentMethod.value ? "bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] border-blue-500 text-[#071326]/90 shadow-lg" : "bg-white/60 backdrop-blur-xl border-white/50 text-slate-600 hover:bg-white/70")}
+                  className={"px-4 py-2 rounded-[14px] border text-sm font-medium transition-all " + (selectedMethod === paymentMethod.value ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border-blue-500 text-[#071326]/90/90 shadow-lg" : "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border-white/40 text-slate-600 hover:bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md")}
                 >
                   {paymentMethod.label}
                 </button>
@@ -293,9 +293,9 @@ function PayContent() {
             </div>
           </div>
 
-          <div className="bg-white/60 border border-white/50 rounded-[16px] p-6 space-y-5">
+          <div className="bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 rounded-[16px] p-6 space-y-5">
             <div className="flex items-center gap-3">
-              {selectedMethod === "ltc" ? <QrCode className="w-5 h-5 text-slate-600" /> : <CreditCard className="w-5 h-5 text-slate-600" />}
+              {selectedMethod === "ltc" ? <QrCode className="w-5 h-5 text-blue-400" /> : <CreditCard className="w-5 h-5 text-blue-400" />}
               <h2 className="text-lg font-semibold">{currentMethodLabel}</h2>
             </div>
 
@@ -307,10 +307,10 @@ function PayContent() {
             {selectedMethod === "paypal_ff" && (
               <div className="space-y-5">
                 <CopyRow label="PayPal Email" value={paypalEmail} copied={copied} onCopy={copyValue} />
-                <div className="rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl/60 p-4 text-sm text-slate-600 space-y-1">
-                  <p className="font-medium text-[#071326]/90">Instructions:</p>
+                <div className="rounded-[14px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]/60 p-4 text-sm text-slate-600 space-y-1">
+                  <p className="font-medium text-[#071326]/90/90">Instructions:</p>
                   <p>1. Send as <strong>Friends &amp; Family</strong> only.</p>
-                  <p>2. Include Order ID in note: <code className="bg-white/70 px-2 py-0.5 rounded">{memoExpected}</code></p>
+                  <p>2. Include Order ID in note: <code className="bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md px-2 py-0.5 rounded">{memoExpected}</code></p>
                   <p>3. Send exact amount: <strong>{amount}</strong></p>
                 </div>
               </div>
@@ -319,10 +319,10 @@ function PayContent() {
             {selectedMethod === "cashapp" && (
               <div className="space-y-5">
                 <CopyRow label="Cash App" value={cashAppTag} copied={copied} onCopy={copyValue} />
-                <div className="rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl/60 p-4 text-sm text-slate-600 space-y-1">
-                  <p className="font-medium text-[#071326]/90">Instructions:</p>
+                <div className="rounded-[14px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]/60 p-4 text-sm text-slate-600 space-y-1">
+                  <p className="font-medium text-[#071326]/90/90">Instructions:</p>
                   <p>1. Send payment to <strong>{cashAppTag}</strong>.</p>
-                  <p>2. Include Order ID: <code className="bg-white/70 px-2 py-0.5 rounded">{memoExpected}</code></p>
+                  <p>2. Include Order ID: <code className="bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md px-2 py-0.5 rounded">{memoExpected}</code></p>
                   <p>3. Send exact amount: <strong>{amount}</strong></p>
                 </div>
               </div>
@@ -332,12 +332,12 @@ function PayContent() {
               <div className="space-y-5">
                 <CopyRow label="Litecoin Address" value={ltcAddress} placeholder="Select Litecoin to load address" copied={copied} onCopy={copyValue} />
                 {ltcQrImageUrl && (
-                  <img src={ltcQrImageUrl} alt="Litecoin payment QR code" className="w-48 h-48 rounded-[14px] border border-white/50 bg-white p-2" />
+                  <img src={ltcQrImageUrl} alt="Litecoin payment QR code" className="w-48 h-48 rounded-[14px] border border-white/40 bg-white p-2" />
                 )}
-                <div className="rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl/60 p-4 text-sm text-slate-600 space-y-1">
-                  <p className="font-medium text-[#071326]/90">Instructions:</p>
+                <div className="rounded-[14px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]/60 p-4 text-sm text-slate-600 space-y-1">
+                  <p className="font-medium text-[#071326]/90/90">Instructions:</p>
                   <p>1. Send only <strong>Litecoin (LTC)</strong> to the address above.</p>
-                  <p>2. Include Order ID where your wallet allows: <code className="bg-white/70 px-2 py-0.5 rounded">{memoExpected}</code></p>
+                  <p>2. Include Order ID where your wallet allows: <code className="bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md px-2 py-0.5 rounded">{memoExpected}</code></p>
                   <p>3. Wait for network confirmations after sending.</p>
                 </div>
               </div>
@@ -345,7 +345,7 @@ function PayContent() {
           </div>
         </section>
 
-        <aside className="bg-white/60 border border-white/50 rounded-[16px] p-6 h-fit sticky top-24">
+        <aside className="bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 rounded-[16px] p-6 h-fit sticky top-24">
           <h2 className="text-xl font-semibold mb-5">Order Summary</h2>
 
           <div className="space-y-3">
@@ -358,7 +358,7 @@ function PayContent() {
               </div>
             ))}
 
-            <div className="border-t border-white/50 pt-4 space-y-2">
+            <div className="border-t border-white/40 pt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">Subtotal</span>
                 <span className="text-slate-600">{formatPrice(subtotal, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
@@ -367,32 +367,32 @@ function PayContent() {
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Coupon ({order?.couponDiscountPercent || 0}%)</span>
-                  <span className="text-green-600">-{formatPrice(couponDiscount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
+                  <span className="text-emerald-700">-{formatPrice(couponDiscount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
                 </div>
               )}
 
               {referralDiscount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Referral ({order?.referralDiscountPercent || 0}%)</span>
-                  <span className="text-green-600">-{formatPrice(referralDiscount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
+                  <span className="text-emerald-700">-{formatPrice(referralDiscount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
                 </div>
               )}
 
               {discount > 0 && !couponDiscount && !referralDiscount && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Discount</span>
-                  <span className="text-green-600">-{formatPrice(discount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
+                  <span className="text-emerald-700">-{formatPrice(discount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
                 </div>
               )}
 
               <div className="flex justify-between text-lg font-semibold pt-2">
                 <span>Total</span>
-                <span className="text-green-600">{amount}</span>
+                <span className="text-emerald-700">{amount}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-white/50 space-y-2 text-sm">
+          <div className="mt-6 pt-6 border-t border-white/40 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-600">Status</span>
               <span className="text-slate-600">{order?.paymentStatus || order?.status || "Pending"}</span>
@@ -404,7 +404,7 @@ function PayContent() {
           </div>
 
           {order?.deliveryCustomerStartText && (
-            <div className="mt-6 pt-6 border-t border-white/50">
+            <div className="mt-6 pt-6 border-t border-white/40">
               <h3 className="text-sm font-semibold text-slate-600 mb-2">Delivery Time</h3>
               <p className="text-sm text-slate-600">{order.deliveryCustomerStartText} - {order.deliveryCustomerEndText}</p>
               <p className="text-xs text-slate-500 mt-1">{timezoneInfo.label}</p>
@@ -432,15 +432,15 @@ function CopyRow({ label, value, placeholder, copied, onCopy }: CopyRowProps) {
     <div>
       <p className="text-sm text-slate-600 mb-2">{label}</p>
       <div className="flex gap-3">
-        <div className="flex-1 rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl px-4 py-3 text-slate-600 break-all font-mono text-sm">
+        <div className="flex-1 rounded-[14px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-slate-600 break-all font-mono text-sm">
           {shownValue}
         </div>
         <button
           onClick={() => onCopy(value)}
           disabled={!value}
-          className={"px-4 py-3 rounded-[14px] text-[#071326]/90 transition-all shrink-0 " + (value ? "bg-white/70 hover:bg-white/70" : "bg-white/60 opacity-40 cursor-not-allowed")}
+          className={"px-4 py-3 rounded-[14px] text-[#071326]/90/90 transition-all shrink-0 " + (value ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md hover:bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]0 backdrop-blur-md" : "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] opacity-40 cursor-not-allowed")}
         >
-          {copied === value ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+          {copied === value ? <CheckCircle2 className="w-4 h-4 text-emerald-700" /> : <Copy className="w-4 h-4" />}
         </button>
       </div>
     </div>
@@ -449,7 +449,7 @@ function CopyRow({ label, value, placeholder, copied, onCopy }: CopyRowProps) {
 
 export default function PayPage() {
   return (
-    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
+    <div className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90">
       <Navbar />
       <Suspense fallback={<LoadingScreen />}>
         <PayContent />
