@@ -4,8 +4,8 @@
  * The shop page has been updated to use useAuthViet() only.
  *
  * To delete this file safely:
- *   1. Verify no other code imports from this file
- *   2. Remove the file
+ * 1. Verify no other code imports from this file
+ * 2. Remove the file
  */
 "use client";
 // Intentionally left minimal to ensure any remaining imports fail fast

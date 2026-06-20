@@ -2287,7 +2287,7 @@ router.get('/my-referral-code', authRequired, async (req, res) => {
     try {
         const viewerTaiKhoanId = String(req.user?.userId || req.user?._id || '').trim();
         const taiKhoan = viewerTaiKhoanId ? await TaiKhoan.findById(viewerTaiKhoanId).select('referralCode referralAppliedCode').lean().catch(() => null) : null;
-        const discordId = await requireAuthenticatedDiscordId(req, res, { notLinkedStatus: 200, notLinkedMessage: 'Discord account not linked' });
+        const discordId = await resolveAuthenticatedDiscordId(req);
         const referralCode = String(taiKhoan?.referralCode || '').trim() || buildReferralCode(discordId || viewerTaiKhoanId || '');
         const rewarded = discordId ? await Referral.countDocuments({
             referrerDiscordId: discordId,
