@@ -18,7 +18,7 @@ export default function BackButton({
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-2 text-sm text-blue-200/70 hover:text-white/90 transition-colors"
+      className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#071326]/90 transition-colors"
     >
       <Icon className="h-4 w-4" />
       {label || defaultLabel}

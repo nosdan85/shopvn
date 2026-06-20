@@ -300,15 +300,15 @@ export default function NapTienPage() {
   const getStatusBadgeClass = (status: string) => {
     const s = String(status).toLowerCase();
     if (s === "success" || s === "hoan-thanh" || s === "completed" || s === "da-xu-ly") {
-      return "bg-[#3DDC84]/20 text-green-400";
+      return "bg-[#3DDC84]/20 text-green-600";
     }
     if (s === "pending" || s === "cho-xu-ly" || s === "dang-doi") {
-      return "bg-[#F59E0B]/20 text-blue-200/70";
+      return "bg-[#F59E0B]/20 text-slate-600";
     }
     if (s === "failed" || s === "rejected" || s === "that-bai" || s === "bi-tu-choi") {
-      return "bg-[#FF4D4F]/20 text-red-400";
+      return "bg-[#FF4D4F]/20 text-red-600";
     }
-    return "bg-[#B5B5B5]/20 text-blue-200/70";
+    return "bg-[#B5B5B5]/20 text-slate-600";
   };
 
   const getLoaiLabel = (loai: string, phuongThuc: string) => {
@@ -352,7 +352,7 @@ export default function NapTienPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#071326] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
+        <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
       </div>
     );
   }
@@ -360,19 +360,19 @@ export default function NapTienPage() {
   if (!user || !token) {
     return (
       <div className="min-h-screen bg-[#071326] p-4">
-        <div className="mx-auto max-w-md rounded-[20px] border border-white/10 bg-white/5 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 text-center relative overflow-hidden">
+        <div className="mx-auto max-w-md rounded-[20px] border border-white/50 bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 text-center relative overflow-hidden">
           <div className="mb-4 flex justify-center">
             <div className="rounded-full bg-[#2F9BE6]/20 p-4">
-              <AlertCircle className="h-8 w-8 text-blue-300/80" />
+              <AlertCircle className="h-8 w-8 text-slate-600" />
             </div>
           </div>
-          <h2 className="text-lg font-semibold text-white/90">Truy cap bi chan</h2>
-          <p className="mt-2 text-sm text-blue-200/70">
+          <h2 className="text-lg font-semibold text-[#071326]/90">Truy cap bi chan</h2>
+          <p className="mt-2 text-sm text-slate-600">
             Vui long dang nhap de nap tien
           </p>
           <button
             onClick={handleLoginRedirect}
-            className="mt-4 w-full rounded-[14px] bg-[#2F9BE6] py-3 font-medium text-white/90 transition-all hover:bg-[#49B6FF] primary-hover-glow"
+            className="mt-4 w-full rounded-[14px] bg-[#2F9BE6] py-3 font-medium text-[#071326]/90 transition-all hover:bg-[#49B6FF] primary-hover-glow"
           >
             Dang Nhap
           </button>
@@ -382,14 +382,14 @@ export default function NapTienPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071326] text-white/90">
+    <div className="min-h-screen bg-[#071326] text-[#071326]/90">
       {/* Header */}
-      <div className="sticky top-0 z-40 border-b border-white/10 bg-[#071326]/95 backdrop-blur-sm">
+      <div className="sticky top-0 z-40 border-b border-white/50 bg-[#071326]/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
           <div>
             <h1 className="text-xl font-bold">Nap Tien</h1>
-            <p className="mt-1 text-sm text-blue-200/70">
-              So du:{' '}<span className="font-semibold text-green-400">
+            <p className="mt-1 text-sm text-slate-600">
+              So du:{' '}<span className="font-semibold text-green-600">
                 {formatVND(soDuVnd)} VND
               </span>
             </p>
@@ -410,19 +410,19 @@ export default function NapTienPage() {
         {/* Error / Success Messages */}
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-[12px] border border-[#FF4D4F]/30 bg-[#FF4D4F]/10 p-3">
-            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
-            <p className="text-sm text-red-400">{error}</p>
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
+            <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
         {successMsg && (
           <div className="mb-4 flex items-center gap-2 rounded-[12px] border border-[#3DDC84]/30 bg-[#3DDC84]/10 p-3">
-            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-400" />
-            <p className="text-sm text-green-400">{successMsg}</p>
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600" />
+            <p className="text-sm text-green-600">{successMsg}</p>
           </div>
         )}
 
         {/* Tab Navigation */}
-        <div className="mb-4 flex rounded-[14px] border border-white/10 bg-white/5 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-1 relative overflow-hidden">
+        <div className="mb-4 flex rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-1 relative overflow-hidden">
           <button
             onClick={() => {
               setActiveTab("chuyen-khoan");
@@ -431,8 +431,8 @@ export default function NapTienPage() {
             }}
             className={`flex flex-1 items-center justify-center gap-2 rounded-[10px] py-3 font-medium transition-all ${
               activeTab === "chuyen-khoan"
-                ? "bg-[#2F9BE6] text-white/90"
-                : "text-blue-200/70 hover:bg-[#1A1A1A]"
+                ? "bg-[#2F9BE6] text-[#071326]/90"
+                : "text-slate-600 hover:bg-[#1A1A1A]"
             }`}
           >
             <Banknote className="h-5 w-5" />
@@ -446,8 +446,8 @@ export default function NapTienPage() {
             }}
             className={`flex flex-1 items-center justify-center gap-2 rounded-[10px] py-3 font-medium transition-all ${
               activeTab === "the-cao"
-                ? "bg-[#2F9BE6] text-white/90"
-                : "text-blue-200/70 hover:bg-[#1A1A1A]"
+                ? "bg-[#2F9BE6] text-[#071326]/90"
+                : "text-slate-600 hover:bg-[#1A1A1A]"
             }`}
           >
             <Smartphone className="h-5 w-5" />
@@ -461,8 +461,8 @@ export default function NapTienPage() {
             {!chuyenKhoanResult ? (
               <>
                 {/* Amount Selector */}
-                <div className="rounded-[16px] border border-white/10 bg-white/5 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-4 relative overflow-hidden">
-                  <h3 className="mb-3 text-sm font-semibold text-blue-200/70">
+                <div className="rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-4 relative overflow-hidden">
+                  <h3 className="mb-3 text-sm font-semibold text-slate-600">
                     Chon so tien
                   </h3>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -472,8 +472,8 @@ export default function NapTienPage() {
                         onClick={() => handleAmountClick(amt)}
                         className={`rounded-[12px] border py-3 text-sm font-semibold transition-all active:scale-95 ${
                           chuyenKhoanSoTien === String(amt)
-                            ? "border-[#2F9BE6] bg-[#2F9BE6]/20 text-blue-300/80"
-                            : "border-white/10 bg-[#071326] text-blue-200/70 hover:border-[#2A2A2A]"
+                            ? "border-[#2F9BE6] bg-[#2F9BE6]/20 text-slate-600"
+                            : "border-white/50 bg-[#071326] text-slate-600 hover:border-[#2A2A2A]"
                         }`}
                       >
                         {formatVND(amt)}
@@ -486,9 +486,9 @@ export default function NapTienPage() {
                       placeholder="So tien khac (VND)"
                       value={chuyenKhoanSoTien}
                       onChange={handleCustomAmountChange}
-                      className="w-full rounded-[12px] border border-white/10 bg-[#071326] px-4 py-3 text-base font-semibold text-white/90 outline-none focus:border-[#2F9BE6]"
+                      className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-base font-semibold text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
                     />
-                    <p className="mt-1 text-xs text-blue-200/70">Toi thieu 10,000 VND</p>
+                    <p className="mt-1 text-xs text-slate-600">Toi thieu 10,000 VND</p>
                   </div>
                 </div>
 
@@ -500,7 +500,7 @@ export default function NapTienPage() {
                     !chuyenKhoanSoTien ||
                     parseInt(chuyenKhoanSoTien) < 10000
                   }
-                  className="w-full rounded-[14px] bg-[#2F9BE6] py-4 font-semibold text-white/90 transition-all hover:bg-[#49B6FF] primary-hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-[14px] bg-[#2F9BE6] py-4 font-semibold text-[#071326]/90 transition-all hover:bg-[#49B6FF] primary-hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -515,44 +515,44 @@ export default function NapTienPage() {
             ) : (
               <>
                 {/* Result Display */}
-                <div className="rounded-[16px] border border-white/10 bg-white/5 p-4 space-y-4">
+                <div className="rounded-[16px] border border-white/50 bg-white/60 p-4 space-y-4">
                   <div className="text-center">
-                    <CheckCircle2 className="mx-auto h-12 w-12 text-green-400" />
-                    <h3 className="mt-2 text-lg font-semibold text-white/90">
+                    <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
+                    <h3 className="mt-2 text-lg font-semibold text-[#071326]/90">
                       Lich chuyen khoan
                     </h3>
                   </div>
 
                   <div className="space-y-3 rounded-[12px] bg-[#071326] p-4">
                     <div className="flex justify-between text-sm">
-                      <span className="text-blue-200/70">Ngan hang</span>
-                      <span className="font-medium text-white/90">
+                      <span className="text-slate-600">Ngan hang</span>
+                      <span className="font-medium text-[#071326]/90">
                         {chuyenKhoanResult.nganHang}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-blue-200/70">So tai khoan</span>
-                      <span className="font-mono font-medium text-white/90">
+                      <span className="text-slate-600">So tai khoan</span>
+                      <span className="font-mono font-medium text-[#071326]/90">
                         {chuyenKhoanResult.soTaiKhoan}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-blue-200/70">Ten chu tai khoan</span>
-                      <span className="font-medium text-white/90">
+                      <span className="text-slate-600">Ten chu tai khoan</span>
+                      <span className="font-medium text-[#071326]/90">
                         {chuyenKhoanResult.tenChuTaiKhoan}
                       </span>
                     </div>
-                    <div className="flex justify-between border-t border-white/10 pt-3 text-sm">
-                      <span className="text-blue-200/70">So tien</span>
-                      <span className="font-bold text-green-400">
+                    <div className="flex justify-between border-t border-white/50 pt-3 text-sm">
+                      <span className="text-slate-600">So tien</span>
+                      <span className="font-bold text-green-600">
                         {formatVND(chuyenKhoanResult.soTien)} VND
                       </span>
                     </div>
 
                     {/* QR Code */}
                     {chuyenKhoanResult.qrCode && (
-                      <div className="flex flex-col items-center gap-2 border-t border-white/10 pt-3">
-                        <span className="text-xs text-blue-200/70">Quet ma QR de chuyen khoan</span>
+                      <div className="flex flex-col items-center gap-2 border-t border-white/50 pt-3">
+                        <span className="text-xs text-slate-600">Quet ma QR de chuyen khoan</span>
                         <div className="rounded-[12px] bg-white p-3">
                           <img
                             src={chuyenKhoanResult.qrCode}
@@ -563,21 +563,21 @@ export default function NapTienPage() {
                       </div>
                     )}
 
-                    <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
-                      <span className="text-xs text-blue-200/70">Noi dung (sao chep)</span>
+                    <div className="flex flex-col gap-1 border-t border-white/50 pt-3">
+                      <span className="text-xs text-slate-600">Noi dung (sao chep)</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           readOnly
                           value={chuyenKhoanResult.noiDung}
-                          className="flex-1 rounded-[10px] border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm font-semibold text-blue-300/80 outline-none"
+                          className="flex-1 rounded-[10px] border border-white/50 bg-white/60 px-3 py-2 font-mono text-sm font-semibold text-slate-600 outline-none"
                         />
                         <button
                           onClick={() => handleCopyReferenceCode()}
                           className={`rounded-[10px] border p-3 transition-all ${
                             copiedMaGD
-                              ? "border-[#3DDC84] bg-[#3DDC84]/20 text-green-400"
-                              : "border-white/10 bg-[#1A1A1A] text-white/90 hover:bg-[#2A2A2A]"
+                              ? "border-[#3DDC84] bg-[#3DDC84]/20 text-green-600"
+                              : "border-white/50 bg-[#1A1A1A] text-[#071326]/90 hover:bg-[#2A2A2A]"
                           }`}
                         >
                           {copiedMaGD ? (
@@ -592,21 +592,21 @@ export default function NapTienPage() {
 
                   {chuyenKhoanPolling && (
                     <div className="flex items-center justify-center gap-2 rounded-[12px] bg-[#F59E0B]/10 p-3">
-                      <Loader2 className="h-4 w-4 animate-spin text-blue-200/70" />
-                      <span className="text-sm text-blue-200/70">
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-600" />
+                      <span className="text-sm text-slate-600">
                         Dang cho xac nhan...
                       </span>
                     </div>
                   )}
 
-                  <p className="text-center text-xs text-blue-200/70">
+                  <p className="text-center text-xs text-slate-600">
                     Tien se tu dong cong vao vi sau khi ngan hang xac nhan
                   </p>
 
                   <button
                     onClick={handleKiemTraChuyenKhoan}
                     disabled={chuyenKhoanPolling}
-                    className="w-full rounded-[14px] border border-white/10 bg-[#1A1A1A] py-3 font-medium text-white/90 transition-all hover:bg-[#2A2A2A] disabled:opacity-50"
+                    className="w-full rounded-[14px] border border-white/50 bg-[#1A1A1A] py-3 font-medium text-[#071326]/90 transition-all hover:bg-[#2A2A2A] disabled:opacity-50"
                   >
                     Da chuyen khoan? Kiem tra
                   </button>
@@ -623,7 +623,7 @@ export default function NapTienPage() {
                       }
                       setChuyenKhoanPolling(false);
                     }}
-                    className="w-full rounded-[14px] border border-white/10 bg-[#071326] py-3 font-medium text-blue-200/70 transition-all hover:bg-[#1A1A1A]"
+                    className="w-full rounded-[14px] border border-white/50 bg-[#071326] py-3 font-medium text-slate-600 transition-all hover:bg-[#1A1A1A]"
                   >
                     Tao moi
                   </button>
@@ -637,8 +637,8 @@ export default function NapTienPage() {
         {activeTab === "the-cao" && (
           <div className="space-y-4">
             {/* Telco Selection */}
-            <div className="rounded-[16px] border border-white/10 bg-white/5 p-4">
-              <label className="mb-2 block text-sm font-semibold text-blue-200/70">
+            <div className="rounded-[16px] border border-white/50 bg-white/60 p-4">
+              <label className="mb-2 block text-sm font-semibold text-slate-600">
                 Chon nha mang
               </label>
               <select
@@ -649,7 +649,7 @@ export default function NapTienPage() {
                   setError(null);
                   setTheCaoResult(null);
                 }}
-                className="w-full rounded-[12px] border border-white/10 bg-[#071326] px-4 py-3 text-white/90 outline-none focus:border-[#2F9BE6]"
+                className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
               >
                 <option value="">-- Chon nha mang --</option>
                 <option value="viettel">Viettel</option>
@@ -659,8 +659,8 @@ export default function NapTienPage() {
             </div>
 
             {/* Amount Selection */}
-            <div className="rounded-[16px] border border-white/10 bg-white/5 p-4">
-              <label className="mb-2 block text-sm font-semibold text-blue-200/70">
+            <div className="rounded-[16px] border border-white/50 bg-white/60 p-4">
+              <label className="mb-2 block text-sm font-semibold text-slate-600">
                 Menh gia
               </label>
               <select
@@ -671,7 +671,7 @@ export default function NapTienPage() {
                   setTheCaoResult(null);
                 }}
                 disabled={!nhaMang}
-                className="w-full rounded-[12px] border border-white/10 bg-[#071326] px-4 py-3 text-white/90 outline-none focus:border-[#2F9BE6] disabled:opacity-50"
+                className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-[#071326]/90 outline-none focus:border-[#2F9BE6] disabled:opacity-50"
               >
                 <option value="">-- Chon menh gia --</option>
                 {menhGiaList
@@ -698,9 +698,9 @@ export default function NapTienPage() {
             </div>
 
             {/* Serial & Card Code */}
-            <div className="rounded-[16px] border border-white/10 bg-white/5 p-4 space-y-4">
+            <div className="rounded-[16px] border border-white/50 bg-white/60 p-4 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-blue-200/70">
+                <label className="mb-2 block text-sm font-semibold text-slate-600">
                   Serial the
                 </label>
                 <input
@@ -712,11 +712,11 @@ export default function NapTienPage() {
                     setTheCaoResult(null);
                   }}
                   placeholder="Nhap serial the"
-                  className="w-full rounded-[12px] border border-white/10 bg-[#071326] px-4 py-3 text-white/90 outline-none focus:border-[#2F9BE6]"
+                  className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-blue-200/70">
+                <label className="mb-2 block text-sm font-semibold text-slate-600">
                   Ma the
                 </label>
                 <input
@@ -728,7 +728,7 @@ export default function NapTienPage() {
                     setTheCaoResult(null);
                   }}
                   placeholder="Nhap ma the"
-                  className="w-full rounded-[12px] border border-white/10 bg-[#071326] px-4 py-3 text-white/90 outline-none focus:border-[#2F9BE6]"
+                  className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
                 />
               </div>
             </div>
@@ -743,15 +743,15 @@ export default function NapTienPage() {
                 }`}
               >
                 {theCaoResult.success ? (
-                  <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-400" />
+                  <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600" />
                 ) : (
-                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
+                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
                 )}
                 <p
                   className={`text-sm ${
                     theCaoResult.success
-                      ? "text-green-400"
-                      : "text-red-400"
+                      ? "text-green-600"
+                      : "text-red-600"
                   }`}
                 >
                   {theCaoResult.success && theCaoResult.soTien
@@ -765,7 +765,7 @@ export default function NapTienPage() {
             <button
               onClick={handleTheCaoSubmit}
               disabled={submitting || !nhaMang || !menhGia || !serialThe || !maThe}
-              className="w-full rounded-[14px] bg-[#2F9BE6] py-4 font-semibold text-white/90 transition-all hover:bg-[#49B6FF] primary-hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-[14px] bg-[#2F9BE6] py-4 font-semibold text-[#071326]/90 transition-all hover:bg-[#49B6FF] primary-hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <span className="flex items-center justify-center gap-2">
@@ -781,31 +781,31 @@ export default function NapTienPage() {
 
         {/* Transaction History */}
         <div className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold text-white/90">Lich su giao dich</h2>
+          <h2 className="mb-3 text-lg font-semibold text-[#071326]/90">Lich su giao dich</h2>
           {loadingHistory ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-300/80" />
+              <Loader2 className="h-6 w-6 animate-spin text-slate-600" />
             </div>
           ) : lichSu.length === 0 ? (
-            <div className="rounded-[16px] border border-white/10 bg-white/5 p-6 text-center">
-              <Clock className="mx-auto h-8 w-8 text-blue-200/50" />
-              <p className="mt-2 text-sm text-blue-200/70">Chua co giao dich nao</p>
+            <div className="rounded-[16px] border border-white/50 bg-white/60 p-6 text-center">
+              <Clock className="mx-auto h-8 w-8 text-slate-500" />
+              <p className="mt-2 text-sm text-slate-600">Chua co giao dich nao</p>
             </div>
           ) : (
             <div className="space-y-2">
               {lichSu.slice(0, 10).map((gd) => (
                 <div
                   key={gd._id}
-                  className="flex items-center justify-between rounded-[12px] border border-white/10 bg-white/5 px-4 py-3"
+                  className="flex items-center justify-between rounded-[12px] border border-white/50 bg-white/60 px-4 py-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white/90 truncate">
+                    <p className="text-sm font-medium text-[#071326]/90 truncate">
                       {getLoaiLabel(gd.loai, gd.phuongThuc)}
                     </p>
-                    <p className="text-xs text-blue-200/70">{formatNgay(gd.ngayTao)}</p>
+                    <p className="text-xs text-slate-600">{formatNgay(gd.ngayTao)}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-semibold text-green-400">
+                    <span className="font-semibold text-green-600">
                       +{formatVND(gd.soTien)} VND
                     </span>
                     <span

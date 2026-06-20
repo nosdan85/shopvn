@@ -60,34 +60,34 @@ const ProductCard = memo(function ProductCard({
   return (
     <div
       onClick={handleOpen}
-      className="group product-card cursor-pointer overflow-hidden rounded-[22px] border border-white/10 bg-white/5 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all duration-200 active:scale-[0.98] animate-card-in md:transition-transform md:duration-200 md:hover:scale-[1.03]"
+      className="group product-card cursor-pointer overflow-hidden rounded-[22px] border border-white/50 bg-white/60 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all duration-200 active:scale-[0.98] animate-card-in md:transition-transform md:duration-200 md:hover:scale-[1.03]"
       style={{ animationDelay: `${index * (variant === "bestSeller" ? 0.08 : 0.05)}s` }}
     >
       <div className="aspect-square bg-[#071326] overflow-hidden">
         {product.image ? (
           <img src={imgUrl(product.image)} alt={product.name} loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-blue-200/50" /></div>
+          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-slate-500" /></div>
         )}
       </div>
       {variant === "bestSeller" ? (
         <div className="p-3">
           <p className="line-clamp-2 text-sm font-semibold leading-5">{product.name}</p>
-          <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          {product.desc && <p className="text-xs text-blue-200/70 mt-1 line-clamp-2">{product.desc}</p>}
+          <p className="text-xs text-slate-600 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
+          {product.desc && <p className="text-xs text-slate-600 mt-1 line-clamp-2">{product.desc}</p>}
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-sm font-semibold text-green-400">{formatMoney(product.price)}</span>
-            <span className="text-xs text-blue-300/80">Xem</span>
+            <span className="text-sm font-semibold text-green-600">{formatMoney(product.price)}</span>
+            <span className="text-xs text-slate-600">Xem</span>
           </div>
         </div>
       ) : (
         <div className="space-y-1.5 sm:space-y-2 p-3 sm:p-4">
           <h3 className="line-clamp-2 text-sm font-semibold leading-5">{product.name}</h3>
-          <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          <p className="text-xs text-blue-200/70">{product.category}</p>
+          <p className="text-xs text-slate-600 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
+          <p className="text-xs text-slate-600">{product.category}</p>
           <div className="flex items-center justify-between">
-            <span className="text-lg font-semibold text-green-400">{formatMoney(product.price)}</span>
-            <span className="text-xs text-blue-300/80">Xem</span>
+            <span className="text-lg font-semibold text-green-600">{formatMoney(product.price)}</span>
+            <span className="text-xs text-slate-600">Xem</span>
           </div>
         </div>
       )}
@@ -98,7 +98,7 @@ const ProductCard = memo(function ProductCard({
 function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center py-12">
-      <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
+      <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
     </div>
   );
 }
@@ -118,7 +118,7 @@ function LogoLoader() {
         }
       `}</style>
 
-      <div className="relative mb-4 h-24 w-80 max-w-[80vw] overflow-hidden rounded-[18px] border border-white/10 bg-[#071326]/80">
+      <div className="relative mb-4 h-24 w-80 max-w-[80vw] overflow-hidden rounded-[18px] border border-white/50 bg-[#071326]/80">
         <div className="absolute inset-x-5 bottom-5 h-px bg-[#2F9BE6]/25" />
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-10 w-10" style={{ animation: "logoSpin 2s linear infinite" }}>
           <img src="/pictures/logo.png" alt="Loading" className="h-full w-full rounded-[10px] object-contain" />
@@ -126,12 +126,12 @@ function LogoLoader() {
       </div>
 
       <div className="relative mb-6 w-80 max-w-[80vw]">
-        <div className="h-3 overflow-hidden rounded-full border border-[#2F9BE6]/30 bg-white/5">
+        <div className="h-3 overflow-hidden rounded-full border border-[#2F9BE6]/30 bg-white/60">
           <div className="h-full rounded-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 animate-[barFill_2.5s_ease-in-out_infinite]" />
         </div>
       </div>
 
-      <p className="px-4 text-center text-sm font-medium text-white/90">Vui long doi...</p>
+      <p className="px-4 text-center text-sm font-medium text-[#071326]/90">Vui long doi...</p>
     </div>
   );
 }
@@ -477,7 +477,7 @@ export default function CuaHangPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071326] text-white/90">
+    <div className="min-h-screen bg-[#071326] text-[#071326]/90">
       <style>{`
         @keyframes cardIn {
           from { opacity: 0; transform: translateY(12px); }
@@ -516,8 +516,8 @@ export default function CuaHangPage() {
       <div className="px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <BackButton href="/" label="Trang Chủ" variant="home" />
-          <h1 className="mt-4 text-3xl font-bold text-white/90 sm:text-4xl">Cua Hang Game</h1>
-          <p className="mt-2 text-blue-200/70">Mua kim cuong, the game, voucher voi gia tot nhat</p>
+          <h1 className="mt-4 text-3xl font-bold text-[#071326]/90 sm:text-4xl">Cua Hang Game</h1>
+          <p className="mt-2 text-slate-600">Mua kim cuong, the game, voucher voi gia tot nhat</p>
         </div>
       </div>
 
@@ -525,7 +525,7 @@ export default function CuaHangPage() {
       {bestSellers.length > 0 && (
         <div className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
-            <h2 className="mb-4 text-xl font-semibold text-white/90">San Pham Ban Chay</h2>
+            <h2 className="mb-4 text-xl font-semibold text-[#071326]/90">San Pham Ban Chay</h2>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4">
               {bestSellers.slice(0, 4).map((product, idx) => (
                 <ProductCard key={product._id} product={product} index={idx} onOpen={handleOpenProduct} variant="bestSeller" />
@@ -541,13 +541,13 @@ export default function CuaHangPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             {/* Search Bar */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-blue-200/70" />
+              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-600" />
               <input
                 type="text"
                 placeholder="Tim san pham..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full rounded-[12px] border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white/90 placeholder-[#B5B5B5] focus:border-[#2F9BE6] focus:outline-none"
+                className="w-full rounded-[12px] border border-white/50 bg-white/60 py-2.5 pl-10 pr-4 text-sm text-[#071326]/90 placeholder-[#B5B5B5] focus:border-[#2F9BE6] focus:outline-none"
               />
             </div>
 
@@ -559,8 +559,8 @@ export default function CuaHangPage() {
                   onClick={() => setSelectedGame(null)}
                   className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                     !selectedGame
-                      ? "bg-[#2F9BE6] text-white/90"
-                      : "border border-white/10 bg-white/5 text-blue-200/70 hover:border-[#2F9BE6]"
+                      ? "bg-[#2F9BE6] text-[#071326]/90"
+                      : "border border-white/50 bg-white/60 text-slate-600 hover:border-[#2F9BE6]"
                   }`}
                 >
                   Tat ca
@@ -571,8 +571,8 @@ export default function CuaHangPage() {
                     onClick={() => setSelectedGame(game._id)}
                     className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                       selectedGame === game._id
-                        ? "bg-[#2F9BE6] text-white/90"
-                        : "border border-white/10 bg-white/5 text-blue-200/70 hover:border-[#2F9BE6]"
+                        ? "bg-[#2F9BE6] text-[#071326]/90"
+                        : "border border-white/50 bg-white/60 text-slate-600 hover:border-[#2F9BE6]"
                     }`}
                   >
                     {game.name}
@@ -584,7 +584,7 @@ export default function CuaHangPage() {
               <select
                 value={priceSort}
                 onChange={(e) => setPriceSort(e.target.value as PriceSort)}
-                className="rounded-[12px] border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/90 focus:border-[#2F9BE6] focus:outline-none"
+                className="rounded-[12px] border border-white/50 bg-white/60 px-3 py-1.5 text-sm text-[#071326]/90 focus:border-[#2F9BE6] focus:outline-none"
               >
                 <option value="none">Gia mac dinh</option>
                 <option value="low-high">Gia: Thap den Cao</option>
@@ -606,8 +606,8 @@ export default function CuaHangPage() {
 
           {filtered.length === 0 && (
             <div className="py-12 text-center">
-              <Package className="mx-auto h-12 w-12 text-blue-200/50" />
-              <p className="mt-4 text-blue-200/70">Khong tim thay san pham</p>
+              <Package className="mx-auto h-12 w-12 text-slate-500" />
+              <p className="mt-4 text-slate-600">Khong tim thay san pham</p>
             </div>
           )}
         </div>
@@ -617,21 +617,21 @@ export default function CuaHangPage() {
       {cartOpen && (
         <>
           <div
-            className={`fixed inset-0 z-[90] bg-black/60 ${cartClosing ? "animate-fade-in" : ""}`}
+            className={`fixed inset-0 z-[90] bg-black/30 ${cartClosing ? "animate-fade-in" : ""}`}
             onClick={handleCloseCart}
           />
           <div
-            className={`fixed right-0 top-0 z-[100] h-full w-full max-w-md bg-white/5 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] border-l border-white/10 relative overflow-hidden ${
+            className={`fixed right-0 top-0 z-[100] h-full w-full max-w-md bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] border-l border-white/50 relative overflow-hidden ${
               cartClosing ? "animate-slide-up" : "animate-fade-in"
             }`}
             style={{ animationFillMode: "forwards" }}
           >
             <div className="flex h-full flex-col">
               {/* Cart Header */}
-              <div className="flex items-center justify-between border-b border-white/10 p-4">
-                <h2 className="text-lg font-semibold text-white/90">Gio Hang</h2>
+              <div className="flex items-center justify-between border-b border-white/50 p-4">
+                <h2 className="text-lg font-semibold text-[#071326]/90">Gio Hang</h2>
                 <button onClick={handleCloseCart} className="rounded-lg p-2 hover:bg-[#1E1E1E]">
-                  <X className="h-5 w-5 text-blue-200/70" />
+                  <X className="h-5 w-5 text-slate-600" />
                 </button>
               </div>
 
@@ -639,47 +639,47 @@ export default function CuaHangPage() {
               <div className="flex-1 overflow-y-auto p-4">
                 {cart.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center">
-                    <ShoppingCart className="h-12 w-12 text-blue-200/50" />
-                    <p className="mt-4 text-blue-200/70">Gio hang trong</p>
+                    <ShoppingCart className="h-12 w-12 text-slate-500" />
+                    <p className="mt-4 text-slate-600">Gio hang trong</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {cart.map((item, idx) => (
-                      <div key={item._id} className="flex gap-3 rounded-[12px] border border-white/10 bg-[#071326]/80 p-3">
+                      <div key={item._id} className="flex gap-3 rounded-[12px] border border-white/50 bg-[#071326]/80 p-3">
                         <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-[#071326]">
                           {item.image ? (
                             <img src={imgUrl(item.image)} alt={item.name} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full items-center justify-center">
-                              <Package className="h-6 w-6 text-blue-200/50" />
+                              <Package className="h-6 w-6 text-slate-500" />
                             </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="truncate text-sm font-medium text-white/90">{item.name}</h3>
-                          <p className="text-xs text-blue-300/80">{formatQtyLabel(item.packQuantity)}</p>
-                          <p className="text-sm font-semibold text-green-400">{formatMoney(item.price)}</p>
+                          <h3 className="truncate text-sm font-medium text-[#071326]/90">{item.name}</h3>
+                          <p className="text-xs text-slate-600">{formatQtyLabel(item.packQuantity)}</p>
+                          <p className="text-sm font-semibold text-green-600">{formatMoney(item.price)}</p>
                         </div>
                         <div className="flex flex-col items-end justify-between">
                           <button
                             onClick={() => handleRemoveFromCart(idx)}
                             className="rounded p-1 hover:bg-[#1E1E1E]"
                           >
-                            <X className="h-4 w-4 text-blue-200/70" />
+                            <X className="h-4 w-4 text-slate-600" />
                           </button>
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleUpdateCartQty(idx, -1)}
                               className="rounded bg-[#1E1E1E] p-1 hover:bg-[#2F9BE6]/20"
                             >
-                              <Minus className="h-3 w-3 text-white/90" />
+                              <Minus className="h-3 w-3 text-[#071326]/90" />
                             </button>
-                            <span className="min-w-[24px] text-center text-sm text-white/90">{item.quantity}</span>
+                            <span className="min-w-[24px] text-center text-sm text-[#071326]/90">{item.quantity}</span>
                             <button
                               onClick={() => handleUpdateCartQty(idx, 1)}
                               className="rounded bg-[#1E1E1E] p-1 hover:bg-[#2F9BE6]/20"
                             >
-                              <Plus className="h-3 w-3 text-white/90" />
+                              <Plus className="h-3 w-3 text-[#071326]/90" />
                             </button>
                           </div>
                         </div>
@@ -691,7 +691,7 @@ export default function CuaHangPage() {
 
               {/* Cart Footer */}
               {cart.length > 0 && (
-                <div className="border-t border-white/10 p-4 space-y-4">
+                <div className="border-t border-white/50 p-4 space-y-4">
                   {/* Coupon Input */}
                   <div className="flex gap-2">
                     <input
@@ -699,24 +699,24 @@ export default function CuaHangPage() {
                       placeholder="Ma giam gia"
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value)}
-                      className="flex-1 rounded-[12px] border border-white/10 bg-[#071326]/80 px-3 py-2 text-sm text-white/90 placeholder-[#B5B5B5] focus:border-[#2F9BE6] focus:outline-none"
+                      className="flex-1 rounded-[12px] border border-white/50 bg-[#071326]/80 px-3 py-2 text-sm text-[#071326]/90 placeholder-[#B5B5B5] focus:border-[#2F9BE6] focus:outline-none"
                     />
                     <button
                       onClick={handleApplyCoupon}
                       disabled={couponLoading || !couponCode.trim()}
-                      className="rounded-[12px] bg-[#2F9BE6] px-4 py-2 text-sm font-medium text-white/90 hover:bg-[#2F9BE6]/80 disabled:opacity-50"
+                      className="rounded-[12px] bg-[#2F9BE6] px-4 py-2 text-sm font-medium text-[#071326]/90 hover:bg-[#2F9BE6]/80 disabled:opacity-50"
                     >
                       {couponLoading ? "Dang..." : "Ap dung"}
                     </button>
                   </div>
 
                   {couponError && (
-                    <p className="text-sm text-red-400">{couponError}</p>
+                    <p className="text-sm text-red-600">{couponError}</p>
                   )}
 
                   {checkoutSummary && checkoutSummary.discountAmount > 0 && (
                     <div className="rounded-[12px] bg-[#3DDC84]/10 p-3">
-                      <p className="text-sm text-green-400">
+                      <p className="text-sm text-green-600">
                         Giam gia {checkoutSummary.discountPercent}% ({formatMoney(checkoutSummary.discountAmount)})
                       </p>
                     </div>
@@ -725,18 +725,18 @@ export default function CuaHangPage() {
                   {/* Totals */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-blue-200/70">Tam tinh:</span>
-                      <span className="text-white/90">{formatMoney(cartSubtotal)}</span>
+                      <span className="text-slate-600">Tam tinh:</span>
+                      <span className="text-[#071326]/90">{formatMoney(cartSubtotal)}</span>
                     </div>
                     {checkoutSummary && checkoutSummary.discountAmount > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-blue-200/70">Giam gia:</span>
-                        <span className="text-green-400">-{formatMoney(checkoutSummary.discountAmount)}</span>
+                        <span className="text-slate-600">Giam gia:</span>
+                        <span className="text-green-600">-{formatMoney(checkoutSummary.discountAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg font-semibold">
-                      <span className="text-white/90">Tong cong:</span>
-                      <span className="text-green-400">{formatMoney(cartTotalAfterDiscount)}</span>
+                      <span className="text-[#071326]/90">Tong cong:</span>
+                      <span className="text-green-600">{formatMoney(cartTotalAfterDiscount)}</span>
                     </div>
                   </div>
 
@@ -744,7 +744,7 @@ export default function CuaHangPage() {
                   <button
                     onClick={openCheckout}
                     disabled={submitting}
-                    className="w-full rounded-[12px] bg-[#3DDC84] py-3 text-base font-semibold text-white/90 hover:bg-[#3DDC84]/80 disabled:opacity-50"
+                    className="w-full rounded-[12px] bg-[#3DDC84] py-3 text-base font-semibold text-[#071326]/90 hover:bg-[#3DDC84]/80 disabled:opacity-50"
                   >
                     {submitting ? "Dang xu ly..." : "Thanh Toan"}
                   </button>
@@ -763,7 +763,7 @@ export default function CuaHangPage() {
             onClick={handleCloseModal}
           />
           <div
-            className={`fixed left-1/2 top-1/2 z-[110] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-[22px] border border-white/10 bg-white/5 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 relative overflow-hidden ${
+            className={`fixed left-1/2 top-1/2 z-[110] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-[22px] border border-white/50 bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 relative overflow-hidden ${
               modalClosing ? "animate-slide-up" : "animate-fade-in"
             }`}
             style={{ animationFillMode: "forwards" }}
@@ -772,7 +772,7 @@ export default function CuaHangPage() {
               onClick={handleCloseModal}
               className="absolute right-4 top-4 rounded-lg p-2 hover:bg-[#1E1E1E]"
             >
-              <X className="h-5 w-5 text-blue-200/70" />
+              <X className="h-5 w-5 text-slate-600" />
             </button>
 
             <div className="space-y-4">
@@ -782,46 +782,46 @@ export default function CuaHangPage() {
                   <img src={imgUrl(selectedProduct.image)} alt={selectedProduct.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center">
-                    <Package className="h-16 w-16 text-blue-200/50" />
+                    <Package className="h-16 w-16 text-slate-500" />
                   </div>
                 )}
               </div>
 
               {/* Product Info */}
               <div>
-                <h2 className="text-xl font-semibold text-white/90">{selectedProduct.name}</h2>
-                <p className="text-sm text-blue-300/80">{formatQtyLabel(selectedProduct.packQuantity)}</p>
-                <p className="text-sm text-blue-200/70">{selectedProduct.category}</p>
+                <h2 className="text-xl font-semibold text-[#071326]/90">{selectedProduct.name}</h2>
+                <p className="text-sm text-slate-600">{formatQtyLabel(selectedProduct.packQuantity)}</p>
+                <p className="text-sm text-slate-600">{selectedProduct.category}</p>
                 {selectedProduct.desc && (
-                  <p className="mt-2 text-sm text-blue-200/70">{selectedProduct.desc}</p>
+                  <p className="mt-2 text-sm text-slate-600">{selectedProduct.desc}</p>
                 )}
               </div>
 
               {/* Price */}
-              <div className="text-2xl font-bold text-green-400">{formatMoney(selectedProduct.price)}</div>
+              <div className="text-2xl font-bold text-green-600">{formatMoney(selectedProduct.price)}</div>
 
               {/* Quantity Selector */}
               <div className="flex items-center gap-4">
-                <span className="text-sm text-blue-200/70">So luong:</span>
+                <span className="text-sm text-slate-600">So luong:</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setModalQty((prev) => Math.max(1, Number(prev) - 1))}
                     className="rounded-lg bg-[#1E1E1E] p-2 hover:bg-[#2F9BE6]/20"
                   >
-                    <Minus className="h-4 w-4 text-white/90" />
+                    <Minus className="h-4 w-4 text-[#071326]/90" />
                   </button>
                   <input
                     type="number"
                     min="1"
                     value={modalQty}
                     onChange={(e) => setModalQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-16 rounded-lg border border-white/10 bg-[#071326]/80 px-3 py-2 text-center text-white/90 focus:border-[#2F9BE6] focus:outline-none"
+                    className="w-16 rounded-lg border border-white/50 bg-[#071326]/80 px-3 py-2 text-center text-[#071326]/90 focus:border-[#2F9BE6] focus:outline-none"
                   />
                   <button
                     onClick={() => setModalQty((prev) => Number(prev) + 1)}
                     className="rounded-lg bg-[#1E1E1E] p-2 hover:bg-[#2F9BE6]/20"
                   >
-                    <Plus className="h-4 w-4 text-white/90" />
+                    <Plus className="h-4 w-4 text-[#071326]/90" />
                   </button>
                 </div>
               </div>
@@ -830,7 +830,7 @@ export default function CuaHangPage() {
               <button
                 onClick={handleAddToCart}
                 disabled={submitting}
-                className="w-full rounded-[12px] bg-[#2F9BE6] py-3 text-base font-semibold text-white/90 hover:bg-[#2F9BE6]/80 disabled:opacity-50"
+                className="w-full rounded-[12px] bg-[#2F9BE6] py-3 text-base font-semibold text-[#071326]/90 hover:bg-[#2F9BE6]/80 disabled:opacity-50"
               >
                 Them vao gio hang
               </button>
@@ -843,28 +843,28 @@ export default function CuaHangPage() {
       {showLoginPrompt && (
         <>
           <div className="fixed inset-0 z-[100] bg-black/70 animate-fade-in" onClick={() => setShowLoginPrompt(false)} />
-          <div className="fixed left-1/2 top-1/2 z-[110] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[22px] border border-white/10 bg-white/5 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 relative overflow-hidden animate-slide-up" style={{ animationFillMode: "forwards" }}>
+          <div className="fixed left-1/2 top-1/2 z-[110] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[22px] border border-white/50 bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 relative overflow-hidden animate-slide-up" style={{ animationFillMode: "forwards" }}>
             <button onClick={() => setShowLoginPrompt(false)} className="absolute right-4 top-4 rounded-lg p-2 hover:bg-[#1E1E1E]">
-              <X className="h-5 w-5 text-blue-200/70" />
+              <X className="h-5 w-5 text-slate-600" />
             </button>
 
             <div className="space-y-4 text-center">
               <div className="flex justify-center">
-                <AlertCircle className="h-12 w-12 text-red-400" />
+                <AlertCircle className="h-12 w-12 text-red-600" />
               </div>
-              <h2 className="text-xl font-semibold text-white/90">Vui long dang nhap</h2>
-              <p className="text-blue-200/70">Ban can dang nhap de mua hang</p>
+              <h2 className="text-xl font-semibold text-[#071326]/90">Vui long dang nhap</h2>
+              <p className="text-slate-600">Ban can dang nhap de mua hang</p>
 
               <div className="flex flex-col gap-3 pt-4">
                 <a
                   href="/dang-nhap"
-                  className="w-full rounded-[12px] bg-[#2F9BE6] py-3 text-base font-semibold text-white/90 hover:bg-[#2F9BE6]/80"
+                  className="w-full rounded-[12px] bg-[#2F9BE6] py-3 text-base font-semibold text-[#071326]/90 hover:bg-[#2F9BE6]/80"
                 >
                   Dang Nhap
                 </a>
                 <a
                   href="/dang-ky"
-                  className="w-full rounded-[12px] border border-white/10 bg-[#071326]/80 py-3 text-base font-medium text-white/90 hover:border-[#2F9BE6]"
+                  className="w-full rounded-[12px] border border-white/50 bg-[#071326]/80 py-3 text-base font-medium text-[#071326]/90 hover:border-[#2F9BE6]"
                 >
                   Dang Ky
                 </a>
@@ -878,64 +878,64 @@ export default function CuaHangPage() {
       {checkoutConfirmOpen && (
         <>
           <div className="fixed inset-0 z-[100] bg-black/70 animate-fade-in" onClick={() => !submitting && setCheckoutConfirmOpen(false)} />
-          <div className="fixed left-1/2 top-1/2 z-[110] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[22px] border border-white/10 bg-white/5 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 relative overflow-hidden animate-slide-up" style={{ animationFillMode: "forwards" }}>
+          <div className="fixed left-1/2 top-1/2 z-[110] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[22px] border border-white/50 bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 relative overflow-hidden animate-slide-up" style={{ animationFillMode: "forwards" }}>
             <button
               onClick={() => !submitting && setCheckoutConfirmOpen(false)}
               className="absolute right-4 top-4 rounded-lg p-2 hover:bg-[#1E1E1E]"
               disabled={submitting}
             >
-              <X className="h-5 w-5 text-blue-200/70" />
+              <X className="h-5 w-5 text-slate-600" />
             </button>
 
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white/90">Xac Nhan Dat Hang</h2>
+              <h2 className="text-xl font-semibold text-[#071326]/90">Xac Nhan Dat Hang</h2>
 
               {/* Order Summary */}
-              <div className="rounded-[12px] border border-white/10 bg-[#071326]/80 p-4 space-y-2">
+              <div className="rounded-[12px] border border-white/50 bg-[#071326]/80 p-4 space-y-2">
                 {cart.map((item) => (
                   <div key={item._id} className="flex justify-between text-sm">
-                    <span className="text-blue-200/70">
+                    <span className="text-slate-600">
                       {item.name} x{item.quantity}
                     </span>
-                    <span className="text-white/90">{formatMoney(Number(item.price) * item.quantity)}</span>
+                    <span className="text-[#071326]/90">{formatMoney(Number(item.price) * item.quantity)}</span>
                   </div>
                 ))}
-                <div className="border-t border-white/10 pt-2">
+                <div className="border-t border-white/50 pt-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-blue-200/70">Tam tinh:</span>
-                    <span className="text-white/90">{formatMoney(cartSubtotal)}</span>
+                    <span className="text-slate-600">Tam tinh:</span>
+                    <span className="text-[#071326]/90">{formatMoney(cartSubtotal)}</span>
                   </div>
                   {checkoutSummary && checkoutSummary.discountAmount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-blue-200/70">Giam gia:</span>
-                      <span className="text-green-400">-{formatMoney(checkoutSummary.discountAmount)}</span>
+                      <span className="text-slate-600">Giam gia:</span>
+                      <span className="text-green-600">-{formatMoney(checkoutSummary.discountAmount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-semibold">
-                    <span className="text-white/90">Tong cong:</span>
-                    <span className="text-green-400">{formatMoney(cartTotalAfterDiscount)}</span>
+                    <span className="text-[#071326]/90">Tong cong:</span>
+                    <span className="text-green-600">{formatMoney(cartTotalAfterDiscount)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Wallet Balance */}
-              <div className="rounded-[12px] border border-white/10 bg-[#071326]/80 p-4">
+              <div className="rounded-[12px] border border-white/50 bg-[#071326]/80 p-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-200/70">So du vi:</span>
-                  <span className="text-white/90">{formatMoney(soDuVnd)}</span>
+                  <span className="text-slate-600">So du vi:</span>
+                  <span className="text-[#071326]/90">{formatMoney(soDuVnd)}</span>
                 </div>
               </div>
 
               {/* Error if insufficient balance */}
               {soDuVnd < cartTotalAfterDiscount && (
                 <div className="rounded-[12px] bg-[#FF4D4F]/10 p-4">
-                  <div className="flex items-center gap-2 text-red-400">
+                  <div className="flex items-center gap-2 text-red-600">
                     <AlertCircle className="h-5 w-5 flex-shrink-0" />
                     <span className="text-sm">So du khong du. Vui long nap them tien.</span>
                   </div>
                   <a
                     href="/nap-tien"
-                    className="mt-3 inline-block w-full rounded-[12px] bg-[#2F9BE6] py-2 text-center text-sm font-medium text-white/90 hover:bg-[#2F9BE6]/80"
+                    className="mt-3 inline-block w-full rounded-[12px] bg-[#2F9BE6] py-2 text-center text-sm font-medium text-[#071326]/90 hover:bg-[#2F9BE6]/80"
                   >
                     Nap Tien
                   </a>
@@ -945,7 +945,7 @@ export default function CuaHangPage() {
               {/* Error Message */}
               {error && (
                 <div className="rounded-[12px] bg-[#FF4D4F]/10 p-3">
-                  <p className="text-sm text-red-400">{error}</p>
+                  <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
 
@@ -954,7 +954,7 @@ export default function CuaHangPage() {
                 <button
                   onClick={handleConfirmCheckout}
                   disabled={submitting}
-                  className="w-full rounded-[12px] bg-[#3DDC84] py-3 text-base font-semibold text-white/90 hover:bg-[#3DDC84]/80 disabled:opacity-50"
+                  className="w-full rounded-[12px] bg-[#3DDC84] py-3 text-base font-semibold text-[#071326]/90 hover:bg-[#3DDC84]/80 disabled:opacity-50"
                 >
                   {submitting ? "Dang xu ly..." : "Xac Nhan Thanh Toan"}
                 </button>
@@ -968,22 +968,22 @@ export default function CuaHangPage() {
       {checkoutSuccess && (
         <>
           <div className="fixed inset-0 z-[100] bg-black/70 animate-fade-in" onClick={() => setCheckoutSuccess(false)} />
-          <div className="fixed left-1/2 top-1/2 z-[110] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[22px] border border-white/10 bg-white/5 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 relative overflow-hidden animate-slide-up" style={{ animationFillMode: "forwards" }}>
+          <div className="fixed left-1/2 top-1/2 z-[110] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[22px] border border-white/50 bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 relative overflow-hidden animate-slide-up" style={{ animationFillMode: "forwards" }}>
             <div className="space-y-4 text-center">
               <div className="flex justify-center">
-                <CheckCircle2 className="h-16 w-16 text-green-400" />
+                <CheckCircle2 className="h-16 w-16 text-green-600" />
               </div>
-              <h2 className="text-xl font-semibold text-white/90">Dat Hang Thanh Cong</h2>
-              <p className="text-blue-200/70">Don hang #{orderId} da duoc tao</p>
+              <h2 className="text-xl font-semibold text-[#071326]/90">Dat Hang Thanh Cong</h2>
+              <p className="text-slate-600">Don hang #{orderId} da duoc tao</p>
 
               {/* Create Delivery Ticket Section */}
-              <div className="mt-6 space-y-3 rounded-[12px] border border-white/10 bg-[#071326]/80 p-4 text-left">
-                <h3 className="font-semibold text-white/90">Tao Ticket Giao Hang</h3>
+              <div className="mt-6 space-y-3 rounded-[12px] border border-white/50 bg-[#071326]/80 p-4 text-left">
+                <h3 className="font-semibold text-[#071326]/90">Tao Ticket Giao Hang</h3>
 
                 {!daLienKetDiscord ? (
                   <a
                     href={getDiscordOAuthUrl('/cua-hang')}
-                    className="block rounded-[12px] bg-[#5865F2] px-4 py-2 text-center text-sm font-medium text-white/90 hover:bg-[#5865F2]/80"
+                    className="block rounded-[12px] bg-[#5865F2] px-4 py-2 text-center text-sm font-medium text-[#071326]/90 hover:bg-[#5865F2]/80"
                   >
                     Lien Ket Discord
                   </a>
@@ -993,32 +993,32 @@ export default function CuaHangPage() {
                       href={DISCORD_SERVER_INVITE}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block rounded-[12px] bg-[#5865F2] px-4 py-2 text-center text-sm font-medium text-white/90 hover:bg-[#5865F2]/80"
+                      className="block rounded-[12px] bg-[#5865F2] px-4 py-2 text-center text-sm font-medium text-[#071326]/90 hover:bg-[#5865F2]/80"
                     >
                       Tham Gia Server Discord
                     </a>
 
                     {ticketResult ? (
                       <div className="rounded-[12px] bg-[#3DDC84]/10 p-3">
-                        <p className="text-sm text-green-400">Ticket da duoc tao!</p>
+                        <p className="text-sm text-green-600">Ticket da duoc tao!</p>
                         {ticketResult.url && (
                           <a
                             href={ticketResult.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-2 block text-sm text-blue-300/80 hover:underline"
+                            className="mt-2 block text-sm text-slate-600 hover:underline"
                           >
                             Mo ticket
                           </a>
                         )}
                       </div>
                     ) : ticketError ? (
-                      <p className="text-sm text-red-400">{ticketError}</p>
+                      <p className="text-sm text-red-600">{ticketError}</p>
                     ) : (
                       <button
                         onClick={handleCreateTicket}
                         disabled={ticketCreating}
-                        className="w-full rounded-[12px] bg-[#2F9BE6] py-2 text-sm font-medium text-white/90 hover:bg-[#2F9BE6]/80 disabled:opacity-50"
+                        className="w-full rounded-[12px] bg-[#2F9BE6] py-2 text-sm font-medium text-[#071326]/90 hover:bg-[#2F9BE6]/80 disabled:opacity-50"
                       >
                         {ticketCreating ? "Dang tao..." : "Tao Ticket"}
                       </button>
@@ -1035,7 +1035,7 @@ export default function CuaHangPage() {
                   setOrderId(null);
                   setTicketResult(null);
                 }}
-                className="w-full rounded-[12px] bg-[#1E1E1E] py-3 text-base font-medium text-white/90 hover:bg-[#2F9BE6]/20"
+                className="w-full rounded-[12px] bg-[#1E1E1E] py-3 text-base font-medium text-[#071326]/90 hover:bg-[#2F9BE6]/20"
               >
                 Hoan Tat
               </button>

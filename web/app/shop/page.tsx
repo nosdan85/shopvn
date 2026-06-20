@@ -127,33 +127,33 @@ const ProductCard = memo(function ProductCard({
   return (
     <div
       onClick={handleOpen}
-      className="group product-card cursor-pointer overflow-hidden rounded-[24px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_8px_32px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-500 active:scale-[0.98] animate-card-in md:transition-transform md:duration-300 md:hover:scale-[1.02] md:hover:border-white/20 md:hover:shadow-[0_20px_60px_rgba(30,144,255,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]"
+      className="group product-card cursor-pointer overflow-hidden rounded-[24px] border border-white/50 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-500 active:scale-[0.98] animate-card-in md:transition-transform md:duration-300 md:hover:scale-[1.02] md:hover:border-white/20 md:hover:shadow-[0_20px_60px_rgba(30,144,255,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]"
       style={{ animationDelay: `${index * (variant === "bestSeller" ? 0.08 : 0.05)}s` }}
     >
       <div className="aspect-square bg-gradient-to-br from-blue-500/10 via-transparent to-cyan-500/10 overflow-hidden">
         {product.image ? (
           <img src={imgUrl(product.image)} alt={product.name} loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
         ) : (
-          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-blue-300/50" /></div>
+          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-slate-500" /></div>
         )}
       </div>
       {variant === "bestSeller" ? (
         <div className="p-4">
-          <p className="line-clamp-2 text-sm font-semibold leading-5 text-white/90">{product.name}</p>
-          <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          {product.desc && <p className="text-xs text-white/50 mt-1 line-clamp-2">{product.desc}</p>}
+          <p className="line-clamp-2 text-sm font-semibold leading-5 text-[#071326]/90">{product.name}</p>
+          <p className="text-xs text-slate-600 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
+          {product.desc && <p className="text-xs text-[#071326]/50 mt-1 line-clamp-2">{product.desc}</p>}
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-blue-300">{formatMoney(product.price)}</span>
+            <span className="text-sm font-bold text-slate-700">{formatMoney(product.price)}</span>
             <span className="text-xs text-cyan-300/80 font-medium">Xem</span>
           </div>
         </div>
       ) : (
         <div className="space-y-1.5 sm:space-y-2 p-4 sm:p-5">
-          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-white/90">{product.name}</h3>
-          <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          <p className="text-xs text-white/40">{product.category}</p>
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[#071326]/90">{product.name}</h3>
+          <p className="text-xs text-slate-600 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
+          <p className="text-xs text-[#071326]/40">{product.category}</p>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-lg font-bold text-blue-300">{formatMoney(product.price)}</span>
+            <span className="text-lg font-bold text-slate-700">{formatMoney(product.price)}</span>
             <span className="text-xs text-cyan-300/80 font-medium">Xem</span>
           </div>
         </div>
@@ -168,9 +168,9 @@ function LogoLoader() {
       <div className="relative">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-400/30 via-cyan-400/30 to-blue-300/30 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute inset-4 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full blur-2xl"></div>
-        <Loader2 className="h-12 w-12 animate-spin text-blue-300/80" />
+        <Loader2 className="h-12 w-12 animate-spin text-slate-600" />
       </div>
-      <p className="mt-4 text-sm font-medium text-blue-200/80">Đang tải cửa hàng...</p>
+      <p className="mt-4 text-sm font-medium text-slate-700">Đang tải cửa hàng...</p>
     </div>
   );
 }
@@ -835,7 +835,7 @@ export default function ShopPage() {
           <Navbar showCart={step === "shop"} cartCount={cartCount} onCartClick={openCart} /><LogoLoader /></div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-950 via-blue-950/90 to-cyan-950/80 text-white/90 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-sky-950 via-blue-950/90 to-cyan-950/80 text-[#071326]/90 relative overflow-hidden">
           {/* Glow orbs for depth */}
           <div className="glow-orb glow-orb-1"></div>
           <div className="glow-orb glow-orb-2"></div>
@@ -848,15 +848,15 @@ export default function ShopPage() {
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-[#3DDC84]/20 p-2">
-                  <Package className="h-5 w-5 text-green-400" />
+                  <Package className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-white/90">Chào mừng! Giảm 20% cho đơn hàng đầu tiên</h3>
-                  <p className="text-xs text-blue-200/70">Đơn tối thiểu: 5.000 VND • Dùng mã này khi thanh toán</p>
+                  <h3 className="text-sm font-semibold text-[#071326]/90">Chào mừng! Giảm 20% cho đơn hàng đầu tiên</h3>
+                  <p className="text-xs text-slate-600">Đơn tối thiểu: 5.000 VND • Dùng mã này khi thanh toán</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="rounded-[12px] border border-white/10 bg-[#071326] px-3 py-2 font-mono text-sm font-semibold text-green-400">
+                <div className="rounded-[12px] border border-white/50 bg-[#071326] px-3 py-2 font-mono text-sm font-semibold text-green-600">
                   {WELCOME_VOUCHER_CODE}
                 </div>
                 <button
@@ -866,14 +866,14 @@ export default function ShopPage() {
                     setCopiedWelcomeCode(true);
                     setTimeout(() => setCopiedWelcomeCode(false), 2000);
                   }}
-                  className="rounded-[12px] bg-[#1E1E1E] px-3 py-2 text-white/90 hover:bg-[#2A2A2A]"
+                  className="rounded-[12px] bg-[#1E1E1E] px-3 py-2 text-[#071326]/90 hover:bg-[#2A2A2A]"
                 >
-                  {copiedWelcomeCode ? <CheckCircle2 className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                  {copiedWelcomeCode ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                 </button>
                 <button
                   type="button"
                   onClick={() => setWelcomeVoucherVisible(false)}
-                  className="rounded-[12px] bg-[#1E1E1E] p-2 text-white/90 hover:bg-[#2A2A2A]"
+                  className="rounded-[12px] bg-[#1E1E1E] p-2 text-[#071326]/90 hover:bg-[#2A2A2A]"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -885,30 +885,30 @@ export default function ShopPage() {
 
       {checkoutLoading && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="flex flex-col items-center gap-3 rounded-[18px] border border-white/10 bg-white/5 px-6 py-5 shadow-2xl animate-bounce-in">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
-            <p className="text-sm font-medium text-white/90">Đang xử lý thanh toán...</p>
+          <div className="flex flex-col items-center gap-3 rounded-[18px] border border-white/50 bg-white/60 px-6 py-5 shadow-2xl animate-bounce-in">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+            <p className="text-sm font-medium text-[#071326]/90">Đang xử lý thanh toán...</p>
           </div>
         </div>
       )}
 
       {showVisitorNotice && (
         <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md rounded-[20px] border border-white/10 bg-white/5 p-5 shadow-2xl animate-bounce-in">
+          <div className="w-full max-w-md rounded-[20px] border border-white/50 bg-white/60 p-5 shadow-2xl animate-bounce-in">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-white/90">Bạn mới đến?</h2>
-                <p className="mt-2 text-sm leading-6 text-blue-200/70">Nếu bạn là người mới, hãy xem vouch trước khi đặt hàng.</p>
+                <h2 className="text-lg font-semibold text-[#071326]/90">Bạn mới đến?</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Nếu bạn là người mới, hãy xem vouch trước khi đặt hàng.</p>
               </div>
-              <button type="button" onClick={dismissVisitorNotice} className="rounded-full bg-[#1E1E1E] p-2 text-white/90 hover:bg-[#2A2A2A]">
+              <button type="button" onClick={dismissVisitorNotice} className="rounded-full bg-[#1E1E1E] p-2 text-[#071326]/90 hover:bg-[#2A2A2A]">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={() => { dismissVisitorNotice(); window.location.href = "/proofs"; }} className="rounded-[14px] bg-[#2F9BE6] px-4 py-3 text-sm font-medium text-white/90 primary-hover-glow">
+              <button type="button" onClick={() => { dismissVisitorNotice(); window.location.href = "/proofs"; }} className="rounded-[14px] bg-[#2F9BE6] px-4 py-3 text-sm font-medium text-[#071326]/90 primary-hover-glow">
                 Xem vouch
               </button>
-              <button type="button" onClick={dismissVisitorNotice} className="rounded-[14px] bg-[#1E1E1E] px-4 py-3 text-sm font-medium text-white/90">
+              <button type="button" onClick={dismissVisitorNotice} className="rounded-[14px] bg-[#1E1E1E] px-4 py-3 text-sm font-medium text-[#071326]/90">
                 Đóng
               </button>
             </div>
@@ -918,21 +918,21 @@ export default function ShopPage() {
 
       {showLuckyWheelNotice && luckyWheel?.enabled && (
         <div className="fixed inset-0 z-[181] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md rounded-[20px] border border-[#2F9BE6]/30 bg-white/5 p-5 shadow-2xl animate-bounce-in">
+          <div className="w-full max-w-md rounded-[20px] border border-[#2F9BE6]/30 bg-white/60 p-5 shadow-2xl animate-bounce-in">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-white/90">{luckyWheel.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-blue-200/70">{luckyWheel.message}</p>
+                <h2 className="text-lg font-semibold text-[#071326]/90">{luckyWheel.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{luckyWheel.message}</p>
               </div>
-              <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-full bg-[#1E1E1E] p-2 text-white/90 hover:bg-[#2A2A2A]">
+              <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-full bg-[#1E1E1E] p-2 text-[#071326]/90 hover:bg-[#2A2A2A]">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-[14px] bg-[#2F9BE6] px-4 py-3 text-sm font-medium text-white/90 primary-hover-glow">
+              <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-[14px] bg-[#2F9BE6] px-4 py-3 text-sm font-medium text-[#071326]/90 primary-hover-glow">
                 Xem sự kiện
               </button>
-              <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-[14px] bg-[#1E1E1E] px-4 py-3 text-sm font-medium text-white/90">
+              <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-[14px] bg-[#1E1E1E] px-4 py-3 text-sm font-medium text-[#071326]/90">
                 Đóng
               </button>
             </div>
@@ -947,44 +947,44 @@ export default function ShopPage() {
       )}
 
       {(cartOpen || cartClosing) && (
-        <div className={"fixed inset-0 z-[70] flex items-end sm:items-stretch bg-black/60 backdrop-blur-sm " + (cartClosing ? "animate-fade-out" : "animate-fade-in")} onClick={closeCart}>
-          <div className={"w-full h-[100dvh] sm:my-4 sm:mr-4 sm:ml-auto sm:h-[calc(100%-2rem)] sm:max-w-md bg-white/5 border-t sm:border border-white/10 flex flex-col rounded-none sm:rounded-[24px] " + (cartClosing ? "animate-cart-slide-out" : "animate-cart-slide-in")} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sticky top-0 bg-white/5 z-10">
+        <div className={"fixed inset-0 z-[70] flex items-end sm:items-stretch bg-black/30 backdrop-blur-sm " + (cartClosing ? "animate-fade-out" : "animate-fade-in")} onClick={closeCart}>
+          <div className={"w-full h-[100dvh] sm:my-4 sm:mr-4 sm:ml-auto sm:h-[calc(100%-2rem)] sm:max-w-md bg-white/60 border-t sm:border border-white/50 flex flex-col rounded-none sm:rounded-[24px] " + (cartClosing ? "animate-cart-slide-out" : "animate-cart-slide-in")} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/50 px-4 py-4 sticky top-0 bg-white/60 z-10">
               <div className="mx-auto h-1.5 w-12 rounded-full bg-[#2A2A2A] absolute top-2 left-1/2 -translate-x-1/2 sm:hidden" />
               <h2 className="text-base sm:text-lg font-semibold">Giỏ hàng ({cartCount})</h2>
-              <button onClick={closeCart} className="rounded-full bg-white/8 p-2"><X className="h-5 w-5" /></button>
+              <button onClick={closeCart} className="rounded-full bg-white/70 p-2"><X className="h-5 w-5" /></button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
               {cart.map((item) => (
-                <div key={item._id} className="flex gap-3 rounded-[16px] border border-white/10 bg-[#071326] p-3 sm:p-3">
-                  <div className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 overflow-hidden rounded-[12px] sm:rounded-[14px] bg-white/5">
-                    {item.image ? <img src={imgUrl(item.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover" /> : <Package className="h-full w-full p-3 text-blue-200/60" />}
+                <div key={item._id} className="flex gap-3 rounded-[16px] border border-white/50 bg-[#071326] p-3 sm:p-3">
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 overflow-hidden rounded-[12px] sm:rounded-[14px] bg-white/60">
+                    {item.image ? <img src={imgUrl(item.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover" /> : <Package className="h-full w-full p-3 text-slate-500" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-medium leading-5">{formatPurchasedProductName(item)}</p>
                     <div className="mt-1 flex items-center gap-2">
-                      <button onClick={() => updateQty(item._id, -1)} className="rounded bg-white/8 p-1"><Minus className="h-3 w-3" /></button>
+                      <button onClick={() => updateQty(item._id, -1)} className="rounded bg-white/70 p-1"><Minus className="h-3 w-3" /></button>
                       <span className="text-sm">{item.quantity}</span>
-                      <button onClick={() => updateQty(item._id, 1)} className="rounded bg-white/8 p-1"><Plus className="h-3 w-3" /></button>
+                      <button onClick={() => updateQty(item._id, 1)} className="rounded bg-white/70 p-1"><Plus className="h-3 w-3" /></button>
                     </div>
                   </div>
                   <div className="flex flex-col items-end justify-between">
-                    <span className="text-sm font-medium text-green-400">{formatMoney(item.price * item.quantity)}</span>
-                    <button onClick={() => removeItem(item._id)} className="text-xs text-red-400">Xóa</button>
+                    <span className="text-sm font-medium text-green-600">{formatMoney(item.price * item.quantity)}</span>
+                    <button onClick={() => removeItem(item._id)} className="text-xs text-red-600">Xóa</button>
                   </div>
                 </div>
               ))}
             </div>
             {cart.length > 0 && (
-              <div className="border-t border-white/10 px-4 py-4 space-y-3 bg-white/5">
-                <div className="rounded-[12px] border border-white/10 bg-[#071326] p-2">
-                  <button type="button" onClick={() => setCartToolsOpen((v) => !v)} className="flex w-full items-center justify-between rounded-[10px] border border-white/10 bg-[#071326]/80 px-3 py-2 text-sm font-semibold">
+              <div className="border-t border-white/50 px-4 py-4 space-y-3 bg-white/60">
+                <div className="rounded-[12px] border border-white/50 bg-[#071326] p-2">
+                  <button type="button" onClick={() => setCartToolsOpen((v) => !v)} className="flex w-full items-center justify-between rounded-[10px] border border-white/50 bg-[#071326]/80 px-3 py-2 text-sm font-semibold">
                     <span>Mã giảm giá</span>
-                    <span className="text-xs text-blue-200/70">{cartToolsOpen ? 'Ẩn' : 'Hiện'}</span>
+                    <span className="text-xs text-slate-600">{cartToolsOpen ? 'Ẩn' : 'Hiện'}</span>
                   </button>
                   <div className={"mt-2 space-y-2 " + (cartToolsOpen ? '' : 'hidden sm:block')}>
                     <div className="grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-2">
-                      <label htmlFor="cart-referral" className="text-[10px] font-bold uppercase tracking-wider text-blue-200/70">Mã mời</label>
+                      <label htmlFor="cart-referral" className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Mã mời</label>
                       <input
                         id="cart-referral"
                         value={referralCode}
@@ -994,34 +994,34 @@ export default function ShopPage() {
                         }}
                         onBlur={() => { try { window.localStorage.setItem('pendingReferralCode', referralCode.trim()); } catch {} }}
                         placeholder="REF-123456"
-                        className="min-w-0 rounded-[10px] border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 outline-none focus:border-[#49B6FF]"
+                        className="min-w-0 rounded-[10px] border border-white/50 bg-white/60 px-3 py-2 text-sm text-[#071326]/90 outline-none focus:border-[#49B6FF]"
                       />
                       <button
                         type="button"
                         onClick={() => void previewReferralCode().catch((e) => setError(e instanceof Error ? e.message : 'Áp dụng mã mời thất bại'))}
                         disabled={!token || !referralCode.trim() || referralApplying || referralApplied}
-                        className="rounded-[9px] bg-[#1E1E1E] px-3 py-2 text-xs font-bold text-blue-200/70 disabled:opacity-50"
+                        className="rounded-[9px] bg-[#1E1E1E] px-3 py-2 text-xs font-bold text-slate-600 disabled:opacity-50"
                       >
                         {referralApplying ? '...' : (referralApplied ? 'Đã áp dụng' : 'Áp dụng')}
                       </button>
                     </div>
                     {token && myReferralCode && (
                       <div className="grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-2 text-[11px]">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200/70">Mã của bạn</span>
-                        <span className="min-w-0 truncate font-mono font-semibold text-blue-200/70">{myReferralCode}</span>
-                        <button type="button" onClick={() => void navigator.clipboard.writeText(myReferralCode)} className="rounded-[8px] bg-[#1E1E1E] p-1.5 text-white/90" title="Copy">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Mã của bạn</span>
+                        <span className="min-w-0 truncate font-mono font-semibold text-slate-600">{myReferralCode}</span>
+                        <button type="button" onClick={() => void navigator.clipboard.writeText(myReferralCode)} className="rounded-[8px] bg-[#1E1E1E] p-1.5 text-[#071326]/90" title="Copy">
                           <Copy className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     )}
                     {referralPreviewOwner && (
-                      <div className="flex items-center justify-between gap-2 pl-[84px] text-[11px] text-blue-200/70">
+                      <div className="flex items-center justify-between gap-2 pl-[84px] text-[11px] text-slate-600">
                         <span className="min-w-0 truncate">Chủ mã mời: {referralPreviewOwner}</span>
                       </div>
                     )}
 
                     <div className="grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-2">
-                      <label htmlFor="cart-coupon" className="text-[10px] font-bold uppercase tracking-wider text-blue-200/70">Coupon</label>
+                      <label htmlFor="cart-coupon" className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Coupon</label>
                       <input
                         id="cart-coupon"
                         value={couponCode}
@@ -1032,37 +1032,37 @@ export default function ShopPage() {
                           setCouponMessage('');
                         }}
                         placeholder="Code"
-                        className="min-w-0 rounded-[10px] border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 outline-none focus:border-[#2F9BE6]"
+                        className="min-w-0 rounded-[10px] border border-white/50 bg-white/60 px-3 py-2 text-sm text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
                       />
                       <button
                         type="button"
                         onClick={() => void previewCoupon()}
                         disabled={couponLoading || !couponCode.trim()}
-                        className="rounded-[9px] bg-[#1E1E1E] px-3 py-2 text-xs font-bold text-white/90 disabled:opacity-50"
+                        className="rounded-[9px] bg-[#1E1E1E] px-3 py-2 text-xs font-bold text-[#071326]/90 disabled:opacity-50"
                       >
                         {couponLoading ? '...' : 'Áp dụng'}
                       </button>
                     </div>
                     {couponMessage && (
-                      <p className={'pl-[84px] text-xs ' + (activeCouponPreview ? 'text-green-400' : 'text-blue-200/70')}>{couponMessage}</p>
+                      <p className={'pl-[84px] text-xs ' + (activeCouponPreview ? 'text-green-600' : 'text-slate-600')}>{couponMessage}</p>
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-blue-200/70">Tạm tính</span><span>{formatMoney(cartTotal)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">Tạm tính</span><span>{formatMoney(cartTotal)}</span></div>
                   {activeCartDiscountAmount > 0 && (
                     <>
                       {activeCartCouponPercent > 0 && (
-                        <div className="flex justify-between text-green-400"><span>Mã giảm giá ({activeCartCouponPercent}%)</span><span>-{formatMoney(cartTotal * activeCartCouponPercent / 100)}</span></div>
+                        <div className="flex justify-between text-green-600"><span>Mã giảm giá ({activeCartCouponPercent}%)</span><span>-{formatMoney(cartTotal * activeCartCouponPercent / 100)}</span></div>
                       )}
                       {activeCartReferralPercent > 0 && (
-                        <div className="flex justify-between text-green-400"><span>Mã mời ({activeCartReferralPercent}%)</span><span>-{formatMoney(cartTotal * activeCartReferralPercent / 100)}</span></div>
+                        <div className="flex justify-between text-green-600"><span>Mã mời ({activeCartReferralPercent}%)</span><span>-{formatMoney(cartTotal * activeCartReferralPercent / 100)}</span></div>
                       )}
-                      <div className="flex justify-between text-green-400"><span>Tổng giảm ({activeCartDiscountPercent}%)</span><span>-{formatMoney(activeCartDiscountAmount)}</span></div>
+                      <div className="flex justify-between text-green-600"><span>Tổng giảm ({activeCartDiscountPercent}%)</span><span>-{formatMoney(activeCartDiscountAmount)}</span></div>
                     </>
                   )}
-                  <div className="flex justify-between border-t border-white/10 pt-2 text-lg font-semibold"><span>Tổng cộng</span><span className="text-green-400">{formatMoney(activeCartPayableTotal)}</span></div>
+                  <div className="flex justify-between border-t border-white/50 pt-2 text-lg font-semibold"><span>Tổng cộng</span><span className="text-green-600">{formatMoney(activeCartPayableTotal)}</span></div>
                 </div>
                 <button onClick={() => { closeCart(); void doCheckout(); }} disabled={submitting} className="w-full rounded-[14px] bg-[#2F9BE6] py-3 font-medium transition-all hover:bg-[#49B6FF] primary-hover-glow disabled:opacity-50">{submitting ? 'Đang xử lý...' : 'Thanh toán'}</button>
               </div>
@@ -1073,28 +1073,28 @@ export default function ShopPage() {
 
       {(modalOpen || modalClosing) && selectedProduct && (
         <div className={"fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-0 " + (modalClosing ? "animate-fade-out" : "animate-fade-in")} onClick={closeProductModal}>
-          <div className={"motion-panel relative mx-3 w-full max-w-[340px] md:max-w-[408px] max-h-[82dvh] overflow-hidden rounded-[20px] border border-white/10 bg-[#071326]/80 shadow-2xl " + (modalClosing ? "animate-modal-zoom-out" : "animate-modal-zoom-in")} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/10 bg-[#071326]/80 px-4 py-2.5">
-              <h3 className="text-sm font-semibold text-white/90">Chi tiết sản phẩm</h3>
+          <div className={"motion-panel relative mx-3 w-full max-w-[340px] md:max-w-[408px] max-h-[82dvh] overflow-hidden rounded-[20px] border border-white/50 bg-[#071326]/80 shadow-2xl " + (modalClosing ? "animate-modal-zoom-out" : "animate-modal-zoom-in")} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/50 bg-[#071326]/80 px-4 py-2.5">
+              <h3 className="text-sm font-semibold text-[#071326]/90">Chi tiết sản phẩm</h3>
               <button onClick={closeProductModal} className="rounded-full bg-[#1E1E1E] p-2 active:scale-90"><X className="h-4 w-4" /></button>
             </div>
             <div className="max-h-[calc(82dvh-96px)] overflow-y-auto px-4 py-3">
             <div className="space-y-3">
               <div className="mx-auto aspect-square w-full max-w-[120px] md:max-w-[138px] overflow-hidden rounded-[14px] bg-[#071326]">
-                {selectedProduct.image ? <img src={imgUrl(selectedProduct.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-contain" /> : <Package className="h-full w-full p-8 text-blue-200/50" />}
+                {selectedProduct.image ? <img src={imgUrl(selectedProduct.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-contain" /> : <Package className="h-full w-full p-8 text-slate-500" />}
               </div>
               <div className="space-y-1.5">
                 <h2 className="text-base font-bold leading-tight">{formatProductNameWithQty(selectedProduct.name, selectedProduct.packQuantity)}</h2>
-                {<p className="text-xs text-blue-300/80">Pack {formatQtyLabel(selectedProduct.packQuantity)}</p>}
-                <div className="flex items-baseline gap-1.5"><span className="text-xl font-bold text-green-400">{formatMoney(selectedProduct.price)}</span></div>
+                {<p className="text-xs text-slate-600">Pack {formatQtyLabel(selectedProduct.packQuantity)}</p>}
+                <div className="flex items-baseline gap-1.5"><span className="text-xl font-bold text-green-600">{formatMoney(selectedProduct.price)}</span></div>
                 {selectedProduct.bulkPrice && (
-                  <p className="text-[10px] leading-4 text-blue-300/80">Giá sỉ: {formatMoney(selectedProduct.bulkPrice)}</p>
+                  <p className="text-[10px] leading-4 text-slate-600">Giá sỉ: {formatMoney(selectedProduct.bulkPrice)}</p>
                 )}
               </div>
             </div>
             {selectedProduct.desc && (
               <div className="mt-2 rounded-[12px] bg-[#0D0D0D] p-3">
-                <p className="whitespace-pre-wrap text-[11px] leading-4 text-blue-200/70">{selectedProduct.desc}</p>
+                <p className="whitespace-pre-wrap text-[11px] leading-4 text-slate-600">{selectedProduct.desc}</p>
               </div>
             )}
             <div className="mt-2">
@@ -1105,8 +1105,8 @@ export default function ShopPage() {
               </div>
             </div>
             </div>
-            <div className="border-t border-white/10 bg-[#071326]/80 px-4 py-3">
-              <button onClick={addToCartFromModal} className="w-full rounded-full bg-gradient-to-r from-[#2F9BE6] to-[#49B6FF] py-3.5 text-sm font-semibold text-white/90 active:scale-95 primary-hover-glow">Thêm vào giỏ</button>
+            <div className="border-t border-white/50 bg-[#071326]/80 px-4 py-3">
+              <button onClick={addToCartFromModal} className="w-full rounded-full bg-gradient-to-r from-[#2F9BE6] to-[#49B6FF] py-3.5 text-sm font-semibold text-[#071326]/90 active:scale-95 primary-hover-glow">Thêm vào giỏ</button>
             </div>
           </div>
         </div>
@@ -1114,19 +1114,19 @@ export default function ShopPage() {
 
       {error && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md rounded-[20px] border border-[#FF4D4F]/30 bg-white/5 p-6 shadow-2xl animate-bounce-in">
+          <div className="w-full max-w-md rounded-[20px] border border-[#FF4D4F]/30 bg-white/60 p-6 shadow-2xl animate-bounce-in">
             <div className="mb-4 flex items-start gap-4">
               <div className="flex-shrink-0 rounded-full bg-[#FF4D4F]/10 p-3">
-                <AlertCircle className="h-6 w-6 text-red-400" />
+                <AlertCircle className="h-6 w-6 text-red-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-white/90 mb-2">Lỗi</h3>
-                <p className="text-sm text-blue-200/70 leading-relaxed break-words">{error}</p>
+                <h3 className="text-lg font-semibold text-[#071326]/90 mb-2">Lỗi</h3>
+                <p className="text-sm text-slate-600 leading-relaxed break-words">{error}</p>
               </div>
             </div>
             <button
               onClick={() => setError(null)}
-              className="w-full rounded-[14px] bg-[#FF4D4F] px-4 py-3 text-sm font-medium text-white/90 hover:bg-[#FF6B6B] transition-colors"
+              className="w-full rounded-[14px] bg-[#FF4D4F] px-4 py-3 text-sm font-medium text-[#071326]/90 hover:bg-[#FF6B6B] transition-colors"
             >
               Đóng
             </button>
@@ -1137,30 +1137,30 @@ export default function ShopPage() {
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-4 sm:py-6 animate-page-enter">
         {step !== "shop" && (
           <div className="mx-auto max-w-2xl space-y-6 animate-page-enter">
-            <button onClick={() => { setStep("shop"); setOrderId(null); setCheckoutSummary(null); clearPendingCheckout(); }} className="flex items-center gap-2 text-sm text-blue-200/70 hover:text-white/90 transition-colors">
+            <button onClick={() => { setStep("shop"); setOrderId(null); setCheckoutSummary(null); clearPendingCheckout(); }} className="flex items-center gap-2 text-sm text-slate-600 hover:text-[#071326]/90 transition-colors">
               <ArrowLeft className="h-4 w-4" /> Quay lại cửa hàng
             </button>
             <div className="flex gap-2">{(["roblox", "ticket"] as const).map((s) => (
-              <div key={s} className={"h-2 flex-1 rounded-full transition-colors " + (step === s ? "bg-[#49B6FF]" : (["roblox", "ticket"].indexOf(step) > ["roblox", "ticket"].indexOf(s) ? "bg-[#3DDC84]" : "bg-white/8"))} />
+              <div key={s} className={"h-2 flex-1 rounded-full transition-colors " + (step === s ? "bg-[#49B6FF]" : (["roblox", "ticket"].indexOf(step) > ["roblox", "ticket"].indexOf(s) ? "bg-[#3DDC84]" : "bg-white/70"))} />
             ))}</div>
-            <div className="motion-panel rounded-[24px] border border-white/10 bg-white/5 p-4 sm:p-6 space-y-4 animate-section-enter">
-              <div className="border-b border-white/10 pb-3">
-                <p className="text-sm text-blue-200/70">Đơn hàng {orderId}</p>
+            <div className="motion-panel rounded-[24px] border border-white/50 bg-white/60 p-4 sm:p-6 space-y-4 animate-section-enter">
+              <div className="border-b border-white/50 pb-3">
+                <p className="text-sm text-slate-600">Đơn hàng {orderId}</p>
                 <div className="mt-2 space-y-1">{checkoutItems.map((i) => (
-                  <div key={String(i._id || ("product" in i ? i.product : "") || i.name)} className="flex justify-between text-sm"><span>{formatPurchasedProductName(i)}</span><span className="text-blue-200/70">{formatMoney(Number(i.price || 0) * Number(i.quantity || 1))}</span></div>
+                  <div key={String(i._id || ("product" in i ? i.product : "") || i.name)} className="flex justify-between text-sm"><span>{formatPurchasedProductName(i)}</span><span className="text-slate-600">{formatMoney(Number(i.price || 0) * Number(i.quantity || 1))}</span></div>
                 ))}
                   {Number(checkoutSummary?.discountAmount || 0) > 0 && (
-                    <div className="flex justify-between text-sm text-green-400"><span>Giảm giá ({checkoutSummary?.discountPercent || 0}%)</span><span>-{formatMoney(checkoutSummary?.discountAmount || 0)}</span></div>
+                    <div className="flex justify-between text-sm text-green-600"><span>Giảm giá ({checkoutSummary?.discountPercent || 0}%)</span><span>-{formatMoney(checkoutSummary?.discountAmount || 0)}</span></div>
                   )}
-                  <div className="flex justify-between border-t border-white/10 pt-2 font-semibold"><span>Tổng cộng</span><span className="text-green-400">{formatMoney(checkoutTotal)}</span></div>
+                  <div className="flex justify-between border-t border-white/50 pt-2 font-semibold"><span>Tổng cộng</span><span className="text-green-600">{formatMoney(checkoutTotal)}</span></div>
                 </div>
               </div>
               {step === "roblox" && (
                 <div className="space-y-4">
-                  <div className="rounded-[16px] border border-white/10 bg-[#071326] p-4">
-                    <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-white/90"><DiscordIcon className="h-5 w-5 text-blue-200/70" />Đăng nhập Discord</h3>
+                  <div className="rounded-[16px] border border-white/50 bg-[#071326] p-4">
+                    <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-[#071326]/90"><DiscordIcon className="h-5 w-5 text-slate-600" />Đăng nhập Discord</h3>
                     {daLienKetDiscord ? (
-                      <div className="rounded-[14px] border border-[#3DDC84]/25 bg-[#3DDC84]/10 px-4 py-3 text-sm text-green-400">
+                      <div className="rounded-[14px] border border-[#3DDC84]/25 bg-[#3DDC84]/10 px-4 py-3 text-sm text-green-600">
                         ✓ Đã liên kết Discord: {discordTenHienThi}
                       </div>
                     ) : (
@@ -1171,7 +1171,7 @@ export default function ShopPage() {
                             localStorage.setItem('discord_return_to', '/shop');
                           }
                         }}
-                        className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 text-center font-medium text-white/90 transition-all hover:bg-[#6875ff]"
+                        className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 text-center font-medium text-[#071326]/90 transition-all hover:bg-[#6875ff]"
                       >
                         <DiscordIcon className="h-5 w-5" />
                         Đăng nhập bằng Discord
@@ -1180,13 +1180,13 @@ export default function ShopPage() {
                   </div>
                   {!robloxSearchResult ? (
                     <div className="space-y-4">
-                      <h3 className="flex items-center gap-2 text-lg font-semibold"><RobloxIcon className="h-5 w-5 text-white/90" />Nhập username Roblox</h3>
+                      <h3 className="flex items-center gap-2 text-lg font-semibold"><RobloxIcon className="h-5 w-5 text-[#071326]/90" />Nhập username Roblox</h3>
                       <div className="flex flex-col gap-3">
                         <input
                           value={robloxUsernameInput}
                           onChange={(e) => setRobloxUsernameInput(e.target.value)}
                           placeholder="Nhập username Roblox..."
-                          className="w-full rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 outline-none focus:border-[#2F9BE6]"
+                          className="w-full rounded-[14px] border border-white/50 bg-[#071326] px-4 py-3 outline-none focus:border-[#2F9BE6]"
                         />
                         <button
                           onClick={() => void lookupRobloxUsername()}
@@ -1196,29 +1196,29 @@ export default function ShopPage() {
                           {submitting ? "Đang tìm..." : "Tìm tài khoản"}
                         </button>
                       </div>
-                      <p className="text-xs text-blue-200/70">Nhập ít nhất 3 ký tự để tìm kiếm</p>
+                      <p className="text-xs text-slate-600">Nhập ít nhất 3 ký tự để tìm kiếm</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <h3 className="flex items-center gap-2 text-lg font-semibold"><RobloxIcon className="h-5 w-5 text-white/90" />Xác nhận tài khoản Roblox</h3>
-                      <p className="text-sm text-blue-200/70">Đây có đúng là tài khoản Roblox của bạn không?</p>
-                      <div className="flex items-center gap-4 rounded-[16px] border border-white/10 bg-[#071326] p-4">
-                        <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-full bg-white/8">
+                      <h3 className="flex items-center gap-2 text-lg font-semibold"><RobloxIcon className="h-5 w-5 text-[#071326]/90" />Xác nhận tài khoản Roblox</h3>
+                      <p className="text-sm text-slate-600">Đây có đúng là tài khoản Roblox của bạn không?</p>
+                      <div className="flex items-center gap-4 rounded-[16px] border border-white/50 bg-[#071326] p-4">
+                        <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-full bg-white/70">
                           {robloxSearchResult.avatar ? (
                             <img src={robloxSearchResult.avatar} alt="" className="h-full w-full object-cover" />
                           ) : (
-                            <User className="h-full w-full p-3 text-blue-200/60" />
+                            <User className="h-full w-full p-3 text-slate-500" />
                           )}
                         </div>
                         <div className="space-y-3">
-                          <p className="text-sm text-blue-200/70">Tên hiển thị</p>
-                          <p className="text-lg font-semibold text-white/90">{robloxSearchResult.displayName}</p>
-                          <p className="text-sm text-blue-300/80">@{robloxSearchResult.username}</p>
+                          <p className="text-sm text-slate-600">Tên hiển thị</p>
+                          <p className="text-lg font-semibold text-[#071326]/90">{robloxSearchResult.displayName}</p>
+                          <p className="text-sm text-slate-600">@{robloxSearchResult.username}</p>
                           <a
                             href={`https://www.roblox.com/users/${robloxSearchResult.userId}/profile`}
                             target="_blank"
                             rel="noreferrer"
-                            className="mt-1 inline-block text-xs text-blue-200/70 hover:text-white/90"
+                            className="mt-1 inline-block text-xs text-slate-600 hover:text-[#071326]/90"
                           >
                             Xem profile
                           </a>
@@ -1247,7 +1247,7 @@ export default function ShopPage() {
                 <div className="space-y-4">
                   {ticketResult ? (
                     <div className="space-y-4">
-                      <div className="rounded-[16px] border border-[#3DDC84]/30 bg-[#3DDC84]/10 p-4 text-sm text-green-400">
+                      <div className="rounded-[16px] border border-[#3DDC84]/30 bg-[#3DDC84]/10 p-4 text-sm text-green-600">
                         Ticket đã được tạo thành công.
                       </div>
                       {ticketResult.url && (
@@ -1255,7 +1255,7 @@ export default function ShopPage() {
                           href={ticketResult.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 font-medium text-white/90 transition-all hover:bg-[#6875ff]"
+                          className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 font-medium text-[#071326]/90 transition-all hover:bg-[#6875ff]"
                         >
                           <DiscordIcon className="h-5 w-5" />
                           Mở ticket Discord
@@ -1270,15 +1270,15 @@ export default function ShopPage() {
                           setRobloxUsernameInput("");
                           setTicketResult(null);
                         }}
-                        className="w-full rounded-[14px] bg-[#1E1E1E] py-3 font-medium text-white/90 transition-colors hover:bg-[#2A2A2A]"
+                        className="w-full rounded-[14px] bg-[#1E1E1E] py-3 font-medium text-[#071326]/90 transition-colors hover:bg-[#2A2A2A]"
                       >
                         Tiếp tục mua sắm
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
-                      <span className="ml-3 text-sm text-blue-200/70">Đang tạo ticket...</span>
+                      <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+                      <span className="ml-3 text-sm text-slate-600">Đang tạo ticket...</span>
                     </div>
                   )}
                 </div>
@@ -1291,8 +1291,8 @@ export default function ShopPage() {
           <>
             <div className="px-4 py-8 sm:px-6 lg:px-8">
               <div className="mx-auto max-w-7xl">
-                <h1 className="text-3xl font-bold text-white/90 sm:text-4xl">Cửa hàng game</h1>
-                <p className="mt-2 text-blue-200/70">Mua vật phẩm, voucher với giá tốt nhất</p>
+                <h1 className="text-3xl font-bold text-[#071326]/90 sm:text-4xl">Cửa hàng game</h1>
+                <p className="mt-2 text-slate-600">Mua vật phẩm, voucher với giá tốt nhất</p>
               </div>
             </div>
 
@@ -1300,11 +1300,11 @@ export default function ShopPage() {
               <div className="px-4 py-6 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-7xl">
                   <div className="mb-4 flex items-center justify-between gap-3">
-                    <h2 className="text-xl font-semibold text-white/90">Sản phẩm bán chạy</h2>
+                    <h2 className="text-xl font-semibold text-[#071326]/90">Sản phẩm bán chạy</h2>
                     {bestSellers.length > BEST_SELLERS_PER_PAGE && (
                       <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setBestSellerPage((current) => Math.max(0, current - 1))} disabled={bestSellerPage <= 0} className="rounded-[12px] bg-white/5 px-3 py-2 text-xs text-blue-200/70 disabled:opacity-40">Trước</button>
-                        <button type="button" onClick={() => setBestSellerPage((current) => Math.min(maxBestSellerPage, current + 1))} disabled={bestSellerPage >= maxBestSellerPage} className="rounded-[12px] bg-white/5 px-3 py-2 text-xs text-blue-200/70 disabled:opacity-40">Sau</button>
+                        <button type="button" onClick={() => setBestSellerPage((current) => Math.max(0, current - 1))} disabled={bestSellerPage <= 0} className="rounded-[12px] bg-white/60 px-3 py-2 text-xs text-slate-600 disabled:opacity-40">Trước</button>
+                        <button type="button" onClick={() => setBestSellerPage((current) => Math.min(maxBestSellerPage, current + 1))} disabled={bestSellerPage >= maxBestSellerPage} className="rounded-[12px] bg-white/60 px-3 py-2 text-xs text-slate-600 disabled:opacity-40">Sau</button>
                       </div>
                     )}
                   </div>
@@ -1321,29 +1321,29 @@ export default function ShopPage() {
               <div className="mx-auto max-w-7xl">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-blue-200/70" />
+                    <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-600" />
                     <input
                       type="text"
                       placeholder="Tìm sản phẩm..."
                       value={searchInput}
                       onChange={handleSearchChange}
-                      className="w-full rounded-[12px] border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white/90 placeholder-[#B5B5B5] focus:border-[#2F9BE6] focus:outline-none"
+                      className="w-full rounded-[12px] border border-white/50 bg-white/60 py-2.5 pl-10 pr-4 text-sm text-[#071326]/90 placeholder-[#B5B5B5] focus:border-[#2F9BE6] focus:outline-none"
                     />
                   </form>
 
                   <div className="flex flex-wrap gap-3">
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={() => setSelectedGame(null)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${!selectedGame ? "bg-[#2F9BE6] text-white/90" : "border border-white/10 bg-white/5 text-blue-200/70 hover:border-[#2F9BE6]"}`}>
+                      <button onClick={() => setSelectedGame(null)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${!selectedGame ? "bg-[#2F9BE6] text-[#071326]/90" : "border border-white/50 bg-white/60 text-slate-600 hover:border-[#2F9BE6]"}`}>
                         Tất cả
                       </button>
                       {games.slice(0, 5).map((game) => (
-                        <button key={game._id} onClick={() => setSelectedGame(game._id)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${selectedGame === game._id ? "bg-[#2F9BE6] text-white/90" : "border border-white/10 bg-white/5 text-blue-200/70 hover:border-[#2F9BE6]"}`}>
+                        <button key={game._id} onClick={() => setSelectedGame(game._id)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${selectedGame === game._id ? "bg-[#2F9BE6] text-[#071326]/90" : "border border-white/50 bg-white/60 text-slate-600 hover:border-[#2F9BE6]"}`}>
                           {game.name}
                         </button>
                       ))}
                     </div>
 
-                    <select value={priceSort} onChange={(e) => setPriceSort(e.target.value as PriceSort)} className="rounded-[12px] border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/90 focus:border-[#2F9BE6] focus:outline-none">
+                    <select value={priceSort} onChange={(e) => setPriceSort(e.target.value as PriceSort)} className="rounded-[12px] border border-white/50 bg-white/60 px-3 py-1.5 text-sm text-[#071326]/90 focus:border-[#2F9BE6] focus:outline-none">
                       <option value="none">Giá mặc định</option>
                       <option value="low-high">Giá: Thấp đến Cao</option>
                       <option value="high-low">Giá: Cao đến Thấp</option>
@@ -1363,8 +1363,8 @@ export default function ShopPage() {
 
                 {filtered.length === 0 && (
                   <div className="py-12 text-center">
-                    <Package className="mx-auto h-12 w-12 text-blue-200/50" />
-                    <p className="mt-4 text-blue-200/70">Không tìm thấy sản phẩm</p>
+                    <Package className="mx-auto h-12 w-12 text-slate-500" />
+                    <p className="mt-4 text-slate-600">Không tìm thấy sản phẩm</p>
                   </div>
                 )}
               </div>
