@@ -90,7 +90,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://i.ibb.co" />
         <meta name="theme-color" content="#071326" />
       </head>
-      <body className="min-h-full flex flex-col bg-[#071326] text-[#071326] relative">
+      <body className="min-h-full flex flex-col bg-white/60 backdrop-blur-xl text-[#071326] relative">
         {/* Glow orbs for Apple Liquid Glass effect */}
         <div className="glow-orb glow-orb-1" />
         <div className="glow-orb glow-orb-2" />

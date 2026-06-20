@@ -126,7 +126,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
       bg-white/60 backdrop-blur-2xl border-b border-white/50
       shadow-[0_4px_30px_rgba(30,144,255,0.1),inset_0_1px_0_rgba(255,255,255,0.1)]
       ${isScrolled
-        ? "bg-white/10 backdrop-blur-3xl shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.15)]"
+        ? "bg-white/50 backdrop-blur-3xl shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.15)]"
         : ""}
     `}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
@@ -207,7 +207,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-white/50 bg-white/60 hover:bg-white/70 hover:border-[#2F9BE6]/30 transition-all duration-200 group"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-white/50 bg-white/60 hover:bg-white/70 hover:border-white/50 transition-all duration-200 group"
                 >
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[#071326]/90 font-semibold text-xs ${getAvatarInitial(user.tenDangNhap).color}`}>
                     {getAvatarInitial(user.tenDangNhap).initial}
@@ -222,7 +222,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                       <p className="text-xs text-slate-500 mt-0.5 truncate">{user.email}</p>
                     </div>
 
-                    <div className="px-4 py-3 border-b border-white/50 bg-[#071326]/80">
+                    <div className="px-4 py-3 border-b border-white/50 bg-white/400 backdrop-blur-xl">
                       <p className="text-xs text-slate-500 mb-1">So du</p>
                       <p className="text-sm font-semibold text-slate-600">
                         {soDuVnd.toLocaleString("vi-VN")} VND
@@ -281,7 +281,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                 </Link>
                 <Link
                   href="/dang-ky"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 text-[#071326]/90 rounded-full font-medium text-sm transition-all duration-500 shadow-[0_4px_30px_rgba(30,144,255,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:scale-[1.03]"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white/50 hover:bg-white/15 backdrop-blur-xl border border-white/50 text-[#071326]/90 rounded-full font-medium text-sm transition-all duration-500 shadow-[0_4px_30px_rgba(30,144,255,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:scale-[1.03]"
                 >
                   Dang Ky
                 </Link>
@@ -301,7 +301,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
 
       {/* Mobile Fullscreen Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden absolute left-0 right-0 top-full z-[9998] bg-white/10 backdrop-blur-3xl border-b border-white/50 animate-fade-in shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]">
+        <div className="md:hidden absolute left-0 right-0 top-full z-[9998] bg-white/50 backdrop-blur-3xl border-b border-white/50 animate-fade-in shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]">
           <div className="max-h-[calc(100dvh-68px)] min-h-[calc(100dvh-68px)] overflow-y-auto px-4 py-6 flex flex-col gap-3">
             <Link
               href="/shop"
@@ -309,14 +309,14 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                 clearCheckoutResume();
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 px-5 py-4 text-lg font-semibold text-[#071326]/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
+              className="flex items-center rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 px-5 py-4 text-lg font-semibold text-[#071326]/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/50"
             >
               Cua Hang
             </Link>
             <Link
               href="/proofs"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 px-5 py-4 text-lg font-semibold text-[#071326]/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
+              className="flex items-center rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 px-5 py-4 text-lg font-semibold text-[#071326]/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/50"
             >
               Danh Gia
             </Link>
@@ -325,7 +325,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               target="_blank"
               rel="noreferrer"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 px-5 py-4 text-lg font-semibold text-[#071326]/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
+              className="flex items-center rounded-2xl bg-white/60 backdrop-blur-xl border border-white/50 px-5 py-4 text-lg font-semibold text-[#071326]/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/50"
             >
               Ho Tro
             </a>

@@ -24,13 +24,13 @@ type Order = {
 const statusTone = (status?: string) => {
   switch (status) {
     case "hoan_thanh":
-      return "bg-[#3DDC84]/15 text-green-600 border-green-400/20";
+      return "bg-white/30 text-green-600 border-green-400/20";
     case "huy":
       return "bg-[#FF4D4F]/15 text-red-600 border-red-500/30";
     case "da_thanh_toan":
-      return "bg-[#2F9BE6]/15 text-slate-600 border-amber-400/20";
+      return "bg-white/30 text-slate-600 border-amber-400/20";
     default:
-      return "bg-[#2F9BE6]/15 text-slate-600 border-blue-400/20";
+      return "bg-white/30 text-slate-600 border-blue-400/20";
   }
 };
 
@@ -135,13 +135,13 @@ export default function AdminOrdersPage() {
 
   if (!user && !isLoading) {
     return (
-      <div className="min-h-screen bg-[#071326] text-[#071326]/90">
+      <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
         <Navbar />
         <div className="mx-auto max-w-md px-4 py-24">
           <div className="rounded-[18px] border border-white/50 bg-white/60 p-8 text-center">
             <AlertCircle className="mx-auto mb-4 h-10 w-10 text-slate-600" />
             <h1 className="text-2xl font-semibold">Yêu cầu đăng nhập admin</h1>
-            <a href="/login" className="mt-6 inline-flex rounded-[14px] bg-[#2F9BE6] px-5 py-3 font-medium">
+            <a href="/login" className="mt-6 inline-flex rounded-[14px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-5 py-3 font-medium">
               Đăng Nhập
             </a>
           </div>
@@ -152,7 +152,7 @@ export default function AdminOrdersPage() {
 
   if (user && !isAdminRole(user.vaiTro)) {
     return (
-      <div className="min-h-screen bg-[#071326] text-[#071326]/90">
+      <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
         <Navbar />
         <div className="mx-auto max-w-md px-4 py-24">
           <div className="rounded-[18px] border border-red-400/20 bg-white/60 p-8 text-center">
@@ -165,7 +165,7 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071326] text-[#071326]/90">
+    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-4">
@@ -252,7 +252,7 @@ export default function AdminOrdersPage() {
                   <button
                     disabled={mutatingId === order._id}
                     onClick={() => void updateStatus(order._id, "hoan_thanh")}
-                    className="inline-flex items-center gap-1 rounded-[14px] bg-[#3DDC84]/15 px-2.5 py-1.5 text-xs text-green-600"
+                    className="inline-flex items-center gap-1 rounded-[14px] bg-white/30 px-2.5 py-1.5 text-xs text-green-600"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Duyệt
@@ -260,7 +260,7 @@ export default function AdminOrdersPage() {
                   <button
                     disabled={mutatingId === order._id}
                     onClick={() => void updateStatus(order._id, "da_thanh_toan")}
-                    className="inline-flex items-center gap-1 rounded-[14px] bg-[#2F9BE6]/15 px-2.5 py-1.5 text-xs text-slate-600"
+                    className="inline-flex items-center gap-1 rounded-[14px] bg-white/30 px-2.5 py-1.5 text-xs text-slate-600"
                   >
                     <Clock3 className="h-3.5 w-3.5" />
                     Giữ

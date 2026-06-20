@@ -81,7 +81,7 @@ export default function DangKyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#071326] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-white/60 backdrop-blur-xl flex flex-col items-center justify-center p-4">
       <div className="mb-8 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#2F9BE6] to-[#1a6cb8]">
           <svg viewBox="0 0 24 24" className="h-7 w-7 fill-white" xmlns="http://www.w3.org/2000/svg">
@@ -119,7 +119,7 @@ export default function DangKyPage() {
                 value={tenDangNhap}
                 onChange={(e) => setTenDangNhap(e.target.value)}
                 placeholder="3-30 ký tự, chữ cái, số, dấu gạch dưới"
-                className="w-full rounded-[12px] border border-white/50 bg-[#071326]/80 py-3 pl-10 pr-4 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-[#2F9BE6]"
+                className="w-full rounded-[12px] border border-white/50 bg-white/400 backdrop-blur-xl py-3 pl-10 pr-4 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-white/60"
                 autoComplete="username"
               />
             </div>
@@ -139,7 +139,7 @@ export default function DangKyPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="example@email.com"
-                className="w-full rounded-[12px] border border-white/50 bg-[#071326]/80 py-3 pl-10 pr-4 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-[#2F9BE6]"
+                className="w-full rounded-[12px] border border-white/50 bg-white/400 backdrop-blur-xl py-3 pl-10 pr-4 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-white/60"
                 autoComplete="email"
               />
             </div>
@@ -159,7 +159,7 @@ export default function DangKyPage() {
                 value={matKhau}
                 onChange={(e) => setMatKhau(e.target.value)}
                 placeholder="Tối thiểu 6 ký tự"
-                className="w-full rounded-[12px] border border-white/50 bg-[#071326]/80 py-3 pl-10 pr-12 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-[#2F9BE6]"
+                className="w-full rounded-[12px] border border-white/50 bg-white/400 backdrop-blur-xl py-3 pl-10 pr-12 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-white/60"
                 autoComplete="new-password"
               />
               <button
@@ -186,7 +186,7 @@ export default function DangKyPage() {
                 value={xacNhanMatKhau}
                 onChange={(e) => setXacNhanMatKhau(e.target.value)}
                 placeholder="Nhập lại mật khẩu"
-                className="w-full rounded-[12px] border border-white/50 bg-[#071326]/80 py-3 pl-10 pr-12 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-[#2F9BE6]"
+                className="w-full rounded-[12px] border border-white/50 bg-white/400 backdrop-blur-xl py-3 pl-10 pr-12 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-white/60"
                 autoComplete="new-password"
               />
               <button
@@ -206,7 +206,7 @@ export default function DangKyPage() {
           )}
 
           {thanhCong && (
-            <div className="rounded-[10px] bg-[#3DDC84]/10 p-3 text-sm text-green-600">
+            <div className="rounded-[10px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/10 p-3 text-sm text-green-600">
               Đăng ký thành công! Đang chuyển hướng...
             </div>
           )}

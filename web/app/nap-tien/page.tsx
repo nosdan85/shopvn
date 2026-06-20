@@ -300,7 +300,7 @@ export default function NapTienPage() {
   const getStatusBadgeClass = (status: string) => {
     const s = String(status).toLowerCase();
     if (s === "success" || s === "hoan-thanh" || s === "completed" || s === "da-xu-ly") {
-      return "bg-[#3DDC84]/20 text-green-600";
+      return "bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/20 text-green-600";
     }
     if (s === "pending" || s === "cho-xu-ly" || s === "dang-doi") {
       return "bg-[#F59E0B]/20 text-slate-600";
@@ -351,7 +351,7 @@ export default function NapTienPage() {
   // Auth guard
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#071326] flex items-center justify-center">
+      <div className="min-h-screen bg-white/60 backdrop-blur-xl flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
       </div>
     );
@@ -359,10 +359,10 @@ export default function NapTienPage() {
 
   if (!user || !token) {
     return (
-      <div className="min-h-screen bg-[#071326] p-4">
+      <div className="min-h-screen bg-white/60 backdrop-blur-xl p-4">
         <div className="mx-auto max-w-md rounded-[20px] border border-white/50 bg-white/60 backdrop-blur-[40px] saturate-[180%] shadow-[0_8px_40px_rgba(30,144,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 text-center relative overflow-hidden">
           <div className="mb-4 flex justify-center">
-            <div className="rounded-full bg-[#2F9BE6]/20 p-4">
+            <div className="rounded-full bg-white/40 p-4">
               <AlertCircle className="h-8 w-8 text-slate-600" />
             </div>
           </div>
@@ -372,7 +372,7 @@ export default function NapTienPage() {
           </p>
           <button
             onClick={handleLoginRedirect}
-            className="mt-4 w-full rounded-[14px] bg-[#2F9BE6] py-3 font-medium text-[#071326]/90 transition-all hover:bg-[#49B6FF] primary-hover-glow"
+            className="mt-4 w-full rounded-[14px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] py-3 font-medium text-[#071326]/90 transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] primary-hover-glow"
           >
             Dang Nhap
           </button>
@@ -382,9 +382,9 @@ export default function NapTienPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071326] text-[#071326]/90">
+    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
       {/* Header */}
-      <div className="sticky top-0 z-40 border-b border-white/50 bg-[#071326]/95 backdrop-blur-sm">
+      <div className="sticky top-0 z-40 border-b border-white/50 bg-white/70 backdrop-blur-xl backdrop-blur-sm">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
           <div>
             <h1 className="text-xl font-bold">Nap Tien</h1>
@@ -396,7 +396,7 @@ export default function NapTienPage() {
           </div>
           <button
             onClick={refreshBalance}
-            className="rounded-full bg-[#1E1E1E] p-3 transition-all hover:bg-[#2A2A2A] active:scale-95"
+            className="rounded-full bg-white/70 p-3 transition-all hover:bg-white/80 active:scale-95"
             title="Lam moi"
           >
             <RefreshCw className="h-5 w-5" />
@@ -415,7 +415,7 @@ export default function NapTienPage() {
           </div>
         )}
         {successMsg && (
-          <div className="mb-4 flex items-center gap-2 rounded-[12px] border border-[#3DDC84]/30 bg-[#3DDC84]/10 p-3">
+          <div className="mb-4 flex items-center gap-2 rounded-[12px] border border-[#3DDC84]/30 bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/10 p-3">
             <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600" />
             <p className="text-sm text-green-600">{successMsg}</p>
           </div>
@@ -431,8 +431,8 @@ export default function NapTienPage() {
             }}
             className={`flex flex-1 items-center justify-center gap-2 rounded-[10px] py-3 font-medium transition-all ${
               activeTab === "chuyen-khoan"
-                ? "bg-[#2F9BE6] text-[#071326]/90"
-                : "text-slate-600 hover:bg-[#1A1A1A]"
+                ? "bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90"
+                : "text-slate-600 hover:bg-white/50"
             }`}
           >
             <Banknote className="h-5 w-5" />
@@ -446,8 +446,8 @@ export default function NapTienPage() {
             }}
             className={`flex flex-1 items-center justify-center gap-2 rounded-[10px] py-3 font-medium transition-all ${
               activeTab === "the-cao"
-                ? "bg-[#2F9BE6] text-[#071326]/90"
-                : "text-slate-600 hover:bg-[#1A1A1A]"
+                ? "bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90"
+                : "text-slate-600 hover:bg-white/50"
             }`}
           >
             <Smartphone className="h-5 w-5" />
@@ -472,8 +472,8 @@ export default function NapTienPage() {
                         onClick={() => handleAmountClick(amt)}
                         className={`rounded-[12px] border py-3 text-sm font-semibold transition-all active:scale-95 ${
                           chuyenKhoanSoTien === String(amt)
-                            ? "border-[#2F9BE6] bg-[#2F9BE6]/20 text-slate-600"
-                            : "border-white/50 bg-[#071326] text-slate-600 hover:border-[#2A2A2A]"
+                            ? "border-white/60 bg-white/40 text-slate-600"
+                            : "border-white/50 bg-white/60 backdrop-blur-xl text-slate-600 hover:border-white/60"
                         }`}
                       >
                         {formatVND(amt)}
@@ -486,7 +486,7 @@ export default function NapTienPage() {
                       placeholder="So tien khac (VND)"
                       value={chuyenKhoanSoTien}
                       onChange={handleCustomAmountChange}
-                      className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-base font-semibold text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
+                      className="w-full rounded-[12px] border border-white/50 bg-white/60 backdrop-blur-xl px-4 py-3 text-base font-semibold text-[#071326]/90 outline-none focus:border-white/60"
                     />
                     <p className="mt-1 text-xs text-slate-600">Toi thieu 10,000 VND</p>
                   </div>
@@ -500,7 +500,7 @@ export default function NapTienPage() {
                     !chuyenKhoanSoTien ||
                     parseInt(chuyenKhoanSoTien) < 10000
                   }
-                  className="w-full rounded-[14px] bg-[#2F9BE6] py-4 font-semibold text-[#071326]/90 transition-all hover:bg-[#49B6FF] primary-hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-[14px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] py-4 font-semibold text-[#071326]/90 transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] primary-hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -523,7 +523,7 @@ export default function NapTienPage() {
                     </h3>
                   </div>
 
-                  <div className="space-y-3 rounded-[12px] bg-[#071326] p-4">
+                  <div className="space-y-3 rounded-[12px] bg-white/60 backdrop-blur-xl p-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-600">Ngan hang</span>
                       <span className="font-medium text-[#071326]/90">
@@ -576,8 +576,8 @@ export default function NapTienPage() {
                           onClick={() => handleCopyReferenceCode()}
                           className={`rounded-[10px] border p-3 transition-all ${
                             copiedMaGD
-                              ? "border-[#3DDC84] bg-[#3DDC84]/20 text-green-600"
-                              : "border-white/50 bg-[#1A1A1A] text-[#071326]/90 hover:bg-[#2A2A2A]"
+                              ? "border-[#3DDC84] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/20 text-green-600"
+                              : "border-white/50 bg-white/50 text-[#071326]/90 hover:bg-white/80"
                           }`}
                         >
                           {copiedMaGD ? (
@@ -606,7 +606,7 @@ export default function NapTienPage() {
                   <button
                     onClick={handleKiemTraChuyenKhoan}
                     disabled={chuyenKhoanPolling}
-                    className="w-full rounded-[14px] border border-white/50 bg-[#1A1A1A] py-3 font-medium text-[#071326]/90 transition-all hover:bg-[#2A2A2A] disabled:opacity-50"
+                    className="w-full rounded-[14px] border border-white/50 bg-white/50 py-3 font-medium text-[#071326]/90 transition-all hover:bg-white/80 disabled:opacity-50"
                   >
                     Da chuyen khoan? Kiem tra
                   </button>
@@ -623,7 +623,7 @@ export default function NapTienPage() {
                       }
                       setChuyenKhoanPolling(false);
                     }}
-                    className="w-full rounded-[14px] border border-white/50 bg-[#071326] py-3 font-medium text-slate-600 transition-all hover:bg-[#1A1A1A]"
+                    className="w-full rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl py-3 font-medium text-slate-600 transition-all hover:bg-white/50"
                   >
                     Tao moi
                   </button>
@@ -649,7 +649,7 @@ export default function NapTienPage() {
                   setError(null);
                   setTheCaoResult(null);
                 }}
-                className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
+                className="w-full rounded-[12px] border border-white/50 bg-white/60 backdrop-blur-xl px-4 py-3 text-[#071326]/90 outline-none focus:border-white/60"
               >
                 <option value="">-- Chon nha mang --</option>
                 <option value="viettel">Viettel</option>
@@ -671,7 +671,7 @@ export default function NapTienPage() {
                   setTheCaoResult(null);
                 }}
                 disabled={!nhaMang}
-                className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-[#071326]/90 outline-none focus:border-[#2F9BE6] disabled:opacity-50"
+                className="w-full rounded-[12px] border border-white/50 bg-white/60 backdrop-blur-xl px-4 py-3 text-[#071326]/90 outline-none focus:border-white/60 disabled:opacity-50"
               >
                 <option value="">-- Chon menh gia --</option>
                 {menhGiaList
@@ -712,7 +712,7 @@ export default function NapTienPage() {
                     setTheCaoResult(null);
                   }}
                   placeholder="Nhap serial the"
-                  className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
+                  className="w-full rounded-[12px] border border-white/50 bg-white/60 backdrop-blur-xl px-4 py-3 text-[#071326]/90 outline-none focus:border-white/60"
                 />
               </div>
               <div>
@@ -728,7 +728,7 @@ export default function NapTienPage() {
                     setTheCaoResult(null);
                   }}
                   placeholder="Nhap ma the"
-                  className="w-full rounded-[12px] border border-white/50 bg-[#071326] px-4 py-3 text-[#071326]/90 outline-none focus:border-[#2F9BE6]"
+                  className="w-full rounded-[12px] border border-white/50 bg-white/60 backdrop-blur-xl px-4 py-3 text-[#071326]/90 outline-none focus:border-white/60"
                 />
               </div>
             </div>
@@ -738,7 +738,7 @@ export default function NapTienPage() {
               <div
                 className={`flex items-center gap-2 rounded-[12px] border p-3 ${
                   theCaoResult.success
-                    ? "border-[#3DDC84]/30 bg-[#3DDC84]/10"
+                    ? "border-[#3DDC84]/30 bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/10"
                     : "border-[#FF4D4F]/30 bg-[#FF4D4F]/10"
                 }`}
               >
@@ -765,7 +765,7 @@ export default function NapTienPage() {
             <button
               onClick={handleTheCaoSubmit}
               disabled={submitting || !nhaMang || !menhGia || !serialThe || !maThe}
-              className="w-full rounded-[14px] bg-[#2F9BE6] py-4 font-semibold text-[#071326]/90 transition-all hover:bg-[#49B6FF] primary-hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-[14px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] py-4 font-semibold text-[#071326]/90 transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] primary-hover-glow disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <span className="flex items-center justify-center gap-2">

@@ -71,7 +71,7 @@ function formatPurchasedQtyLabel(item: OrderItem): string {
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-[#071326] text-[#071326]/90 flex items-center justify-center">
+    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
     </div>
   );
@@ -169,12 +169,12 @@ function PayContent() {
 
   if (!orderId) {
     return (
-      <main className="min-h-screen bg-[#071326] text-[#071326]/90 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">No Order ID</h1>
           <p className="text-slate-600 mb-6">Open this page from checkout so your order can be loaded.</p>
-          <a href="/shop" className="inline-block bg-[#2F9BE6] hover:bg-[#49B6FF] px-6 py-3 rounded-[14px] font-medium transition-colors">Go to Shop</a>
+          <a href="/shop" className="inline-block bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] px-6 py-3 rounded-[14px] font-medium transition-colors">Go to Shop</a>
         </div>
       </main>
     );
@@ -182,12 +182,12 @@ function PayContent() {
 
   if (errorParam) {
     return (
-      <main className="min-h-screen bg-[#071326] text-[#071326]/90 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Payment Error</h1>
           <p className="text-slate-600 mb-6">{errorParam}</p>
-          <a href="/shop" className="inline-block bg-[#1E1E1E] hover:bg-[#1E1E1E] px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
+          <a href="/shop" className="inline-block bg-white/70 hover:bg-white/70 px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
         </div>
       </main>
     );
@@ -195,12 +195,12 @@ function PayContent() {
 
   if (order?.error) {
     return (
-      <main className="min-h-screen bg-[#071326] text-[#071326]/90 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Order Error</h1>
           <p className="text-slate-600 mb-6">{order.error}</p>
-          <a href="/shop" className="inline-block bg-[#1E1E1E] hover:bg-[#1E1E1E] px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
+          <a href="/shop" className="inline-block bg-white/70 hover:bg-white/70 px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
         </div>
       </main>
     );
@@ -208,13 +208,13 @@ function PayContent() {
 
   if (isPaidRedirect || order?.isPaid) {
     return (
-      <main className="min-h-screen bg-[#071326] text-[#071326]/90 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
           <h1 className="text-3xl font-bold mb-2">Payment Complete</h1>
           <p className="text-slate-600 mb-2">Order <span className="font-mono">{orderId}</span></p>
           <p className="text-slate-600 mb-6">Thank you for your purchase.</p>
-          <a href="/shop" className="inline-block bg-[#2F9BE6] hover:bg-[#49B6FF] px-6 py-3 rounded-[14px] font-medium transition-colors">Continue Shopping</a>
+          <a href="/shop" className="inline-block bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] px-6 py-3 rounded-[14px] font-medium transition-colors">Continue Shopping</a>
         </div>
       </main>
     );
@@ -238,7 +238,7 @@ function PayContent() {
   return (
     <>
       {paymentError && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/400 p-4 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-md rounded-[20px] border border-[#FF4D4F]/30 bg-white/60 p-6 shadow-2xl animate-bounce-in">
             <div className="mb-4 flex items-start gap-4">
               <div className="flex-shrink-0 rounded-full bg-[#FF4D4F]/10 p-3">
@@ -285,7 +285,7 @@ function PayContent() {
                 <button
                   key={paymentMethod.value}
                   onClick={() => selectPaymentMethod(paymentMethod.value)}
-                  className={"px-4 py-2 rounded-[14px] border text-sm font-medium transition-all " + (selectedMethod === paymentMethod.value ? "bg-[#2F9BE6] border-blue-500 text-[#071326]/90 shadow-lg" : "bg-[#071326] border-white/50 text-slate-600 hover:bg-[#1E1E1E]")}
+                  className={"px-4 py-2 rounded-[14px] border text-sm font-medium transition-all " + (selectedMethod === paymentMethod.value ? "bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)] border-blue-500 text-[#071326]/90 shadow-lg" : "bg-white/60 backdrop-blur-xl border-white/50 text-slate-600 hover:bg-white/70")}
                 >
                   {paymentMethod.label}
                 </button>
@@ -307,10 +307,10 @@ function PayContent() {
             {selectedMethod === "paypal_ff" && (
               <div className="space-y-5">
                 <CopyRow label="PayPal Email" value={paypalEmail} copied={copied} onCopy={copyValue} />
-                <div className="rounded-[14px] border border-white/50 bg-[#071326]/60 p-4 text-sm text-slate-600 space-y-1">
+                <div className="rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl/60 p-4 text-sm text-slate-600 space-y-1">
                   <p className="font-medium text-[#071326]/90">Instructions:</p>
                   <p>1. Send as <strong>Friends &amp; Family</strong> only.</p>
-                  <p>2. Include Order ID in note: <code className="bg-[#1E1E1E] px-2 py-0.5 rounded">{memoExpected}</code></p>
+                  <p>2. Include Order ID in note: <code className="bg-white/70 px-2 py-0.5 rounded">{memoExpected}</code></p>
                   <p>3. Send exact amount: <strong>{amount}</strong></p>
                 </div>
               </div>
@@ -319,10 +319,10 @@ function PayContent() {
             {selectedMethod === "cashapp" && (
               <div className="space-y-5">
                 <CopyRow label="Cash App" value={cashAppTag} copied={copied} onCopy={copyValue} />
-                <div className="rounded-[14px] border border-white/50 bg-[#071326]/60 p-4 text-sm text-slate-600 space-y-1">
+                <div className="rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl/60 p-4 text-sm text-slate-600 space-y-1">
                   <p className="font-medium text-[#071326]/90">Instructions:</p>
                   <p>1. Send payment to <strong>{cashAppTag}</strong>.</p>
-                  <p>2. Include Order ID: <code className="bg-[#1E1E1E] px-2 py-0.5 rounded">{memoExpected}</code></p>
+                  <p>2. Include Order ID: <code className="bg-white/70 px-2 py-0.5 rounded">{memoExpected}</code></p>
                   <p>3. Send exact amount: <strong>{amount}</strong></p>
                 </div>
               </div>
@@ -334,10 +334,10 @@ function PayContent() {
                 {ltcQrImageUrl && (
                   <img src={ltcQrImageUrl} alt="Litecoin payment QR code" className="w-48 h-48 rounded-[14px] border border-white/50 bg-white p-2" />
                 )}
-                <div className="rounded-[14px] border border-white/50 bg-[#071326]/60 p-4 text-sm text-slate-600 space-y-1">
+                <div className="rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl/60 p-4 text-sm text-slate-600 space-y-1">
                   <p className="font-medium text-[#071326]/90">Instructions:</p>
                   <p>1. Send only <strong>Litecoin (LTC)</strong> to the address above.</p>
-                  <p>2. Include Order ID where your wallet allows: <code className="bg-[#1E1E1E] px-2 py-0.5 rounded">{memoExpected}</code></p>
+                  <p>2. Include Order ID where your wallet allows: <code className="bg-white/70 px-2 py-0.5 rounded">{memoExpected}</code></p>
                   <p>3. Wait for network confirmations after sending.</p>
                 </div>
               </div>
@@ -432,13 +432,13 @@ function CopyRow({ label, value, placeholder, copied, onCopy }: CopyRowProps) {
     <div>
       <p className="text-sm text-slate-600 mb-2">{label}</p>
       <div className="flex gap-3">
-        <div className="flex-1 rounded-[14px] border border-white/50 bg-[#071326] px-4 py-3 text-slate-600 break-all font-mono text-sm">
+        <div className="flex-1 rounded-[14px] border border-white/50 bg-white/60 backdrop-blur-xl px-4 py-3 text-slate-600 break-all font-mono text-sm">
           {shownValue}
         </div>
         <button
           onClick={() => onCopy(value)}
           disabled={!value}
-          className={"px-4 py-3 rounded-[14px] text-[#071326]/90 transition-all shrink-0 " + (value ? "bg-[#1E1E1E] hover:bg-[#1E1E1E]" : "bg-white/60 opacity-40 cursor-not-allowed")}
+          className={"px-4 py-3 rounded-[14px] text-[#071326]/90 transition-all shrink-0 " + (value ? "bg-white/70 hover:bg-white/70" : "bg-white/60 opacity-40 cursor-not-allowed")}
         >
           {copied === value ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
         </button>
@@ -449,7 +449,7 @@ function CopyRow({ label, value, placeholder, copied, onCopy }: CopyRowProps) {
 
 export default function PayPage() {
   return (
-    <div className="min-h-screen bg-[#071326] text-[#071326]/90">
+    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
       <Navbar />
       <Suspense fallback={<LoadingScreen />}>
         <PayContent />

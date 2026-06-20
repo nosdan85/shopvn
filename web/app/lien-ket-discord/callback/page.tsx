@@ -132,12 +132,12 @@ function LinkDiscordCallbackContent() {
         <>
           <AlertCircle className="mx-auto mb-4 h-16 w-16 text-red-500" />
           <h1 className="mb-3 text-2xl font-bold text-[#071326]/90">{message}</h1>
-          <div className="mb-6 rounded-lg border border-white/50 bg-[#071326] p-4 text-left">
+          <div className="mb-6 rounded-lg border border-white/50 bg-white/60 backdrop-blur-xl p-4 text-left">
             <p className="text-sm text-slate-600">{error}</p>
           </div>
           <button
             onClick={() => router.push("/shop")}
-            className="rounded-lg bg-white/70 px-6 py-3 font-medium text-[#071326]/90 transition-all duration-200 hover:scale-105 hover:bg-[#1E1E1E]"
+            className="rounded-lg bg-white/70 px-6 py-3 font-medium text-[#071326]/90 transition-all duration-200 hover:scale-105 hover:bg-white/70"
           >
             Quay về Đơn Hàng
           </button>
@@ -149,7 +149,7 @@ function LinkDiscordCallbackContent() {
 
 export default function LinkDiscordCallbackPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#071326] px-4 text-[#071326]/90">
+    <div className="min-h-screen flex items-center justify-center bg-white/60 backdrop-blur-xl px-4 text-[#071326]/90">
       <div className="absolute left-4 top-4">
         <BackButton href="/shop" label="Cửa Hàng" variant="back" />
       </div>

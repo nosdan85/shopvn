@@ -45,7 +45,7 @@ export default function DangNhapPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#071326] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-white/60 backdrop-blur-xl flex flex-col items-center justify-center p-4">
       {/* Logo */}
       <div className="mb-8 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#2F9BE6] to-[#1a6cb8]">
@@ -87,7 +87,7 @@ export default function DangNhapPage() {
                 value={tenDangNhap}
                 onChange={(e) => setTenDangNhap(e.target.value)}
                 placeholder="Vui lòng nhập tên đăng nhập"
-                className="w-full rounded-[12px] border border-white/50 bg-[#071326]/80 py-3 pl-10 pr-4 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-[#2F9BE6]"
+                className="w-full rounded-[12px] border border-white/50 bg-white/400 backdrop-blur-xl py-3 pl-10 pr-4 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-white/60"
                 autoComplete="username"
               />
             </div>
@@ -108,7 +108,7 @@ export default function DangNhapPage() {
                 value={matKhau}
                 onChange={(e) => setMatKhau(e.target.value)}
                 placeholder="Vui lòng nhập mật khẩu"
-                className="w-full rounded-[12px] border border-white/50 bg-[#071326]/80 py-3 pl-10 pr-12 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-[#2F9BE6]"
+                className="w-full rounded-[12px] border border-white/50 bg-white/400 backdrop-blur-xl py-3 pl-10 pr-12 text-sm text-[#071326]/90 outline-none placeholder:text-slate-600 focus:border-white/60"
                 autoComplete="current-password"
               />
               <button
@@ -130,7 +130,7 @@ export default function DangNhapPage() {
 
           {/* Success Message */}
           {thanhCong && (
-            <div className="rounded-[10px] bg-[#3DDC84]/10 p-3 text-sm text-green-600">
+            <div className="rounded-[10px] bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/10 p-3 text-sm text-green-600">
               Đăng nhập thành công! Đang chuyển hướng...
             </div>
           )}

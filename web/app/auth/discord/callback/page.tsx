@@ -107,12 +107,12 @@ function DiscordCallbackContent() {
         <>
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-3 text-[#071326]/90">{message}</h1>
-          <div className="bg-[#071326] border border-white/50 rounded-lg p-4 mb-6 text-left">
+          <div className="bg-white/60 backdrop-blur-xl border border-white/50 rounded-lg p-4 mb-6 text-left">
             <p className="text-sm text-slate-600">{error}</p>
           </div>
           <button
             onClick={() => router.push("/dang-ky")}
-            className="px-6 py-3 bg-white/70 hover:bg-[#1E1E1E] text-[#071326]/90 rounded-lg font-medium transition-all duration-200 hover:scale-105"
+            className="px-6 py-3 bg-white/70 hover:bg-white/70 text-[#071326]/90 rounded-lg font-medium transition-all duration-200 hover:scale-105"
           >
             Quay về Đăng Ký
           </button>
@@ -124,7 +124,7 @@ function DiscordCallbackContent() {
 
 export default function DiscordCallbackPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#071326] text-[#071326]/90 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-white/60 backdrop-blur-xl text-[#071326]/90 px-4">
       <Suspense
         fallback={
           <div className="max-w-lg w-full bg-white/60 border border-white/50 rounded-2xl p-8 text-center shadow-xl">

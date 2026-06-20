@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
 
   if (isLoading || !isAdminRole(user?.vaiTro)) {
     return (
-      <div className="min-h-screen bg-[#071326]">
+      <div className="min-h-screen bg-white/60 backdrop-blur-xl">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           {isLoading ? (
@@ -99,7 +99,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071326] text-[#071326]/90">
+    <div className="min-h-screen bg-white/60 backdrop-blur-xl text-[#071326]/90">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-4">
@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
           <h1 className="text-3xl font-bold">Thống Kê</h1>
           <button
             onClick={() => void fetchAnalytics()}
-            className="flex items-center gap-2 rounded-[14px] bg-white/60 px-4 py-2 text-sm hover:bg-[#1E1E1E]"
+            className="flex items-center gap-2 rounded-[14px] bg-white/60 px-4 py-2 text-sm hover:bg-white/70"
           >
             <RefreshCw className="h-4 w-4" />
             Làm Mới
@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
               { label: "Tuần Này", data: sales.week, icon: ShoppingCart },
               { label: "Tháng Này", data: sales.month, icon: Package }
             ].map(({ label, data, icon: Icon }) => (
-              <div key={label} className="rounded-[16px] border border-white/50 bg-[#071326] p-6">
+              <div key={label} className="rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-600">{label}</p>
@@ -137,7 +137,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        <div className="mb-8 rounded-[16px] border border-white/50 bg-[#071326] p-6">
+        <div className="mb-8 rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-xl p-6">
           <h2 className="mb-4 text-xl font-semibold">Đơn Hàng Gần Đây</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -156,7 +156,7 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-2">{order.robloxUsername || "-"}</td>
                     <td className="px-4 py-2">{order.totalAmount.toLocaleString('vi-VN')} VND</td>
                     <td className="px-4 py-2">
-                      <span className={`rounded px-2 py-1 text-xs ${order.paymentStatus === "paid" ? "bg-[#3DDC84]/20 text-green-600" : "bg-[#2F9BE6]/20 text-slate-600"}`}>
+                      <span className={`rounded px-2 py-1 text-xs ${order.paymentStatus === "paid" ? "bg-white/40 backdrop-blur-md shadow-[0_4px_15px_rgba(255,255,255,0.2)]/20 text-green-600" : "bg-white/40 text-slate-600"}`}>
                         {order.paymentStatus}
                       </span>
                     </td>
@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
         </div>
 
         {products.length > 0 && (
-          <div className="mb-8 rounded-[16px] border border-white/50 bg-[#071326] p-6">
+          <div className="mb-8 rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-xl p-6">
             <h2 className="mb-4 text-xl font-semibold">Sản Phẩm Bán Chạy</h2>
             <div className="space-y-2">
               {products.map((p) => (
@@ -185,7 +185,7 @@ export default function AnalyticsPage() {
         )}
 
         {proofStats && (
-          <div className="rounded-[16px] border border-white/50 bg-[#071326] p-6">
+          <div className="rounded-[16px] border border-white/50 bg-white/60 backdrop-blur-xl p-6">
             <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
               Đánh Giá

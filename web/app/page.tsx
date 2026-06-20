@@ -11,7 +11,7 @@ export default function HomePage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#071326] flex items-center justify-center">
+    <div className="min-h-screen bg-white/60 backdrop-blur-xl flex items-center justify-center">
       <div className="text-slate-600 animate-pulse">Đang chuyển hướng đến cửa hàng...</div>
     </div>
   );
