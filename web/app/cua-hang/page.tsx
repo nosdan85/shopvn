@@ -212,6 +212,11 @@ export default function CuaHangPage() {
 
  const saveCart = useCallback((newCart: CartItem[]) => {
  setCart(newCart);
+ if (typeof window !== "undefined") {
+ try {
+ window.localStorage.setItem("nosmarket_cart", JSON.stringify(newCart));
+ } catch {}
+ }
  }, []);
 
  const cartSubtotal = useMemo(() => {
@@ -243,6 +248,14 @@ export default function CuaHangPage() {
 
  useEffect(() => {
  void load();
+ if (typeof window !== "undefined") {
+ try {
+ const stored = window.localStorage.getItem("nosmarket_cart");
+ if (stored) {
+ setCart(JSON.parse(stored));
+ }
+ } catch {}
+ }
  }, []);
 
  useEffect(() => {
@@ -948,6 +961,11 @@ export default function CuaHangPage() {
  <p className="text-sm text-red-400">{error}</p>
  </div>
  )}
+
+ <div className="rounded-[12px] bg-[#FF4D4F]/10 p-4 text-sm text-red-400 mt-4 mb-2">
+    <span className="font-semibold block mb-1">Lưu ý quan trọng:</span>
+    Ngay sau khi ấn Xác Nhận, tiền sẽ bị trừ trực tiếp vào số dư VND của bạn!
+  </div>
 
  {/* Confirm Button */}
  {soDuVnd >= cartTotalAfterDiscount && (

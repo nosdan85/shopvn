@@ -250,6 +250,14 @@ export default function ShopPage() {
  setCouponMessage("");
  }
  setCart(newCart);
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem("nosmarket_cart", JSON.stringify(newCart));
+    } catch {}
+  }
+  if (!options?.skipRemoteSync) {
+    void syncCartToAccount(newCart).catch(() => {});
+  }
  }, [couponCode, couponPreviewKey]);
 
  const syncCartToAccount = useCallback(async (nextCart: CartItem[]) => {
@@ -341,9 +349,39 @@ export default function ShopPage() {
  setLoading(false);
  };
 
- useEffect(() => {
- void load();
- }, []);
+  useEffect(() => {
+    void load();
+  }, []);
+
+  // Sync Cart
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    // Load local cart first
+    let localCart: CartItem[] = [];
+    try {
+      const stored = window.localStorage.getItem("nosmarket_cart");
+      if (stored) localCart = JSON.parse(stored);
+    } catch {}
+
+    if (!token) {
+      if (localCart.length > 0) {
+        saveCart(localCart, { skipRemoteSync: true });
+      }
+      return;
+    }
+
+    // Fetch remote cart and merge
+    void fetchRemoteCart().then((remoteCart) => {
+      if (remoteCart.length > 0) {
+        saveCart(remoteCart, { skipRemoteSync: true });
+      } else if (localCart.length > 0) {
+        saveCart(localCart); // Will sync local up to server
+      }
+    }).catch(() => {
+      if (localCart.length > 0) saveCart(localCart, { skipRemoteSync: true });
+    });
+  }, [token, fetchRemoteCart, saveCart]);
 
  useEffect(() => {
  const interval = window.setInterval(() => {
@@ -1082,6 +1120,10 @@ export default function ShopPage() {
  )}
  <div className="flex justify-between border-t border-white/40 pt-2 text-lg font-semibold"><span>Tổng cộng</span><span className="text-emerald-700">{formatMoney(activeCartPayableTotal)}</span></div>
  </div>
+ <div className="rounded-[12px] bg-[#FF4D4F]/10 p-4 text-sm text-red-400 mt-4 mb-2">
+    <span className="font-semibold block mb-1">Lưu ý quan trọng:</span>
+    Ngay sau khi ấn Thanh toán, tiền sẽ bị trừ trực tiếp vào số dư VND của bạn!
+  </div>
  <button onClick={() => { closeCart(); void doCheckout(); }} disabled={submitting} className="w-full rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] py-3 font-medium transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] primary-hover-glow disabled:opacity-50">{submitting ? 'Đang xử lý...' : 'Thanh toán'}</button>
  </div>
  )}

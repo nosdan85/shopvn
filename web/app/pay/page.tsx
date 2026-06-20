@@ -222,8 +222,8 @@ function PayContent() {
 
  const timezoneInfo = getTimezoneInfo(order?.customerTimezone || "America/Los_Angeles");
  const subtotal = order?.subtotalAmount ?? 0;
- const couponDiscount = Math.round(subtotal * (order?.couponDiscountPercent || 0) / 100);
- const referralDiscount = Math.round(subtotal * (order?.referralDiscountPercent || 0) / 100);
+ const couponDiscount = subtotal * (order?.couponDiscountPercent || 0) / 100;
+ const referralDiscount = subtotal * (order?.referralDiscountPercent || 0) / 100;
  const discount = order?.discountAmount ?? (couponDiscount + referralDiscount);
  const total = order?.totalAmount ?? Math.max(subtotal - discount, 0);
  const items = order?.items ?? [];

@@ -759,7 +759,7 @@ const extractPayPalSummary = (captureData) => {
 
 const amountsMatch = (left, right) => Math.abs(Number(left) - Number(right)) < 0.01;
 const BULK_DISCOUNT_THRESHOLD = 10;
-const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+const roundMoney = (value) => Number(value) || 0;
 const moneyToCents = (value) => Math.round((Number(value) + Number.EPSILON) * 100);
 const centsToMoney = (value) => roundMoney((Number(value) || 0) / 100);
 const WALLET_TOPUP_METHODS = new Set(['paypal_ff', 'cashapp', 'ltc']);
@@ -1152,15 +1152,13 @@ const getLinePricing = (product, quantity) => {
 
     const regularUnitsLimit = Math.max(1, Math.floor(BULK_DISCOUNT_THRESHOLD / regularUnitPrice));
     if (qty <= regularUnitsLimit) {
-        const lineTotal = roundMoney(regularUnitPrice * qty);
+        const lineTotal = regularUnitPrice * qty;
         return { lineTotal, effectiveUnitPrice: regularUnitPrice, bulkUnits: 0 };
     }
 
     const bulkUnits = qty - regularUnitsLimit;
-    const regularPart = regularUnitsLimit * regularUnitPrice;
-    const bulkPart = bulkUnits * bulkUnitPrice;
-    const lineTotal = roundMoney(regularPart + bulkPart);
-    const effectiveUnitPrice = roundMoney(lineTotal / qty, 6);
+    const lineTotal = (regularUnitsLimit * regularUnitPrice) + (bulkUnits * bulkUnitPrice);
+    const effectiveUnitPrice = qty > 0 ? lineTotal / qty : 0;
     return { lineTotal, effectiveUnitPrice, bulkUnits };
 };
 
@@ -3144,7 +3142,18 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
             log.warn('[CHECKOUT] Invalid total', { requestId: req.requestId, totalAmount });
             return res.status(400).json({ error: 'Invalid checkout total' });
         }
-
+        // Validate and deduct balance
+        if (taiKhoan) {
+            if ((taiKhoan.soDuVnd || 0) < totalAmount) {
+                return res.status(402).json({ error: 'Số dư không đủ. Vui lòng nạp thêm tiền.' });
+            }
+        } else if (dbUser) {
+            if ((dbUser.walletBalance || 0) < totalAmount) {
+                return res.status(402).json({ error: 'Số dư không đủ. Vui lòng nạp thêm tiền.' });
+            }
+        } else {
+            return res.status(401).json({ error: 'Yêu cầu đăng nhập để thanh toán.' });
+        }
         // Self-referral guard
         if (referredByDiscordId && referredByDiscordId === discordId) {
             referredByDiscordId = '';
@@ -3204,6 +3213,14 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
 
                 checkoutStep = 'order_save';
                 await newOrder.save();
+                
+                // Deduct balance
+                if (taiKhoan) {
+                    await TaiKhoan.updateOne({ _id: taiKhoan._id }, { $inc: { soDuVnd: -totalAmount } });
+                }
+                if (dbUser) {
+                    await User.updateOne({ _id: dbUser._id }, { $inc: { walletBalance: -totalAmount } });
+                }
                 break;
             } catch (saveError) {
                 const duplicateOrderId = Number(saveError?.code) === 11000 && saveError?.keyPattern?.orderId;
