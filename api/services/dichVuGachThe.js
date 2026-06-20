@@ -198,7 +198,8 @@ async function gachThe({ userId, nhaMang, menhGia, serial, maThe }) {
 
     // Tao giao dich pending trong database
     const giaoDich = new WalletTransaction({
-        discordId: taiKhoan._id.toString(),
+        userId: taiKhoan._id, // ObjectId cua TaiKhoan
+        discordId: taiKhoan.discordId || '', // ID Discord thuc te (neu co lien ket)
         discordUsername: taiKhoan.tenDangNhap,
         type: 'topup',
         direction: 'credit',
@@ -400,7 +401,7 @@ async function kiemTraTrangThai(maGiaoDich) {
             thanhCong: true,
             thongBao: 'Đang chờ xử lý',
             trangThai: 'pending',
-            soTien: giaoDich.amountCents
+            soTien: giaoDich.amountVnd
         };
     }
 
@@ -431,7 +432,7 @@ async function kiemTraTrangThai(maGiaoDich) {
 
         if (trangThaiProvider || maLoi === '1' || maLoi === 'success') {
             // Thanh cong - tien ngay vao vi
-            const taiKhoanId = new mongoose.Types.ObjectId(giaoDich.discordId);
+            const taiKhoanId = giaoDich.userId || new mongoose.Types.ObjectId(giaoDich.discordId);
             const updatedTaiKhoan = await TaiKhoan.findOneAndUpdate(
                 {
                     _id: taiKhoanId,
@@ -448,7 +449,7 @@ async function kiemTraTrangThai(maGiaoDich) {
                     thanhCong: true,
                     thongBao: 'Đang chờ xử lý',
                     trangThai: 'pending',
-                    soTien: giaoDich.amountCents
+                    soTien: giaoDich.amountVnd
                 };
             }
 
@@ -473,7 +474,7 @@ async function kiemTraTrangThai(maGiaoDich) {
                 thanhCong: true,
                 thongBao: mapLoiNhaCungCap(maLoi),
                 trangThai: 'pending',
-                soTien: giaoDich.amountCents
+                soTien: giaoDich.amountVnd
             };
 
         } else {
@@ -499,7 +500,7 @@ async function kiemTraTrangThai(maGiaoDich) {
             thanhCong: true,
             thongBao: 'Đang chờ xử lý',
             trangThai: 'pending',
-            soTien: giaoDich.amountCents
+            soTien: giaoDich.amountVnd
         };
     }
 }

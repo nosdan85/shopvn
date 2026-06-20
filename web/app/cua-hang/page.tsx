@@ -67,7 +67,7 @@ const ProductCard = memo(function ProductCard({
         {product.image ? (
           <img src={imgUrl(product.image)} alt={product.name} loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-blue-200/70/50" /></div>
+          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-blue-200/50" /></div>
         )}
       </div>
       {variant === "bestSeller" ? (
@@ -84,7 +84,7 @@ const ProductCard = memo(function ProductCard({
         <div className="space-y-1.5 sm:space-y-2 p-3 sm:p-4">
           <h3 className="line-clamp-2 text-sm font-semibold leading-5">{product.name}</h3>
           <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          <p className="text-xs text-blue-200/70/80">{product.category}</p>
+          <p className="text-xs text-blue-200/70">{product.category}</p>
           <div className="flex items-center justify-between">
             <span className="text-lg font-semibold text-green-400">{formatMoney(product.price)}</span>
             <span className="text-xs text-blue-300/80">Xem</span>
@@ -606,7 +606,7 @@ export default function CuaHangPage() {
 
           {filtered.length === 0 && (
             <div className="py-12 text-center">
-              <Package className="mx-auto h-12 w-12 text-blue-200/70/50" />
+              <Package className="mx-auto h-12 w-12 text-blue-200/50" />
               <p className="mt-4 text-blue-200/70">Khong tim thay san pham</p>
             </div>
           )}
@@ -639,7 +639,7 @@ export default function CuaHangPage() {
               <div className="flex-1 overflow-y-auto p-4">
                 {cart.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center">
-                    <ShoppingCart className="h-12 w-12 text-blue-200/70/50" />
+                    <ShoppingCart className="h-12 w-12 text-blue-200/50" />
                     <p className="mt-4 text-blue-200/70">Gio hang trong</p>
                   </div>
                 ) : (
@@ -651,7 +651,7 @@ export default function CuaHangPage() {
                             <img src={imgUrl(item.image)} alt={item.name} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full items-center justify-center">
-                              <Package className="h-6 w-6 text-blue-200/70/50" />
+                              <Package className="h-6 w-6 text-blue-200/50" />
                             </div>
                           )}
                         </div>
@@ -782,7 +782,7 @@ export default function CuaHangPage() {
                   <img src={imgUrl(selectedProduct.image)} alt={selectedProduct.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center">
-                    <Package className="h-16 w-16 text-blue-200/70/50" />
+                    <Package className="h-16 w-16 text-blue-200/50" />
                   </div>
                 )}
               </div>

@@ -147,14 +147,14 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
           <Link
             href="/shop"
             onClick={clearCheckoutResume}
-            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90/90 transition-colors duration-300 font-medium text-sm group"
+            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90 transition-colors duration-300 font-medium text-sm group"
           >
             Cua Hang
             <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-blue-400/50 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full shadow-[0_0_10px_rgba(100,180,255,0.5)]" />
           </Link>
           <Link
             href="/proofs"
-            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90/90 transition-colors duration-300 font-medium text-sm group"
+            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90 transition-colors duration-300 font-medium text-sm group"
           >
             Danh Gia
             <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-blue-400/50 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full shadow-[0_0_10px_rgba(100,180,255,0.5)]" />
@@ -163,7 +163,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
             href={SUPPORT_DISCORD_URL}
             target="_blank"
             rel="noreferrer"
-            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90/90 transition-colors duration-300 font-medium text-sm group"
+            className="relative px-3 py-2 text-blue-200/80 hover:text-white/90 transition-colors duration-300 font-medium text-sm group"
           >
             Ho Tro
             <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-blue-400/50 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full shadow-[0_0_10px_rgba(100,180,255,0.5)]" />
@@ -171,7 +171,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
           {isAdminRole(user?.vaiTro) && (
             <Link
               href="/admin"
-              className="relative px-3 py-2 text-cyan-300/80 hover:text-white/90/90 transition-colors duration-300 font-medium text-sm group"
+              className="relative px-3 py-2 text-cyan-300/80 hover:text-white/90 transition-colors duration-300 font-medium text-sm group"
             >
               Quan Tri
               <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-cyan-400/50 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full shadow-[0_0_10px_rgba(100,200,255,0.5)]" />
@@ -185,11 +185,11 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
             <button
               type="button"
               onClick={onCartClick}
-              className="relative rounded-xl p-2 text-blue-200/60 transition-colors duration-300 hover:text-white/90/90 active:scale-95"
+              className="relative rounded-xl p-2 text-blue-200/60 transition-colors duration-300 hover:text-white/90 active:scale-95"
             >
               <ShoppingCart className="w-5 h-5" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-gradient-to-r from-blue-400 to-cyan-400 text-white/90/90 text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(100,180,255,0.6)] animate-bounce-in">
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-gradient-to-r from-blue-400 to-cyan-400 text-white/90 text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(100,180,255,0.6)] animate-bounce-in">
                   {cartCount}
                 </span>
               )}
@@ -207,18 +207,18 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-white/10 bg-white/5/60 hover:bg-white/8 hover:border-[#2F9BE6]/30 transition-all duration-200 group"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 hover:border-[#2F9BE6]/30 transition-all duration-200 group"
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white/90/90 font-semibold text-xs ${getAvatarInitial(user.tenDangNhap).color}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white/90 font-semibold text-xs ${getAvatarInitial(user.tenDangNhap).color}`}>
                     {getAvatarInitial(user.tenDangNhap).initial}
                   </div>
-                  <span className="text-sm font-medium text-white/90/90 max-w-[100px] truncate">{user.tenDangNhap}</span>
+                  <span className="text-sm font-medium text-white/90 max-w-[100px] truncate">{user.tenDangNhap}</span>
                 </button>
 
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white/5 border border-white/10 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden animate-fade-in z-50">
                     <div className="px-4 py-3 border-b border-white/10 bg-white/8">
-                      <p className="text-sm font-semibold text-white/90/90 truncate">{user.tenDangNhap}</p>
+                      <p className="text-sm font-semibold text-white/90 truncate">{user.tenDangNhap}</p>
                       <p className="text-xs text-blue-200/60 mt-0.5 truncate">{user.email}</p>
                     </div>
 
@@ -232,7 +232,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                     <Link
                       href="/nap-tien"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 px-4 py-3 text-white/90/90 hover:bg-white/8 transition-colors duration-150 border-b border-white/10"
+                      className="flex items-center gap-2 px-4 py-3 text-white/90 hover:bg-white/8 transition-colors duration-150 border-b border-white/10"
                     >
                       <Wallet className="w-4 h-4 text-blue-300/80" />
                       <span className="text-sm font-medium">Nap Tien</span>
@@ -241,7 +241,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                     <Link
                       href="/don-hang"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 px-4 py-3 text-white/90/90 hover:bg-white/8 transition-colors duration-150 border-b border-white/10"
+                      className="flex items-center gap-2 px-4 py-3 text-white/90 hover:bg-white/8 transition-colors duration-150 border-b border-white/10"
                     >
                       <ShoppingBag className="w-4 h-4 text-blue-300/80" />
                       <span className="text-sm font-medium">Don Hang</span>
@@ -250,7 +250,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                     <button
                       type="button"
                       onClick={daLienKetDiscord ? handleDiscordUnlink : handleDiscordLink}
-                      className="w-full flex items-center gap-2 px-4 py-3 text-white/90/90 hover:bg-white/8 transition-colors duration-150 border-b border-white/10"
+                      className="w-full flex items-center gap-2 px-4 py-3 text-white/90 hover:bg-white/8 transition-colors duration-150 border-b border-white/10"
                     >
                       <User className="w-4 h-4 text-blue-200/70" />
                       <span className="text-sm font-medium">
@@ -281,7 +281,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                 </Link>
                 <Link
                   href="/dang-ky"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 text-white/90/90 rounded-full font-medium text-sm transition-all duration-500 shadow-[0_4px_30px_rgba(30,144,255,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:scale-[1.03]"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 text-white/90 rounded-full font-medium text-sm transition-all duration-500 shadow-[0_4px_30px_rgba(30,144,255,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:scale-[1.03]"
                 >
                   Dang Ky
                 </Link>
@@ -292,7 +292,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
           {/* Hamburger Icon Mobile */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-blue-200/60 hover:text-white/90/90 transition-colors"
+            className="md:hidden p-2 text-blue-200/60 hover:text-white/90 transition-colors"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -309,14 +309,14 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                 clearCheckoutResume();
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90/90/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
+              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
             >
               Cua Hang
             </Link>
             <Link
               href="/proofs"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90/90/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
+              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
             >
               Danh Gia
             </Link>
@@ -325,7 +325,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               target="_blank"
               rel="noreferrer"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90/90/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
+              className="flex items-center rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-4 text-lg font-semibold text-white/90 transition-all active:scale-[0.98] shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/10"
             >
               Ho Tro
             </a>
@@ -349,17 +349,17 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
               ) : daDangNhap && user ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 px-2 py-2">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white/90/90 font-semibold text-sm ${getAvatarInitial(user.tenDangNhap).color}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white/90 font-semibold text-sm ${getAvatarInitial(user.tenDangNhap).color}`}>
                       {getAvatarInitial(user.tenDangNhap).initial}
                     </div>
                     <div>
-                      <p className="font-semibold text-white/90/90 truncate max-w-[180px]">{user.tenDangNhap}</p>
-                      <p className="text-xs text-blue-200/80/70 truncate max-w-[180px]">{user.email}</p>
+                      <p className="font-semibold text-white/90 truncate max-w-[180px]">{user.tenDangNhap}</p>
+                      <p className="text-xs text-blue-200/70 truncate max-w-[180px]">{user.email}</p>
                     </div>
                   </div>
 
                   <div className="px-3 py-2 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
-                    <p className="text-xs text-blue-200/80/70 mb-1">So du</p>
+                    <p className="text-xs text-blue-200/70 mb-1">So du</p>
                     <p className="text-sm font-semibold bg-gradient-to-r from-[#3DDC84] to-[#4F8CFF] bg-clip-text text-transparent">
                       {soDuVnd.toLocaleString("vi-VN")} VND
                     </p>
@@ -413,7 +413,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
                   <Link
                     href="/dang-ky"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-[#4F8CFF] via-[#8B7CFF] to-[#7EE7FF] text-white/90/90 rounded-[28px] transition-all font-medium shadow-[0_0_25px_rgba(79,140,255,0.4)] active:scale-[0.98]"
+                    className="w-full flex items-center justify-center py-3 bg-gradient-to-r from-[#4F8CFF] via-[#8B7CFF] to-[#7EE7FF] text-white/90 rounded-[28px] transition-all font-medium shadow-[0_0_25px_rgba(79,140,255,0.4)] active:scale-[0.98]"
                   >
                     Dang Ky
                   </Link>

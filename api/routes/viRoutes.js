@@ -505,7 +505,7 @@ router.post('/test/duyet-nap-tien', xacThucViet, async (req, res) => {
     if (process.env.NODE_ENV === 'production') {
         // Allow admin to use this endpoint even in production
         const taiKhoan = req.nguoiDung;
-        const isAdmin = taiKhoan && taiKhoan.vaiTro === 'admin';
+        const isAdmin = taiKhoan && (taiKhoan.vaiTro === 'quan_tri' || taiKhoan.vaiTro === 'admin');
 
         if (!isAdmin) {
             return res.status(403).json({

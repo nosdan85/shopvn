@@ -788,7 +788,7 @@ export default function NapTienPage() {
             </div>
           ) : lichSu.length === 0 ? (
             <div className="rounded-[16px] border border-white/10 bg-white/5 p-6 text-center">
-              <Clock className="mx-auto h-8 w-8 text-blue-200/70/50" />
+              <Clock className="mx-auto h-8 w-8 text-blue-200/50" />
               <p className="mt-2 text-sm text-blue-200/70">Chua co giao dich nao</p>
             </div>
           ) : (

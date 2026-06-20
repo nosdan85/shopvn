@@ -173,7 +173,7 @@ function PayContent() {
         <div className="text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">No Order ID</h1>
-          <p className="text-blue-200/70/80 mb-6">Open this page from checkout so your order can be loaded.</p>
+          <p className="text-blue-200/70 mb-6">Open this page from checkout so your order can be loaded.</p>
           <a href="/shop" className="inline-block bg-[#2F9BE6] hover:bg-[#49B6FF] px-6 py-3 rounded-[14px] font-medium transition-colors">Go to Shop</a>
         </div>
       </main>
@@ -186,7 +186,7 @@ function PayContent() {
         <div className="text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Payment Error</h1>
-          <p className="text-blue-200/70/80 mb-6">{errorParam}</p>
+          <p className="text-blue-200/70 mb-6">{errorParam}</p>
           <a href="/shop" className="inline-block bg-[#1E1E1E] hover:bg-[#1E1E1E] px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
         </div>
       </main>
@@ -199,7 +199,7 @@ function PayContent() {
         <div className="text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Order Error</h1>
-          <p className="text-blue-200/70/80 mb-6">{order.error}</p>
+          <p className="text-blue-200/70 mb-6">{order.error}</p>
           <a href="/shop" className="inline-block bg-[#1E1E1E] hover:bg-[#1E1E1E] px-6 py-3 rounded-[14px] font-medium transition-colors">Back to Shop</a>
         </div>
       </main>
@@ -213,7 +213,7 @@ function PayContent() {
           <CheckCircle2 className="h-16 w-16 text-green-400 mx-auto mb-4" />
           <h1 className="text-3xl font-bold mb-2">Payment Complete</h1>
           <p className="text-blue-200/70 mb-2">Order <span className="font-mono">{orderId}</span></p>
-          <p className="text-blue-200/70/80 mb-6">Thank you for your purchase.</p>
+          <p className="text-blue-200/70 mb-6">Thank you for your purchase.</p>
           <a href="/shop" className="inline-block bg-[#2F9BE6] hover:bg-[#49B6FF] px-6 py-3 rounded-[14px] font-medium transition-colors">Continue Shopping</a>
         </div>
       </main>
@@ -263,14 +263,14 @@ function PayContent() {
         <section className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Complete Payment</h1>
-            <p className="text-blue-200/70/80 mt-2">Order: <span className="text-white/90 font-mono">{orderId}</span></p>
+            <p className="text-blue-200/70 mt-2">Order: <span className="text-white/90 font-mono">{orderId}</span></p>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-[16px] p-6 space-y-4">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h2 className="text-lg font-semibold">Payment Method</h2>
-                <p className="text-sm text-blue-200/70/80">Select a method to generate payment instructions.</p>
+                <p className="text-sm text-blue-200/70">Select a method to generate payment instructions.</p>
               </div>
               {paymentLoading && (
                 <div className="flex items-center gap-2 text-sm text-blue-300">
@@ -300,7 +300,7 @@ function PayContent() {
             </div>
 
             <div>
-              <p className="text-sm text-blue-200/70/80 mb-1">Amount to Pay</p>
+              <p className="text-sm text-blue-200/70 mb-1">Amount to Pay</p>
               <p className="text-4xl font-bold">{amount}</p>
             </div>
 
@@ -349,38 +349,38 @@ function PayContent() {
           <h2 className="text-xl font-semibold mb-5">Order Summary</h2>
 
           <div className="space-y-3">
-            {items.length === 0 && <p className="text-sm text-blue-200/70/80">No order items found.</p>}
+            {items.length === 0 && <p className="text-sm text-blue-200/70">No order items found.</p>}
 
             {items.map((item, index) => (
               <div key={item.name + String(index)} className="flex justify-between gap-4 text-sm">
-                <span className="text-blue-200/70/80">{item.name} ({formatPurchasedQtyLabel(item)})</span>
+                <span className="text-blue-200/70">{item.name} ({formatPurchasedQtyLabel(item)})</span>
                 <span className="text-blue-200/70 shrink-0">{formatPrice(item.price * item.quantity, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
               </div>
             ))}
 
             <div className="border-t border-white/10 pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-blue-200/70/80">Subtotal</span>
+                <span className="text-blue-200/70">Subtotal</span>
                 <span className="text-blue-200/70">{formatPrice(subtotal, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
               </div>
 
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-200/70/80">Coupon ({order?.couponDiscountPercent || 0}%)</span>
+                  <span className="text-blue-200/70">Coupon ({order?.couponDiscountPercent || 0}%)</span>
                   <span className="text-green-400">-{formatPrice(couponDiscount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
                 </div>
               )}
 
               {referralDiscount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-200/70/80">Referral ({order?.referralDiscountPercent || 0}%)</span>
+                  <span className="text-blue-200/70">Referral ({order?.referralDiscountPercent || 0}%)</span>
                   <span className="text-green-400">-{formatPrice(referralDiscount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
                 </div>
               )}
 
               {discount > 0 && !couponDiscount && !referralDiscount && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-200/70/80">Discount</span>
+                  <span className="text-blue-200/70">Discount</span>
                   <span className="text-green-400">-{formatPrice(discount, timezoneInfo.currencyCode, timezoneInfo.currencySymbol)}</span>
                 </div>
               )}
@@ -394,20 +394,20 @@ function PayContent() {
 
           <div className="mt-6 pt-6 border-t border-white/10 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-blue-200/70/80">Status</span>
+              <span className="text-blue-200/70">Status</span>
               <span className="text-blue-200/70">{order?.paymentStatus || order?.status || "Pending"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-blue-200/70/80">Currency</span>
+              <span className="text-blue-200/70">Currency</span>
               <span className="text-blue-200/70">{timezoneInfo.currencyCode}</span>
             </div>
           </div>
 
           {order?.deliveryCustomerStartText && (
             <div className="mt-6 pt-6 border-t border-white/10">
-              <h3 className="text-sm font-semibold text-blue-200/70/80 mb-2">Delivery Time</h3>
+              <h3 className="text-sm font-semibold text-blue-200/70 mb-2">Delivery Time</h3>
               <p className="text-sm text-blue-200/70">{order.deliveryCustomerStartText} - {order.deliveryCustomerEndText}</p>
-              <p className="text-xs text-blue-200/70/60 mt-1">{timezoneInfo.label}</p>
+              <p className="text-xs text-blue-200/60 mt-1">{timezoneInfo.label}</p>
             </div>
           )}
         </aside>
@@ -430,7 +430,7 @@ function CopyRow({ label, value, placeholder, copied, onCopy }: CopyRowProps) {
 
   return (
     <div>
-      <p className="text-sm text-blue-200/70/80 mb-2">{label}</p>
+      <p className="text-sm text-blue-200/70 mb-2">{label}</p>
       <div className="flex gap-3">
         <div className="flex-1 rounded-[14px] border border-white/10 bg-[#071326] px-4 py-3 text-blue-200/70 break-all font-mono text-sm">
           {shownValue}

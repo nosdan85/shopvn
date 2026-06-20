@@ -174,7 +174,7 @@ export default function AdminOrdersPage() {
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-3xl font-semibold">Đơn Hàng</h1>
-            <p className="mt-1 text-sm text-blue-200/70/80">Đơn hàng thực. Không phải dữ liệu giả.</p>
+            <p className="mt-1 text-sm text-blue-200/70">Đơn hàng thực. Không phải dữ liệu giả.</p>
           </div>
           <button
             onClick={() => void loadOrders()}
@@ -187,12 +187,12 @@ export default function AdminOrdersPage() {
 
         <div className="mb-4 grid gap-3 md:grid-cols-[1fr_220px]">
           <label className="flex items-center gap-3 rounded-[16px] border border-white/10 bg-white/5 px-4 py-3">
-            <Search className="h-4 w-4 text-blue-200/70/60" />
+            <Search className="h-4 w-4 text-blue-200/60" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Tìm kiếm đơn hàng / người dùng / mục / giao dịch"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-blue-200/70/60"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-blue-200/60"
             />
           </label>
           <select
@@ -211,7 +211,7 @@ export default function AdminOrdersPage() {
         {error ? <div className="mb-4 rounded-[16px] border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div> : null}
 
         <div className="overflow-hidden rounded-[18px] border border-white/10 bg-white/5">
-          <div className="grid grid-cols-[1.1fr_1fr_140px_140px_180px] gap-4 border-b border-white/10 px-5 py-4 text-xs uppercase tracking-wide text-blue-200/70/60">
+          <div className="grid grid-cols-[1.1fr_1fr_140px_140px_180px] gap-4 border-b border-white/10 px-5 py-4 text-xs uppercase tracking-wide text-blue-200/60">
             <div>Đơn Hàng</div>
             <div>Khách Hàng</div>
             <div>Tổng</div>
@@ -219,26 +219,26 @@ export default function AdminOrdersPage() {
             <div>Thao Tác</div>
           </div>
           {loading ? (
-            <div className="px-5 py-10 text-sm text-blue-200/70/80">Đang tải đơn hàng...</div>
+            <div className="px-5 py-10 text-sm text-blue-200/70">Đang tải đơn hàng...</div>
           ) : filtered.length === 0 ? (
-            <div className="px-5 py-10 text-sm text-blue-200/70/80">Không tìm thấy đơn hàng.</div>
+            <div className="px-5 py-10 text-sm text-blue-200/70">Không tìm thấy đơn hàng.</div>
           ) : (
             filtered.map((order) => (
               <div key={order._id} className="grid grid-cols-[1.1fr_1fr_140px_140px_180px] gap-4 border-b border-white/10 px-5 py-4 last:border-b-0">
                 <div>
                   <div className="font-medium text-white/90">{order.orderId || order._id}</div>
-                  <div className="mt-1 text-xs text-blue-200/70/60">
+                  <div className="mt-1 text-xs text-blue-200/60">
                     {(order.items || []).map(formatOrderItem).join(", ") || "Không có mục"}
                   </div>
-                  <div className="mt-1 text-xs text-blue-200/70/50">
+                  <div className="mt-1 text-xs text-blue-200/50">
                     {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "-"}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-white/90">{order.discordUsername || "Người dùng không xác định"}</div>
-                  <div className="text-xs text-blue-200/70/60">{order.discordId || "-"}</div>
-                  {order.customerEmail && <div className="text-xs text-blue-200/70/50">{order.customerEmail}</div>}
-                  {order.txnId && <div className="text-xs text-blue-200/70/50">TXN: {order.txnId}</div>}
+                  <div className="text-xs text-blue-200/60">{order.discordId || "-"}</div>
+                  {order.customerEmail && <div className="text-xs text-blue-200/50">{order.customerEmail}</div>}
+                  {order.txnId && <div className="text-xs text-blue-200/50">TXN: {order.txnId}</div>}
                 </div>
                 <div className="text-sm font-medium text-emerald-300">
                   {formatPrice(order.totalAmount || 0)}

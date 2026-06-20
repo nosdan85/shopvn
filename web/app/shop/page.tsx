@@ -139,9 +139,9 @@ const ProductCard = memo(function ProductCard({
       </div>
       {variant === "bestSeller" ? (
         <div className="p-4">
-          <p className="line-clamp-2 text-sm font-semibold leading-5 text-white/90/90">{product.name}</p>
+          <p className="line-clamp-2 text-sm font-semibold leading-5 text-white/90">{product.name}</p>
           <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          {product.desc && <p className="text-xs text-white/90/50 mt-1 line-clamp-2">{product.desc}</p>}
+          {product.desc && <p className="text-xs text-white/50 mt-1 line-clamp-2">{product.desc}</p>}
           <div className="mt-3 flex items-center justify-between">
             <span className="text-sm font-bold text-blue-300">{formatMoney(product.price)}</span>
             <span className="text-xs text-cyan-300/80 font-medium">Xem</span>
@@ -149,9 +149,9 @@ const ProductCard = memo(function ProductCard({
         </div>
       ) : (
         <div className="space-y-1.5 sm:space-y-2 p-4 sm:p-5">
-          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-white/90/90">{product.name}</h3>
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-white/90">{product.name}</h3>
           <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
-          <p className="text-xs text-white/90/40">{product.category}</p>
+          <p className="text-xs text-white/40">{product.category}</p>
           <div className="flex items-center justify-between mt-2">
             <span className="text-lg font-bold text-blue-300">{formatMoney(product.price)}</span>
             <span className="text-xs text-cyan-300/80 font-medium">Xem</span>
@@ -885,7 +885,7 @@ export default function ShopPage() {
 
       {checkoutLoading && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="flex flex-col items-center gap-3 rounded-[18px] border border-white/10 bg-white/5/95 px-6 py-5 shadow-2xl animate-bounce-in">
+          <div className="flex flex-col items-center gap-3 rounded-[18px] border border-white/10 bg-white/5 px-6 py-5 shadow-2xl animate-bounce-in">
             <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
             <p className="text-sm font-medium text-white/90">Đang xử lý thanh toán...</p>
           </div>
@@ -958,7 +958,7 @@ export default function ShopPage() {
               {cart.map((item) => (
                 <div key={item._id} className="flex gap-3 rounded-[16px] border border-white/10 bg-[#071326] p-3 sm:p-3">
                   <div className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 overflow-hidden rounded-[12px] sm:rounded-[14px] bg-white/5">
-                    {item.image ? <img src={imgUrl(item.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover" /> : <Package className="h-full w-full p-3 text-blue-200/70/60" />}
+                    {item.image ? <img src={imgUrl(item.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-cover" /> : <Package className="h-full w-full p-3 text-blue-200/60" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-medium leading-5">{formatPurchasedProductName(item)}</p>
@@ -1081,7 +1081,7 @@ export default function ShopPage() {
             <div className="max-h-[calc(82dvh-96px)] overflow-y-auto px-4 py-3">
             <div className="space-y-3">
               <div className="mx-auto aspect-square w-full max-w-[120px] md:max-w-[138px] overflow-hidden rounded-[14px] bg-[#071326]">
-                {selectedProduct.image ? <img src={imgUrl(selectedProduct.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-contain" /> : <Package className="h-full w-full p-8 text-blue-200/70/50" />}
+                {selectedProduct.image ? <img src={imgUrl(selectedProduct.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-contain" /> : <Package className="h-full w-full p-8 text-blue-200/50" />}
               </div>
               <div className="space-y-1.5">
                 <h2 className="text-base font-bold leading-tight">{formatProductNameWithQty(selectedProduct.name, selectedProduct.packQuantity)}</h2>
@@ -1196,7 +1196,7 @@ export default function ShopPage() {
                           {submitting ? "Đang tìm..." : "Tìm tài khoản"}
                         </button>
                       </div>
-                      <p className="text-xs text-blue-200/70/80">Nhập ít nhất 3 ký tự để tìm kiếm</p>
+                      <p className="text-xs text-blue-200/70">Nhập ít nhất 3 ký tự để tìm kiếm</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1207,7 +1207,7 @@ export default function ShopPage() {
                           {robloxSearchResult.avatar ? (
                             <img src={robloxSearchResult.avatar} alt="" className="h-full w-full object-cover" />
                           ) : (
-                            <User className="h-full w-full p-3 text-blue-200/70/60" />
+                            <User className="h-full w-full p-3 text-blue-200/60" />
                           )}
                         </div>
                         <div className="space-y-3">
@@ -1363,7 +1363,7 @@ export default function ShopPage() {
 
                 {filtered.length === 0 && (
                   <div className="py-12 text-center">
-                    <Package className="mx-auto h-12 w-12 text-blue-200/70/50" />
+                    <Package className="mx-auto h-12 w-12 text-blue-200/50" />
                     <p className="mt-4 text-blue-200/70">Không tìm thấy sản phẩm</p>
                   </div>
                 )}

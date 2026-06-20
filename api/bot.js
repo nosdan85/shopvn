@@ -1774,6 +1774,8 @@ const maybeGrantReferralReward = async (order) => {
 module.exports = {
     client,
     DiscordBotError,
+    createTicketChannel,
+    sendTicketMessage,
     createWalletDeliveryTicket,
     notifyOwnerWalletTopupRequest,
     checkUserInGuild,

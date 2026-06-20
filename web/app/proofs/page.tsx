@@ -302,8 +302,8 @@ export default function ProofsPage() {
 
         {!loading && proofs.length === 0 && (
           <div className="animate-fade-in py-20 text-center">
-            <ImageIcon className="mx-auto mb-4 h-16 w-16 text-blue-200/70/50" />
-            <p className="text-xl text-blue-200/70/80">Chưa có đánh giá nào</p>
+            <ImageIcon className="mx-auto mb-4 h-16 w-16 text-blue-200/50" />
+            <p className="text-xl text-blue-200/70">Chưa có đánh giá nào</p>
           </div>
         )}
 
@@ -320,13 +320,13 @@ export default function ProofsPage() {
                 return (
                   <div
                     key={proof.id}
-                    className="animate-vouch-entrance rounded-[16px] border border-white/10/60 bg-white/5/90 p-5 backdrop-blur-sm transition-all hover:border-white/10/50"
+                    className="animate-vouch-entrance rounded-[16px] border border-white/10 bg-white/5 p-5 backdrop-blur-sm transition-all hover:border-white/10"
                     style={{ animationDelay: `${idx * 80}ms` }}
                   >
                     {proof.imageUrls.length > 0 ? (
                       <div className={`mb-4 grid gap-2 ${getGalleryGridClass(proof.imageUrls.length)}`}>
                         {proof.imageUrls.slice(0, 2).map((url, imageIndex) => (
-                          <div key={imageIndex} className={`group relative overflow-hidden rounded-[14px] bg-white/8/60 ${getImageSpanClass(proof.imageUrls.length, imageIndex)}`}>
+                          <div key={imageIndex} className={`group relative overflow-hidden rounded-[14px] bg-white/5 ${getImageSpanClass(proof.imageUrls.length, imageIndex)}`}>
                             <button
                               type="button"
                               onClick={() => openLightbox(idx, imageIndex)}
@@ -341,7 +341,7 @@ export default function ProofsPage() {
                             </button>
                             {isAdmin && (
                               <div className="absolute right-2 top-2 flex gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                                <label className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded bg-white/5/90 text-white/90 hover:bg-[#2F9BE6]" title="Replace image">
+                                <label className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded bg-white/5 text-white/90 hover:bg-[#2F9BE6]" title="Replace image">
                                   {uploadingImage === `${proof.id}:${imageIndex}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                   <input
                                     type="file"
@@ -356,7 +356,7 @@ export default function ProofsPage() {
                                 <button
                                   type="button"
                                   onClick={() => void deleteProofImage(proof.id, imageIndex)}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded bg-white/5/90 text-white/90 hover:bg-[#FF4D4F]"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded bg-white/5 text-white/90 hover:bg-[#FF4D4F]"
                                   title="Delete image"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -367,8 +367,8 @@ export default function ProofsPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="mb-4 flex h-32 w-full items-center justify-center rounded-[14px] bg-white/8/80">
-                        <ImageIcon className="h-8 w-8 text-blue-200/70/60" />
+                      <div className="mb-4 flex h-32 w-full items-center justify-center rounded-[14px] bg-white/5">
+                        <ImageIcon className="h-8 w-8 text-blue-200/60" />
                       </div>
                     )}
 
@@ -400,7 +400,7 @@ export default function ProofsPage() {
                               <span className="text-blue-200/70">{item.name}</span>
                               <p className="mt-1 text-xs text-blue-300/80">Qty: {item.deliveredLabel}</p>
                             </div>
-                            <span className="text-blue-200/70/80">{formatPriceVND(item.lineTotal)}</span>
+                            <span className="text-blue-200/70">{formatPriceVND(item.lineTotal)}</span>
                           </div>
                         )
                       )}
@@ -484,7 +484,7 @@ export default function ProofsPage() {
                 Trước
               </button>
 
-              <span className="font-medium text-blue-200/70/80">{pageLabel}</span>
+              <span className="font-medium text-blue-200/70">{pageLabel}</span>
 
               <button
                 onClick={handleNextPage}
@@ -516,7 +516,7 @@ export default function ProofsPage() {
 
           {activeImages.length > 1 && (
             <button
-              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/5/90 p-3"
+              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/5 p-3"
               onClick={(e) => {
                 e.stopPropagation()
                 prevImage()
@@ -538,7 +538,7 @@ export default function ProofsPage() {
 
           {activeImages.length > 1 && (
             <button
-              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/5/90 p-3"
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/5 p-3"
               onClick={(e) => {
                 e.stopPropagation()
                 nextImage()
@@ -549,7 +549,7 @@ export default function ProofsPage() {
           )}
 
           {activeImages.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/5/90 px-4 py-2 text-sm font-medium text-white/90">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-white/90">
               {activeIndex + 1} / {activeImages.length}
             </div>
           )}

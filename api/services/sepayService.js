@@ -67,7 +67,8 @@ async function taoMaNapTien({ userId, tenDangNhap, soTienVnd }) {
 
     // Tao giao dich pending trong database
     const giaoDich = new WalletTransaction({
-        discordId: taiKhoan._id.toString(), // Su dung _id cua TaiKhoan
+        userId: taiKhoan._id, // ObjectId cua TaiKhoan
+        discordId: taiKhoan.discordId || '', // ID Discord thuc te (neu co lien ket)
         discordUsername: tenDangNhap,
         type: 'topup',
         direction: 'credit',
@@ -226,8 +227,8 @@ async function xuLyWebhook(payload, signature) {
     session.startTransaction();
 
     try {
-        // FIX: Chuyển discordId (string) thành ObjectId với 'new'
-        const taiKhoanId = new mongoose.Types.ObjectId(giaoDich.discordId);
+        // Ưu tiên userId (ObjectId), fallback sang discordId (string → ObjectId) cho backward compat
+        const taiKhoanId = giaoDich.userId || new mongoose.Types.ObjectId(giaoDich.discordId);
 
         const updatedTaiKhoan = await TaiKhoan.findOneAndUpdate(
             {
@@ -296,7 +297,7 @@ async function layThongTinNapTien(maGiaoDich) {
     // Lay thong tin vi hien tai
     let soDuVndHienTai = 0;
     try {
-        const taiKhoan = await TaiKhoan.findById(giaoDich.discordId);
+        const taiKhoan = await TaiKhoan.findById(giaoDich.userId || giaoDich.discordId);
         if (taiKhoan) {
             soDuVndHienTai = taiKhoan.soDuVnd || 0;
         }

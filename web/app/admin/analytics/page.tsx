@@ -126,9 +126,9 @@ export default function AnalyticsPage() {
               <div key={label} className="rounded-[16px] border border-white/10 bg-[#071326] p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-blue-200/70/80">{label}</p>
+                    <p className="text-sm text-blue-200/70">{label}</p>
                     <p className="mt-2 text-2xl font-bold text-green-400">{data.revenue.toLocaleString('vi-VN')} VND</p>
-                    <p className="text-xs text-blue-200/70/60">{data.orders} đơn hàng</p>
+                    <p className="text-xs text-blue-200/60">{data.orders} đơn hàng</p>
                   </div>
                   <Icon className="h-8 w-8 text-blue-300/80" />
                 </div>
@@ -143,15 +143,15 @@ export default function AnalyticsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-4 py-2 text-left text-blue-200/70/80">Mã Đơn</th>
-                  <th className="px-4 py-2 text-left text-blue-200/70/80">Roblox</th>
-                  <th className="px-4 py-2 text-left text-blue-200/70/80">Số Tiền</th>
-                  <th className="px-4 py-2 text-left text-blue-200/70/80">Trạng Thái</th>
+                  <th className="px-4 py-2 text-left text-blue-200/70">Mã Đơn</th>
+                  <th className="px-4 py-2 text-left text-blue-200/70">Roblox</th>
+                  <th className="px-4 py-2 text-left text-blue-200/70">Số Tiền</th>
+                  <th className="px-4 py-2 text-left text-blue-200/70">Trạng Thái</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.orderId} className="border-b border-white/10 hover:bg-white/5/50">
+                  <tr key={order.orderId} className="border-b border-white/10 hover:bg-white/5">
                     <td className="px-4 py-2 font-mono text-xs">{order.orderId}</td>
                     <td className="px-4 py-2">{order.robloxUsername || "-"}</td>
                     <td className="px-4 py-2">{order.totalAmount.toLocaleString('vi-VN')} VND</td>
@@ -176,7 +176,7 @@ export default function AnalyticsPage() {
                   <span className="text-sm">{p._id}</span>
                   <div className="text-right">
                     <p className="font-semibold text-green-400">{p.revenue.toLocaleString('vi-VN')} VND</p>
-                    <p className="text-xs text-blue-200/70/60">{p.quantity} bán</p>
+                    <p className="text-xs text-blue-200/60">{p.quantity} bán</p>
                   </div>
                 </div>
               ))}
@@ -192,24 +192,24 @@ export default function AnalyticsPage() {
             </h2>
             <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-3">
               <div className="rounded-[14px] bg-white/8 p-4">
-                <p className="text-xs text-blue-200/70/80">Tổng Đánh Giá</p>
+                <p className="text-xs text-blue-200/70">Tổng Đánh Giá</p>
                 <p className="mt-1 text-2xl font-bold text-blue-300/80">{proofStats.totalProofs}</p>
               </div>
               <div className="rounded-[14px] bg-white/8 p-4">
-                <p className="text-xs text-blue-200/70/80">Tuần Này</p>
+                <p className="text-xs text-blue-200/70">Tuần Này</p>
                 <p className="mt-1 text-2xl font-bold text-blue-300/80">{proofStats.weekProofs}</p>
               </div>
             </div>
             {proofStats.recentProofs.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm text-blue-200/70/80">Đánh Giá Gần Đây</p>
+                <p className="text-sm text-blue-200/70">Đánh Giá Gần Đây</p>
                 {proofStats.recentProofs.map((proof) => (
                   <div key={proof.id} className="flex items-center justify-between rounded-[14px] border border-white/10 bg-white/8 p-3">
                     <div>
                       <p className="text-sm font-medium">{proof.robloxUsername || "Không rõ"}</p>
-                      <p className="text-xs text-blue-200/70/60">{proof.totalAmount.toLocaleString('vi-VN')} VND</p>
+                      <p className="text-xs text-blue-200/60">{proof.totalAmount.toLocaleString('vi-VN')} VND</p>
                     </div>
-                    <span className="text-xs text-blue-200/70/80">{proof.imageUrls.length} hình ảnh</span>
+                    <span className="text-xs text-blue-200/70">{proof.imageUrls.length} hình ảnh</span>
                   </div>
                 ))}
               </div>
@@ -217,7 +217,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        <p className="mt-8 text-xs text-blue-200/70/60">Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
+        <p className="mt-8 text-xs text-blue-200/60">Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
       </div>
     </div>
   );

@@ -367,7 +367,7 @@ function DonHangPage() {
         {/* Empty State */}
         {!loading && orders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <ShoppingBag className="h-16 w-16 text-blue-200/70/50" />
+            <ShoppingBag className="h-16 w-16 text-blue-200/50" />
             <p className="mt-4 text-blue-200/70">Ban chua co don hang nao</p>
             <Link
               href="/shop"
@@ -575,7 +575,7 @@ function DonHangPage() {
                           <button
                             onClick={() => handleCreateTicket(order._id)}
                             disabled={submitting === order._id}
-                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-[#3DDC84] px-4 py-3 text-sm font-medium text-blue-200/70 transition-all hover:bg-[#4EE67A] disabled:opacity-50"
+                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-[#3DDC84] px-4 py-3 text-sm font-medium text-[#071326] transition-all hover:bg-[#4EE67A] disabled:opacity-50"
                           >
                             {submitting === order._id ? (
                               <>

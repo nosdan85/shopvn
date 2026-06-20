@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const qs = require('qs');
@@ -19,15 +19,13 @@ const DeviceFingerprint = require('../models/DeviceFingerprint');
 const Referral = require('../models/Referral');
 const TaiKhoan = require('../models/TaiKhoan');
 const {
-    createOrderTicket,
-    createWalletDeliveryTicket,
-    createPayPalFFTicket,
-    createLTCTicket,
-    sendPaymentProofLog,
+    createTicketChannel,
+    sendTicketMessage,
     checkUserInGuild,
     checkUserHasOwnerRole,
     DiscordBotError
 } = require('../bot');
+const { getOrderSequence, formatOrderItemsWithPrice } = require('../bot/utils/format');
 const { createPayPalOrder, capturePayPalOrder, createLTCInvoice } = require('../services/paymentService');
 const {
     buildMemoExpected,
@@ -3722,7 +3720,8 @@ router.get('/bot-status', async (req, res) => {
     try {
         const viewer = getOptionalRequestUser(req);
         let canViewDetails = false;
-        if (viewer?.role === 'admin') {
+        const role = viewer?.role || viewer?.vaiTro || '';
+        if (role === 'admin' || role === 'quan_tri') {
             canViewDetails = true;
         } else if (viewer?.discordId) {
             canViewDetails = await canAccessOwnerEndpoints(viewer.discordId);
@@ -4622,13 +4621,36 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
 
         // Create ticket without locking — allow any order with linked Roblox
 
-        const channelId = await Promise.resolve(createOrderTicket(order));
+        const seq = getOrderSequence(order);
+        const channelId = await createTicketChannel({
+            channelName: `order_${seq}`,
+            customerId: order.discordId
+        });
         if (!channelId) {
             throw new DiscordBotError('Could not create ticket channel', {
                 status: 503,
                 code: 'DISCORD_TICKET_UNAVAILABLE'
             });
         }
+
+        // Send order embed to the channel via REST
+        const { EmbedBuilder } = require('discord.js');
+        const embed = new EmbedBuilder()
+            .setColor(0xA7EFC0)
+            .setTitle('Order Delivery')
+            .setDescription(`Hello <@${order.discordId}>. Payment confirmed. Staff will deliver during selected time.`)
+            .addFields([
+                { name: 'Order ID', value: String(order.orderId || '').toUpperCase(), inline: false },
+                { name: 'Buyer', value: `<@${order.discordId}>`, inline: true },
+                { name: 'Total', value: `$${(order.totalAmount || 0).toFixed(2)}`, inline: true },
+                { name: 'Items', value: formatOrderItemsWithPrice(order.items), inline: false }
+            ]);
+
+        await sendTicketMessage({
+            channelId,
+            content: `<@${order.discordId}>`,
+            embed
+        }).catch(err => console.warn('[TICKET] Failed to send order embed:', err.message));
 
         await Order.updateOne(
             { _id: order._id },
