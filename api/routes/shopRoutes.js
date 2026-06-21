@@ -54,7 +54,6 @@ const {
 } = require('../services/squareService');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const { uploadToImgbb } = require('../utils/imgbbService');
 const { log } = require('../utils/loggingService');
 const { formatPurchasedUnitsLabel } = require('../utils/itemQuantityDisplay');
