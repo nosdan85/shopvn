@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "../components/Navbar";
@@ -489,6 +489,7 @@ export default function AdminPage() {
  </div>
  <div className="flex gap-3">
  <a href="/shop" className="flex items-center gap-2 rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 px-4 py-2 text-sm text-slate-600 hover:text-[#071326]/90/90 hover:border-white/50 transition-all">← Về cửa hàng</a>
+ <a href="/admin/web-accounts" className="flex items-center gap-2 rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:border-white/50 transition-all">Quản Lý Web Accounts</a>
  <button onClick={() => void fetchAll()} className="flex items-center gap-2 rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/40 px-4 py-2 text-sm"><RefreshCcw className="h-4 w-4" /> Đồng bộ</button>
  </div>
  </div>

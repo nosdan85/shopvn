@@ -284,7 +284,7 @@ export default function ProofsPage() {
  </div>
 
  <a
- href="https://discord.com/channels/1398984938111369256/1399154220434853969"
+ href="https://discord.com/channels/1392897331694796831/1403791430396285089"
  target="_blank"
  rel="noopener noreferrer"
  className="flex items-center gap-2 rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-2 font-medium text-[#071326]/90/90 transition-colors hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)]"

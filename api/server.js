@@ -112,6 +112,8 @@ app.use('/api/tai-khoan', require('./routes/taiKhoanRoutes'));
 app.use('/api/vi', require('./routes/viRoutes'));
 // Don hang (dat hang, lich su, tao ticket)
 app.use('/api/don-hang', require('./routes/donHangRoutes'));
+// Admin Quan tri web accounts
+app.use('/api/admin/web-accounts', require('./routes/adminAccountsRoutes'));
 
 // === ROUTES CU (giu lai de backward compat, se refactor sau) ===
 app.use('/ipn.php', require('./routes/paypalIpnRoutes'));

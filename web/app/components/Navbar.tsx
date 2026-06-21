@@ -6,7 +6,7 @@ import { ShoppingCart, LogOut, User, Loader2, Menu, X, Wallet, ShoppingBag } fro
 import { useState, useRef, useEffect } from "react";
 import { isAdminRole } from "@/lib/authRole";
 
-const SUPPORT_DISCORD_URL = "https://discord.com/channels/1398984938111369256/1493927408217100438";
+const SUPPORT_DISCORD_URL = "https://discord.com/channels/1392897331694796831/1403545924894199869";
 
 interface NavbarProps {
  cartCount?: number;

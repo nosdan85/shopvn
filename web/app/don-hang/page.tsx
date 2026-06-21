@@ -127,10 +127,10 @@ function DonHangPage() {
  }
  }, [authLoading, user, orders]);
 
- const loadOrders = useCallback(async () => {
+ const loadOrders = useCallback(async (isPolling = false) => {
  if (!token) return;
 
- setLoading(true);
+ if (!isPolling) setLoading(true);
  setError(null);
  try {
  const res = await fetch(`${API_URL}/api/don-hang/lich-su`, {
@@ -145,9 +145,9 @@ function DonHangPage() {
  // API returns { donHang: [], tong: number }
  setOrders(Array.isArray(data.donHang) ? data.donHang : []);
  } catch (e) {
- setError(e instanceof Error ? e.message : "Lỗi tải đơn hàng");
+ if (!isPolling) setError(e instanceof Error ? e.message : "Lỗi tải đơn hàng");
  } finally {
- setLoading(false);
+ if (!isPolling) setLoading(false);
  }
  }, [token]);
 
@@ -159,6 +159,13 @@ function DonHangPage() {
 
  if (!authLoading && user) {
  loadOrders();
+ 
+ // Poll for order updates every 10 seconds
+ const intervalId = setInterval(() => {
+   loadOrders(true);
+ }, 10000);
+ 
+ return () => clearInterval(intervalId);
  }
  }, [authLoading, user, router, loadOrders]);
 

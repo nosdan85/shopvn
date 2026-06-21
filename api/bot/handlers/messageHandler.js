@@ -91,7 +91,7 @@ const handleMessage = async (message, client) => {
         await message.reply('Could not find order for this ticket channel.');
         return;
       }
-      await Order.updateOne({ _id: order._id }, { $set: { status: 'Completed', paymentStatus: 'paid', paymentMethod: order.paymentMethod || 'manual', paidAt: new Date() } });
+      await Order.updateOne({ _id: order._id }, { $set: { status: 'hoan_thanh', paymentStatus: 'paid', paymentMethod: order.paymentMethod || 'manual', paidAt: new Date() } });
       await message.reply('Order marked as completed. Closing ticket in 3 seconds...');
       await sleep(3000);
       await message.channel.delete().catch(() => {});
