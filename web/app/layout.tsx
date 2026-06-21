@@ -91,10 +91,7 @@ export default function RootLayout({
  <meta name="theme-color" content="#ffffff" />
  </head>
  <body className="min-h-full flex flex-col bg-transparent text-[#071326]/90 relative">
- {/* Glow orbs for Apple Liquid Glass effect */}
- <div className="glow-orb glow-orb-1" />
- <div className="glow-orb glow-orb-2" />
- <div className="glow-orb glow-orb-3" />
+ {/* Background handled by CSS body::before/after */}
  <ClientProviders>
  <ErrorBoundary>
  {children}

@@ -1129,10 +1129,10 @@ export default function ShopPage() {
  </div>
  <div className="space-y-1.5">
  <h2 className="text-base font-bold leading-tight">{formatProductNameWithQty(selectedProduct.name, selectedProduct.packQuantity)}</h2>
- {<p className="text-xs text-blue-300/80">Pack {formatQtyLabel(selectedProduct.packQuantity)}</p>}
+ {<p className="text-xs text-slate-500">Pack {formatQtyLabel(selectedProduct.packQuantity)}</p>}
  <div className="flex items-baseline gap-1.5"><span className="text-xl font-bold text-emerald-700">{formatMoney(selectedProduct.price)}</span></div>
  {selectedProduct.bulkPrice && (
- <p className="text-[10px] leading-4 text-blue-300/80">Giá sỉ: {formatMoney(selectedProduct.bulkPrice)}</p>
+ <p className="text-[10px] leading-4 text-slate-500">Giá sỉ: {formatMoney(selectedProduct.bulkPrice)}</p>
  )}
  </div>
  </div>
@@ -1150,7 +1150,7 @@ export default function ShopPage() {
  </div>
  </div>
  <div className="border-t border-white/40 bg-white/30 backdrop-blur-md border border-white/50 shadow-lg px-4 py-3">
- <button onClick={addToCartFromModal} className="w-full rounded-full bg-gradient-to-r from-[#2F9BE6] to-[#49B6FF] py-3.5 text-sm font-semibold text-[#071326] active:scale-95 primary-hover-glow">Thêm vào giỏ</button>
+ <button onClick={addToCartFromModal} className="w-full rounded-full bg-slate-800 py-3.5 text-sm font-semibold text-white active:scale-95 transition-colors hover:bg-slate-700">Thêm vào giỏ</button>
  </div>
  </div>
  </div>
@@ -1170,7 +1170,7 @@ export default function ShopPage() {
  </div>
  <button
  onClick={() => setError(null)}
- className="w-full rounded-[14px] bg-[#FF4D4F] px-4 py-3 text-sm font-medium text-[#071326] hover:bg-[#FF6B6B] transition-colors"
+ className="w-full rounded-[14px] bg-slate-800 px-4 py-3 text-sm font-medium text-white hover:bg-slate-700 transition-colors"
  >
  Đóng
  </button>
@@ -1185,7 +1185,7 @@ export default function ShopPage() {
  <ArrowLeft className="h-4 w-4" /> Quay lại cửa hàng
  </button>
  <div className="flex gap-2">{(["roblox", "ticket"] as const).map((s) => (
- <div key={s} className={"h-2 flex-1 rounded-full transition-colors " + (step === s ? "bg-[#49B6FF]" : (["roblox", "ticket"].indexOf(step) > ["roblox", "ticket"].indexOf(s) ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]" : "bg-white/40 backdrop-blur-sm border border-white/50"))} />
+ <div key={s} className={"h-2 flex-1 rounded-full transition-colors " + (step === s ? "bg-slate-600" : (["roblox", "ticket"].indexOf(step) > ["roblox", "ticket"].indexOf(s) ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]" : "bg-white/40 backdrop-blur-sm border border-white/50"))} />
  ))}</div>
  <div className="motion-panel rounded-[24px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-4 sm:p-6 space-y-4 animate-section-enter">
  <div className="border-b border-white/40 pb-3">
