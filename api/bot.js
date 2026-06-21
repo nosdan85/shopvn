@@ -1131,12 +1131,32 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
             const discordId = String(order?.discordId || '').trim();
             const displayName = String(order?.discordTenHienThi || order?.discordUsername || order?.tenDangNhap || 'Khach hang').trim();
             const customerText = discordId ? `**${displayName}** (<@${discordId}>)` : `**${displayName}**`;
-            const totalVnd = Number(order?.totalVnd || order?.subtotalVnd || order?.totalAmount || 0);
+            const totalVnd = Number(order?.totalVnd || order?.subtotalVnd || order?.totalAmount || order?.subtotalAmount || 0);
+            
+            // Debug log order data
+            log.info('[VOUCH] Building embed.', {
+                stage: 'embed_build',
+                orderId: String(order?.orderId || ''),
+                totalVnd: order?.totalVnd,
+                subtotalVnd: order?.subtotalVnd,
+                totalAmount: order?.totalAmount,
+                itemCount: Array.isArray(order?.items) ? order.items.length : 0,
+                firstItem: Array.isArray(order?.items) && order.items[0] ? {
+                    name: order.items[0].name,
+                    price: order.items[0].price,
+                    priceVnd: order.items[0].priceVnd,
+                    lineTotalVnd: order.items[0].lineTotalVnd,
+                    quantity: order.items[0].quantity
+                } : null
+            });
+
             const itemLines = (Array.isArray(order?.items) ? order.items : []).map((item) => {
                 const name = String(item?.name || 'San pham').trim();
                 const qty = Math.max(1, Number(item?.quantity) || 1);
-                const price = Number(item?.lineTotalVnd || item?.priceVnd || (Number(item?.price || 0) * qty) || 0);
-                return `• ${name} x${qty}` + (price > 0 ? ` — ${price.toLocaleString('vi-VN')} VND` : '');
+                // Try all possible price fields
+                const itemPrice = Number(item?.lineTotalVnd) || Number(item?.priceVnd) || Number(item?.price) || 0;
+                const linePrice = itemPrice > 0 ? itemPrice : 0;
+                return `• **${name}** x${qty}` + (linePrice > 0 ? ` — **${linePrice.toLocaleString('vi-VN')} VND**` : '');
             });
             const itemsText = itemLines.length > 0 ? itemLines.join('\n') : 'Không có thông tin sản phẩm';
 
@@ -1145,10 +1165,11 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
                 .setTitle('✅ Giao Hàng Thành Công')
                 .setDescription(`Khách hàng: ${customerText}`)
                 .addFields([
-                    { name: 'Mã Đơn', value: String(order?.orderId || 'N/A').toUpperCase(), inline: true },
-                    { name: 'Tổng Tiền', value: totalVnd > 0 ? `${totalVnd.toLocaleString('vi-VN')} VND` : 'N/A', inline: true },
-                    { name: 'Sản Phẩm', value: itemsText.slice(0, 1024), inline: false }
+                    { name: '📋 Mã Đơn', value: String(order?.orderId || 'N/A').toUpperCase(), inline: true },
+                    { name: '💰 Tổng Tiền', value: totalVnd > 0 ? `**${totalVnd.toLocaleString('vi-VN')} VND**` : 'N/A', inline: true },
+                    { name: '🛒 Sản Phẩm', value: itemsText.slice(0, 1024), inline: false }
                 ])
+                .setFooter({ text: 'NosMarket • Cảm ơn quý khách!' })
                 .setTimestamp();
 
             delivery = await sendVouchBatchWithFallback({

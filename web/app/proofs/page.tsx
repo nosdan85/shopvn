@@ -25,12 +25,15 @@ interface ProofItem {
  packQuantity: number
  quantity: number
  deliveredLabel: string
+ lineTotal: number
 }
 
 interface Proof {
  id: string
  items: ProofItem[]
  imageUrls: string[]
+ totalAmount?: number
+ discordUsername?: string
 }
 
 interface ProofsResponse {
@@ -381,6 +384,9 @@ export default function ProofsPage() {
  <span className="text-slate-600">{item.name}</span>
  <p className="mt-1 text-xs text-blue-300/80">Qty: {item.deliveredLabel}</p>
  </div>
+ {(item.lineTotal > 0) && (
+ <span className="text-xs font-semibold text-emerald-600 whitespace-nowrap">{item.lineTotal.toLocaleString('vi-VN')} đ</span>
+ )}
  </div>
  )
  )}

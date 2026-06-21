@@ -1,10 +1,13 @@
 const toPublicProof = (proof, { imageUrlForIndex } = {}) => ({
     id: String(proof?._id || ''),
+    totalAmount: Number(proof?.totalAmount || 0),
+    discordUsername: String(proof?.discordUsername || ''),
     items: (Array.isArray(proof?.items) ? proof.items : []).map((item) => ({
         name: String(item?.name || ''),
         packQuantity: Math.max(1, Number(item?.packQuantity) || 1),
         quantity: Math.max(1, Number(item?.quantity) || 1),
-        deliveredLabel: String(item?.deliveredLabel || '')
+        deliveredLabel: String(item?.deliveredLabel || ''),
+        lineTotal: Math.max(0, Number(item?.lineTotal || 0))
     })),
     imageUrls: (Array.isArray(proof?.imageUrls) ? proof.imageUrls : []).map((_, index) => (
         typeof imageUrlForIndex === 'function' ? imageUrlForIndex(index) : ''
