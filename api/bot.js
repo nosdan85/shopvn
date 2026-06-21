@@ -1129,30 +1129,23 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
         try {
             const discordId = String(order?.discordId || '').trim();
             const displayName = String(order?.discordTenHienThi || order?.discordUsername || order?.tenDangNhap || 'Khach hang').trim();
-            const customerText = discordId ? `**${displayName}** (<@${discordId}>)` : `**${displayName}**`;
+            const mention = discordId ? `<@${discordId}>` : displayName;
 
             const itemLines = (Array.isArray(order?.items) ? order.items : []).map((item) => {
                 const name = String(item?.name || 'San pham').trim();
+                const packQty = Math.max(1, Number(item?.packQuantity) || 1);
                 const qty = Math.max(1, Number(item?.quantity) || 1);
-                return `• **${name}** x${qty}`;
+                const totalQty = packQty * qty;
+                return `**${name.toUpperCase()} (X${totalQty})**`;
             });
-            const itemsText = itemLines.length > 0 ? itemLines.join('\n') : 'Không có thông tin sản phẩm';
+            const itemsText = itemLines.join('\n');
 
-            const vouchEmbed = new EmbedBuilder()
-                .setColor(0x00FF00)
-                .setTitle('✅ Giao Hàng Thành Công')
-                .setDescription(`Khách hàng: ${customerText}`)
-                .addFields([
-                    { name: '📋 Mã Đơn', value: String(order?.orderId || 'N/A').toUpperCase(), inline: true },
-                    { name: '🛒 Sản Phẩm', value: itemsText.slice(0, 1024), inline: false }
-                ])
-                .setFooter({ text: 'NosMarket • Cảm ơn quý khách!' })
-                .setTimestamp();
+            const content = `${mention}\n${itemsText}\nCảm ơn bạn đã mua hàng tại NosMarket! ❤️`;
 
             delivery = await sendVouchBatchWithFallback({
                 channel,
-                headerContent: '',
-                headerEmbed: didSendHeaderContent ? null : vouchEmbed,
+                headerContent: didSendHeaderContent ? '' : content,
+                headerEmbed: null,
                 files,
                 sourceUrls: imageBatch
             });
