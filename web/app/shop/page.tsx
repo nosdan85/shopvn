@@ -892,7 +892,7 @@ export default function ShopPage() {
  </div>
  <div>
  <h3 className="text-sm font-semibold text-[#071326]">Chào mừng! Giảm 20% cho đơn hàng đầu tiên</h3>
- <p className="text-xs text-slate-800">Đơn tối thiểu: 5.000 VND • Dùng mã này khi thanh toán</p>
+ <p className="text-xs text-slate-800">Đơn tối thiểu: 100.000 VND • Dùng mã này khi thanh toán</p>
  </div>
  </div>
  <div className="flex items-center gap-2">

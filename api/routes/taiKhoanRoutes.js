@@ -140,6 +140,8 @@ router.post('/dang-ky', signupLimiter, async (req, res) => {
             soDuVnd: taiKhoanMoi.soDuVnd || 0,
             vaiTro: taiKhoanMoi.vaiTro,
             referralCode: taiKhoanMoi.referralCode || '',
+            daLienKetDiscord: Boolean(taiKhoanMoi.discordId && taiKhoanMoi.discordId.trim()),
+            discordTenHienThi: taiKhoanMoi.discordTenHienThi || '',
             ngayTao: taiKhoanMoi.ngayTao
         };
 
@@ -223,6 +225,8 @@ router.post('/dang-nhap', loginLimiter, async (req, res) => {
             soDuVnd: taiKhoan.soDuVnd || 0,
             vaiTro: taiKhoan.vaiTro,
             referralCode: taiKhoan.referralCode || '',
+            daLienKetDiscord: Boolean(taiKhoan.discordId && taiKhoan.discordId.trim()),
+            discordTenHienThi: taiKhoan.discordTenHienThi || '',
             ngayTao: taiKhoan.ngayTao
         };
 

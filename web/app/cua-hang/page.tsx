@@ -248,10 +248,6 @@ export default function CuaHangPage() {
  setLoading(false);
  };
 
-  useEffect(() => {
-  void load();
-  }, []);
-
   const fetchRemoteCart = useCallback(async (signal?: AbortSignal): Promise<CartItem[]> => {
     if (!token) return [];
     const res = await fetch("/api/shop/cart", {
@@ -263,6 +259,10 @@ export default function CuaHangPage() {
     if (!res.ok) throw new Error(data?.error || "Failed to load cart");
     return Array.isArray(data?.items) ? (data.items as CartItem[]) : [];
   }, [token]);
+
+  useEffect(() => {
+  void load();
+  }, []);
 
   // Sync Cart
   useEffect(() => {

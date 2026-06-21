@@ -1,6 +1,9 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const fs = require('fs');
+const mongoose = require('mongoose');
+const { Types: { ObjectId } } = mongoose;
 const qs = require('qs');
 const axios = require('axios');
 const Product = require('../models/Product');
@@ -4723,13 +4726,13 @@ router.post('/create-ticket', authRequired, ticketCreateLimiter, async (req, res
         const { EmbedBuilder } = require('discord.js');
         const embed = new EmbedBuilder()
             .setColor(0xA7EFC0)
-            .setTitle('Order Delivery')
-            .setDescription(`Hello <@${order.discordId}>. Payment confirmed. Staff will deliver during selected time.`)
+            .setTitle('Giao Hàng Đơn Hàng')
+            .setDescription(`Xin chào <@${order.discordId}>. Đã xác nhận thanh toán. Nhân viên sẽ giao hàng cho bạn trong thời gian sớm nhất.`)
             .addFields([
-                { name: 'Order ID', value: String(order.orderId || '').toUpperCase(), inline: false },
-                { name: 'Buyer', value: `<@${order.discordId}>`, inline: true },
-                { name: 'Total', value: `$${(order.totalAmount || 0).toFixed(2)}`, inline: true },
-                { name: 'Items', value: formatOrderItemsWithPrice(order.items), inline: false }
+                { name: 'Mã Đơn', value: String(order.orderId || '').toUpperCase(), inline: false },
+                { name: 'Người Mua', value: `<@${order.discordId}>`, inline: true },
+                { name: 'Tổng Tiền', value: `${(order.totalAmount || 0).toLocaleString('vi-VN')} VND`, inline: true },
+                { name: 'Sản Phẩm', value: formatOrderItemsWithPrice(order.items), inline: false }
             ]);
 
         await sendTicketMessage({

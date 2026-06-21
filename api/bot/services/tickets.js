@@ -13,13 +13,13 @@ const createOrderTicket = async (order, guild) => {
 
   const embed = new EmbedBuilder()
     .setColor(0xA7EFC0)
-    .setTitle('Order Delivery')
-    .setDescription(`Hello <@${order.discordId}>. Payment confirmed. Staff will deliver during selected time.`)
+    .setTitle('Giao Hàng Đơn Hàng')
+    .setDescription(`Xin chào <@${order.discordId}>. Đã xác nhận thanh toán. Nhân viên sẽ giao hàng cho bạn trong thời gian sớm nhất.`)
     .addFields([
-      { name: 'Order ID', value: String(order.orderId || '').toUpperCase(), inline: false },
-      { name: 'Buyer', value: `<@${order.discordId}>`, inline: true },
-      { name: 'Total', value: `$${(order.totalAmount || 0).toFixed(2)}`, inline: true },
-      { name: 'Items', value: formatOrderItemsWithPrice(order.items), inline: false }
+      { name: 'Mã Đơn', value: String(order.orderId || '').toUpperCase(), inline: false },
+      { name: 'Người Mua', value: `<@${order.discordId}>`, inline: true },
+      { name: 'Tổng Tiền', value: `${(order.totalAmount || 0).toLocaleString('vi-VN')} VND`, inline: true },
+      { name: 'Sản Phẩm', value: formatOrderItemsWithPrice(order.items), inline: false }
     ]);
 
   const channel = guild.channels.cache.get(channelId);
@@ -40,14 +40,14 @@ const createWalletDeliveryTicket = async (order, guild) => {
 
   const embed = new EmbedBuilder()
     .setColor(0xA7EFC0)
-    .setTitle('Wallet Order Delivery')
-    .setDescription(`Hello <@${order.discordId}>. Wallet payment complete. Staff will deliver your items.`)
+    .setTitle('Giao Hàng Bằng Số Dư')
+    .setDescription(`Xin chào <@${order.discordId}>. Thanh toán bằng ví NosMarket thành công. Nhân viên sẽ tiến hành giao hàng.`)
     .addFields([
-      { name: 'Order ID', value: String(order.orderId || '').toUpperCase(), inline: false },
-      { name: 'Buyer', value: `<@${order.discordId}>`, inline: true },
-      { name: 'Total', value: `$${(order.totalAmount || 0).toFixed(2)}`, inline: true },
-      { name: 'Payment', value: 'NosMarket Wallet', inline: false },
-      { name: 'Items', value: formatOrderItemsWithPrice(order.items), inline: false }
+      { name: 'Mã Đơn', value: String(order.orderId || '').toUpperCase(), inline: false },
+      { name: 'Người Mua', value: `<@${order.discordId}>`, inline: true },
+      { name: 'Tổng Tiền', value: `${(order.totalAmount || 0).toLocaleString('vi-VN')} VND`, inline: true },
+      { name: 'Thanh Toán', value: 'Ví NosMarket', inline: false },
+      { name: 'Sản Phẩm', value: formatOrderItemsWithPrice(order.items), inline: false }
     ]);
 
   const channel = guild.channels.cache.get(channelId);
@@ -68,12 +68,12 @@ const createPayPalFFTicket = async (order, paypalSeq, guild) => {
 
   const embed = new EmbedBuilder()
     .setColor(0x8ED3FF)
-    .setTitle('PayPal Payment')
-    .setDescription(`Hello <@${order.discordId}>. Complete payment and send proof screenshot in this ticket.`)
+    .setTitle('Thanh Toán PayPal')
+    .setDescription(`Xin chào <@${order.discordId}>. Vui lòng hoàn tất thanh toán và gửi ảnh chụp màn hình bill vào ticket này.`)
     .addFields([
-      { name: 'Amount', value: `$${(order.totalAmount || 0).toFixed(2)}`, inline: true },
-      { name: 'PayPal Email', value: getPayPalPaymentEmail(), inline: true },
-      { name: 'Note', value: `Order ${order.orderId}`, inline: false }
+      { name: 'Số Tiền', value: `${(order.totalAmount || 0).toLocaleString('vi-VN')} VND`, inline: true },
+      { name: 'Email PayPal', value: getPayPalPaymentEmail(), inline: true },
+      { name: 'Ghi Chú', value: `Order ${order.orderId}`, inline: false }
     ]);
 
   const channel = guild.channels.cache.get(channelId);
@@ -94,11 +94,11 @@ const createLTCTicket = async (order, ltcSeq, guild) => {
 
   const embed = new EmbedBuilder()
     .setColor(0xF5F7FA)
-    .setTitle('LTC Payment')
-    .setDescription(`Hello <@${order.discordId}>. Complete payment and send proof screenshot in this ticket.`)
+    .setTitle('Thanh Toán LTC')
+    .setDescription(`Xin chào <@${order.discordId}>. Vui lòng hoàn tất thanh toán và gửi ảnh chụp màn hình bill vào ticket này.`)
     .addFields([
-      { name: 'Amount', value: `$${(order.totalAmount || 0).toFixed(2)} equivalent LTC`, inline: false },
-      { name: 'LTC Address', value: getLtcPayAddress(), inline: false }
+      { name: 'Số Tiền', value: `${(order.totalAmount || 0).toLocaleString('vi-VN')} VND (chuyển đổi sang LTC)`, inline: false },
+      { name: 'Địa Chỉ LTC', value: getLtcPayAddress(), inline: false }
     ]);
 
   const channel = guild.channels.cache.get(channelId);
