@@ -38,18 +38,35 @@ const findUserByReferralCode = (User) => async (referralCode, excludeDiscordId =
     return candidates[0] || null;
 };
 
+// Lookup TaiKhoan by exact referralCode field (much cleaner)
+const findTaiKhoanByReferralCode = (TaiKhoanModel) => async (referralCode, excludeUserId = '') => {
+    const normalized = normalizeReferralCode(referralCode);
+    if (!normalized) return null;
+    const query = { referralCode: normalized };
+    if (excludeUserId) {
+        query._id = { $ne: excludeUserId };
+    }
+    return TaiKhoanModel.findOne(query)
+        .select('tenDangNhap discordId discordTenHienThi referralCode')
+        .lean();
+};
+
 const buildReferralPreviewPayload = (match, referralCode) => {
-    if (!match?.discordId) return null;
+    // Support both User model (discordId, discordUsername) and TaiKhoan model (discordId, discordTenHienThi, tenDangNhap)
+    const hasIdentity = match?.discordId || match?.tenDangNhap || match?._id;
+    if (!hasIdentity) return null;
     const normalizedCode = normalizeReferralCode(referralCode);
     if (!normalizedCode) return null;
+    // Prefer Discord display name, fallback to web username
+    const displayName = match.discordTenHienThi || match.discordUsername || match.tenDangNhap || '';
     return {
         valid: true,
         referralCode: normalizedCode,
-        referrerDiscordId: String(match.discordId),
-        referrerUsername: String(match.discordUsername || ''),
+        referrerDiscordId: String(match.discordId || ''),
+        referrerUsername: String(displayName),
         refereeDiscountPercent: REFEREE_DISCOUNT_PERCENT,
         referrerRewardPercent: REFERRER_REWARD_PERCENT,
-        note: `Referrer gets ${REFERRER_REWARD_PERCENT}% after your first completed order. You get ${REFEREE_DISCOUNT_PERCENT}% discount on this order.`
+        note: `Nguoi moi nhan ${REFERRER_REWARD_PERCENT}% sau don hang dau tien cua ban. Ban duoc giam ${REFEREE_DISCOUNT_PERCENT}% cho don hang nay.`
     };
 };
 
@@ -77,5 +94,6 @@ module.exports = {
     normalizeReferralCode,
     resolveAppliedReferralCode,
     shouldGrantFirstOrderReward,
-    findUserByReferralCode
+    findUserByReferralCode,
+    findTaiKhoanByReferralCode
 };

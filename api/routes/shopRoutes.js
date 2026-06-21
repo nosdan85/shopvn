@@ -78,6 +78,7 @@ const {
     buildReferralPreviewPayload,
     buildReferralCode,
     findUserByReferralCode,
+    findTaiKhoanByReferralCode,
     hasDifferentAppliedReferralCode,
     hashFingerprint,
     normalizeReferralCode,
@@ -86,6 +87,7 @@ const {
     resolveAppliedReferralCode
 } = require('../utils/referralRewards');
 const findUserByReferralCodeForUser = findUserByReferralCode(User);
+const findRefCodeForTaiKhoan = findTaiKhoanByReferralCode(TaiKhoan);
 
 
 const {
@@ -2814,16 +2816,29 @@ router.delete('/cart', authRequired, cartSyncLimiter, async (req, res) => {
 
 router.post('/referral/preview', authRequired, async (req, res) => {
   try {
-    const discordId = await requireAuthenticatedDiscordId(req, res);
-    if (!discordId) return;
+    // Get web account ID (no longer require Discord)
+    const viewerTaiKhoanId = String(req.user?.userId || req.user?._id || '').trim();
+    const discordId = await resolveAuthenticatedDiscordId(req).catch(() => null);
+
     const referralCodeRaw = String(req.body?.referralCode || '').trim();
     const validatedRefCode = normalizeReferralCode(referralCodeRaw);
     if (!validatedRefCode) return res.status(400).json({ error: 'Referral code is required.' });
 
-    const existingByReferee = await Referral.findOne({ refereeDiscordId: discordId }).lean();
-    if (existingByReferee) return res.status(409).json({ error: 'This account has already used a referral code.' });
+    // Check if already used referral (by web account or discord)
+    if (discordId) {
+      const existingByReferee = await Referral.findOne({ refereeDiscordId: discordId }).lean();
+      if (existingByReferee) return res.status(409).json({ error: 'This account has already used a referral code.' });
+    }
+    if (viewerTaiKhoanId) {
+      const taiKhoan = await TaiKhoan.findById(viewerTaiKhoanId).select('referralAppliedCode').lean().catch(() => null);
+      if (taiKhoan?.referralAppliedCode) return res.status(409).json({ error: 'This account has already used a referral code.' });
+    }
 
-    const match = await findUserByReferralCodeForUser(validatedRefCode, discordId);
+    // Lookup by TaiKhoan first, fallback to User
+    let match = await findRefCodeForTaiKhoan(validatedRefCode, viewerTaiKhoanId);
+    if (!match) {
+      match = await findUserByReferralCodeForUser(validatedRefCode, discordId || '');
+    }
 
     const payload = buildReferralPreviewPayload(match, validatedRefCode);
     if (!payload) return res.status(400).json({ error: 'Invalid or expired invite code.' });
@@ -2889,70 +2904,65 @@ router.get('/welcome-voucher', authRequired, async (req, res) => {
 
 router.post('/referral/apply', authRequired, async (req, res) => {
   try {
-    const discordId = await requireAuthenticatedDiscordId(req, res);
-    if (!discordId) return;
+    // Get web account ID (no longer require Discord)
     const viewerTaiKhoanId = String(req.user?.userId || req.user?._id || '').trim();
+    const discordId = await resolveAuthenticatedDiscordId(req).catch(() => null);
     const taiKhoan = viewerTaiKhoanId ? await TaiKhoan.findById(viewerTaiKhoanId).lean().catch(() => null) : null;
 
     const referralCodeRaw = String(req.body?.referralCode || '').trim();
     const validatedRefCode = normalizeReferralCode(referralCodeRaw);
     if (!validatedRefCode) return res.status(400).json({ error: 'Invite code is required.' });
 
-    // Check if user already applied a referral code (only once per account)
-    const me = await User.findOne({ discordId }).lean();
-    if (!me) return res.status(404).json({ error: 'User not found.' });
-    if (viewerTaiKhoanId && !taiKhoan) return res.status(404).json({ error: 'Account not found.' });
-
-    if (hasDifferentAppliedReferralCode({ requestedReferralCode: validatedRefCode, storedReferralCode: taiKhoan?.referralAppliedCode || me.referralAppliedCode })) {
+    // Check if user already applied a referral code
+    if (hasDifferentAppliedReferralCode({ requestedReferralCode: validatedRefCode, storedReferralCode: taiKhoan?.referralAppliedCode || '' })) {
       return res.status(409).json({ error: 'You have already applied an invite code. Each account can only use one invite code.' });
     }
 
-    const existingConsumed = await Referral.findOne({
-      refereeDiscordId: discordId,
-      status: { $in: ['consumed', 'rewarded', 'pending'] }
-    }).lean();
-    if (existingConsumed) {
-      return res.status(409).json({ error: 'You have already applied an invite code. Each account can only use one invite code.' });
+    if (discordId) {
+      const existingConsumed = await Referral.findOne({
+        refereeDiscordId: discordId,
+        status: { $in: ['consumed', 'rewarded', 'pending'] }
+      }).lean();
+      if (existingConsumed) {
+        return res.status(409).json({ error: 'You have already applied an invite code. Each account can only use one invite code.' });
+      }
+
+      const fp = await DeviceFingerprint.findOne({ discordId }).sort({ updatedAt: -1 }).lean();
+      if (fp && Array.isArray(fp.flags) && fp.flags.length > 0) {
+        return res.status(409).json({ error: 'Invite code blocked on this device.' });
+      }
     }
 
-    const fp = await DeviceFingerprint.findOne({ discordId }).sort({ updatedAt: -1 }).lean();
-    if (fp && Array.isArray(fp.flags) && fp.flags.length > 0) {
-      return res.status(409).json({ error: 'Invite code blocked on this device.' });
+    // Lookup by TaiKhoan first, fallback to User
+    let match = await findRefCodeForTaiKhoan(validatedRefCode, viewerTaiKhoanId);
+    if (!match) {
+      match = await findUserByReferralCodeForUser(validatedRefCode, discordId || '');
     }
-
-    const suffix = validatedRefCode.replace(/^REF-/, '');
-    const match = await findUserByReferralCodeForUser(validatedRefCode, discordId);
-    if (!match?.discordId) {
+    if (!match) {
       return res.status(400).json({ error: 'Invalid or expired invite code.' });
     }
 
-    // Only save to User.referralAppliedCode for preview, don't create Referral record yet
-    await User.updateOne(
-      { discordId },
-      {
-        $set: {
-          referralAppliedCode: validatedRefCode,
-          referralAppliedAt: new Date()
-        }
-      }
-    );
+    const displayName = match.discordTenHienThi || match.discordUsername || match.tenDangNhap || '';
+
+    // Save referral to User (if discord linked) and TaiKhoan
+    if (discordId) {
+      await User.updateOne(
+        { discordId },
+        { $set: { referralAppliedCode: validatedRefCode, referralAppliedAt: new Date() } }
+      );
+    }
     if (viewerTaiKhoanId) {
       await TaiKhoan.updateOne(
         { _id: viewerTaiKhoanId },
-        {
-          $set: {
-            referralAppliedCode: validatedRefCode,
-            referralAppliedAt: new Date()
-          }
-        }
+        { $set: { referralAppliedCode: validatedRefCode, referralAppliedAt: new Date() } }
       );
     }
 
     return res.json({
       success: true,
       referralCode: validatedRefCode,
-      referrerDiscordId: String(match.discordId),
-      referrerUsername: String(match.discordUsername || ''),
+      referrerDiscordId: String(match.discordId || ''),
+      referrerUsername: String(displayName),
       selfCouponCode: "",
       selfRewardPercent: 0,
       referrerRewardPercent: REFERRER_REWARD_PERCENT
