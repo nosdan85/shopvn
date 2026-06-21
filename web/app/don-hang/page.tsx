@@ -347,6 +347,12 @@ function DonHangPage() {
  </div>
  </div>
 
+ {/* Completed order info */}
+ <div className="mt-4 flex items-center gap-3 rounded-[12px] bg-emerald-50/60 backdrop-blur-md border border-emerald-200/40 p-3">
+ <CheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+ <p className="text-sm text-emerald-700">Đơn hàng đã được giao thành công</p>
+ </div>
+ </div>
  )}
  </div>
  )}
