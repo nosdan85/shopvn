@@ -7,10 +7,22 @@ const Proof = require('../../models/Proof');
 const VOUCH_CHANNEL_ID = '1403791430396285089';
 
 const sendAutoVouchFromTicketImages = async ({ order, imageUrls, guild }) => {
-  if (!isSnowflake(VOUCH_CHANNEL_ID)) return false;
+  if (!isSnowflake(VOUCH_CHANNEL_ID)) {
+    console.error('[VOUCH] Invalid VOUCH_CHANNEL_ID:', VOUCH_CHANNEL_ID);
+    return false;
+  }
 
-  const channel = guild.channels.cache.get(VOUCH_CHANNEL_ID);
-  if (!channel || !channel.isTextBased()) return false;
+  // Try cache first, then fetch
+  let channel = guild.channels.cache.get(VOUCH_CHANNEL_ID);
+  if (!channel) {
+    try {
+      channel = await guild.channels.fetch(VOUCH_CHANNEL_ID).catch(() => null);
+    } catch {}
+  }
+  if (!channel || !channel.isTextBased()) {
+    console.error('[VOUCH] Channel not found or not text-based:', VOUCH_CHANNEL_ID);
+    return false;
+  }
 
   // Lấy tên Discord user
   let discordDisplayName = order.discordTenHienThi || '';

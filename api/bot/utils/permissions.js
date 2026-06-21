@@ -6,13 +6,18 @@ const checkUserHasOwnerRole = async (discordId, guild) => {
   if (!guild) return false;
 
   const ownerRoleId = getOwnerRoleId();
-  if (!isSnowflake(ownerRoleId)) return false;
 
   try {
     const member = await guild.members.fetch(discordId).catch(() => null);
     if (!member) return false;
-    const roleIds = Array.isArray(member.roles?.cache) ? member.roles.cache.map((r) => String(r.id)) : [];
-    return roleIds.includes(ownerRoleId);
+
+    // Check owner role
+    if (isSnowflake(ownerRoleId)) {
+      const roleIds = member.roles?.cache ? [...member.roles.cache.keys()] : [];
+      if (roleIds.includes(ownerRoleId)) return true;
+    }
+
+    return false;
   } catch {
     return false;
   }
@@ -34,10 +39,33 @@ const isStaffUser = async (discordId, guild) => {
   if (!isSnowflake(discordId)) return false;
   if (!guild) return false;
 
-  const ownerId = getOwnerRoleId();
-  if (ownerId && ownerId === discordId) return true;
+  // Check if this is the guild owner
+  if (guild.ownerId === discordId) return true;
 
-  return checkUserHasOwnerRole(discordId, guild);
+  // Check owner role from env
+  const ownerRoleId = getOwnerRoleId();
+  if (ownerRoleId && ownerRoleId === discordId) return true;
+
+  try {
+    const member = await guild.members.fetch(discordId).catch(() => null);
+    if (!member) return false;
+
+    // Check owner role
+    if (isSnowflake(ownerRoleId)) {
+      const roleIds = member.roles?.cache ? [...member.roles.cache.keys()] : [];
+      if (roleIds.includes(ownerRoleId)) return true;
+    }
+
+    // Check Discord permission: ADMINISTRATOR or MANAGE_GUILD
+    if (member.permissions) {
+      if (member.permissions.has('Administrator')) return true;
+      if (member.permissions.has('ManageGuild')) return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
 };
 
 module.exports = { checkUserHasOwnerRole, checkUserInGuild, isStaffUser };

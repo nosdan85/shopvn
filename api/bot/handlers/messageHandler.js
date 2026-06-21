@@ -33,6 +33,9 @@ const findOrderByTicketChannel = async (message) => {
     .sort({ createdAt: -1 });
 };
 
+// Lệnh ! (chỉ dấu chấm than, có thể kèm text)
+const VOUCH_COMMANDS = new Set(['!', '!vouch', '!proof']);
+
 const handleMessage = async (message, client) => {
   if (!message || message.author?.bot) return;
   if (!message.guildId) return;
@@ -45,9 +48,11 @@ const handleMessage = async (message, client) => {
   const isDoneCommand = DONE_COMMANDS.has(normalizedContent);
   const isConfirmCommand = CONFIRM_COMMANDS.has(normalizedContent);
   const isReAddAllCommand = READD_ALL_COMMANDS.has(normalizedContent);
+  const isVouchCommand = VOUCH_COMMANDS.has(normalizedContent);
   const imageAttachments = getImageAttachments(message);
 
-  if (!isCloseCommand && !isDoneCommand && !isConfirmCommand && !isReAddAllCommand && imageAttachments.length === 0) return;
+  // Skip if no recognized command and no images
+  if (!isCloseCommand && !isDoneCommand && !isConfirmCommand && !isReAddAllCommand && !isVouchCommand && imageAttachments.length === 0) return;
 
   const guild = message.guild;
   const canStaff = await isStaffUser(message.author.id, guild);
@@ -127,27 +132,46 @@ const handleMessage = async (message, client) => {
     }
   }
 
-  if (!order) return;
+  // Handle ! command with images OR any staff message with images in ticket
   if (imageAttachments.length === 0) return;
+  if (!canStaff) return;
 
   try {
-    if (!canStaff) return;
-
     const imageUrls = imageAttachments
       .map((attachment) => String(attachment?.url || attachment?.proxyURL || '').trim())
       .filter(Boolean);
 
     if (imageUrls.length === 0) return;
 
-    const sent = await sendAutoVouchFromTicketImages({ order, imageUrls, guild });
+    // If ! command is used, we can send vouch even without an order in the channel
+    // Build a minimal order object from the message context if no order found
+    let vouchOrder = order;
+    if (!vouchOrder && isVouchCommand) {
+      // Create a minimal context for vouch without a specific order
+      vouchOrder = {
+        orderId: `VOUCH-${Date.now()}`,
+        discordId: message.author.id,
+        discordTenHienThi: message.author.displayName || message.author.username || '',
+        discordUsername: message.author.username || '',
+        tenDangNhap: message.author.username || '',
+        robloxUsername: '',
+        totalVnd: 0,
+        totalAmount: 0,
+        items: []
+      };
+    }
+
+    if (!vouchOrder) return;
+
+    const sent = await sendAutoVouchFromTicketImages({ order: vouchOrder, imageUrls, guild });
     if (sent) {
-      const imageCountText = imageUrls.length > 1 ? ` (${imageUrls.length} images)` : '';
-      await message.reply(`Vouch posted successfully${imageCountText}.`);
+      const imageCountText = imageUrls.length > 1 ? ` (${imageUrls.length} ảnh)` : '';
+      await message.reply(`✅ Vouch đã được gửi thành công${imageCountText}.`);
     }
   } catch (error) {
     console.error('Auto vouch send error:', error?.message || error);
     try {
-      await message.reply('Could not post vouch. Check DISCORD_VOUCH_CHANNEL_ID and bot permissions.');
+      await message.reply('❌ Không thể gửi vouch. Kiểm tra quyền bot và channel vouch.');
     } catch {}
   }
 };
