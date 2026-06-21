@@ -11,7 +11,8 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    AttachmentBuilder
+    AttachmentBuilder,
+    PermissionFlagsBits
 } = require('discord.js');
 const axios = require('axios');
 const crypto = require('crypto');
@@ -31,6 +32,12 @@ const { buildGeneratedCouponCode } = require('./utils/luckyWheel');
 const { buildTicketOrderLookupQuery } = require('./utils/ticketOrderLookup');
 const { buildDiscordVouchContent, resolveVouchChannelId } = require('./utils/vouchContent');
 const { getVouchCommandValidationError, sendVouchBatchWithFallback } = require('./utils/vouchDelivery');
+const {
+    createVouchError,
+    describeVouchFailure,
+    formatVouchFailureReply,
+    getVouchChannelPermissionFailure
+} = require('./utils/vouchDiagnostics');
 
 const { log } = require('./utils/loggingService');
 
@@ -1009,7 +1016,20 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
                 .filter(Boolean)
         )
     );
-    if (!isSnowflake(vouchChannelId) || uniqueImageUrls.length === 0) return false;
+    if (!isSnowflake(vouchChannelId)) {
+        throw createVouchError({
+            code: 'INVALID_CHANNEL_ID',
+            reason: `ID kenh vouch khong hop le: ${vouchChannelId || 'empty'}`,
+            stage: 'config'
+        });
+    }
+    if (uniqueImageUrls.length === 0) {
+        throw createVouchError({
+            code: 'NO_IMAGE_URL',
+            reason: 'Khong lay duoc URL anh tu tin nhan Discord.',
+            stage: 'attachment_parse'
+        });
+    }
 
     const getImageExtFromUrl = (url) => {
         try {
@@ -1039,9 +1059,37 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
         };
     };
 
-    const channel = await client.channels.fetch(vouchChannelId, { force: true });
-    if (!channel || typeof channel.send !== 'function') {
-        return false;
+    let channel = null;
+    try {
+        channel = await client.channels.fetch(vouchChannelId, { force: true });
+    } catch (error) {
+        throw createVouchError({
+            code: '',
+            reason: error?.message || 'Khong fetch duoc kenh vouch.',
+            stage: 'channel_fetch',
+            cause: error
+        });
+    }
+    if (!channel || typeof channel.send !== 'function' || !channel.isTextBased?.()) {
+        throw createVouchError({
+            code: 'CHANNEL_NOT_TEXT_BASED',
+            reason: 'Kenh vouch khong ton tai hoac khong phai text channel.',
+            stage: 'channel_validate'
+        });
+    }
+
+    const permissions = channel.permissionsFor?.(client.user);
+    if (permissions) {
+        const permissionFailure = getVouchChannelPermissionFailure({
+            canView: permissions.has(PermissionFlagsBits.ViewChannel),
+            canSend: permissions.has(PermissionFlagsBits.SendMessages)
+        });
+        if (permissionFailure) {
+            throw createVouchError({
+                ...permissionFailure,
+                stage: 'permission_check'
+            });
+        }
     }
 
     const sentMessageIds = [];
@@ -1066,16 +1114,32 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
                     sourceUrl
                 });
             } catch (error) {
-                console.warn(`Auto-vouch image download failed: ${sourceUrl}`, error?.message || error);
+                log.warn('[VOUCH] Image download failed; URL fallback will be used.', {
+                    stage: 'image_download',
+                    sourceUrl,
+                    error: error?.message || error,
+                    code: error?.code || '',
+                    status: error?.response?.status || ''
+                });
             }
         }
 
-        const delivery = await sendVouchBatchWithFallback({
-            channel,
-            headerContent: didSendHeaderContent ? '' : buildDiscordVouchContent(order),
-            files,
-            sourceUrls: imageBatch
-        });
+        let delivery = null;
+        try {
+            delivery = await sendVouchBatchWithFallback({
+                channel,
+                headerContent: didSendHeaderContent ? '' : buildDiscordVouchContent(order),
+                files,
+                sourceUrls: imageBatch
+            });
+        } catch (error) {
+            throw createVouchError({
+                code: '',
+                reason: error?.message || 'Discord tu choi gui tin nhan vouch.',
+                stage: 'channel_send',
+                cause: error
+            });
+        }
         didSendHeaderContent = true;
         sentMessageIds.push(...delivery.messageIds.filter(isSnowflake));
         if (delivery.usedFallback) {
@@ -1101,7 +1165,11 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
     }
 
     if (uploadedImageUrls.length === 0) {
-        return false;
+        throw createVouchError({
+            code: 'NO_IMAGE_SENT',
+            reason: 'Khong co anh nao duoc gui len kenh vouch.',
+            stage: 'delivery_result'
+        });
     }
 
     try {
@@ -1470,7 +1538,21 @@ client.on('messageCreate', async (message) => {
     const isDoneCommand = DONE_COMMANDS.has(normalizedContent);
     const isReAddAllCommand = READD_ALL_COMMANDS.has(normalizedContent);
     const imageAttachments = getImageAttachments(message);
-    if (!isDoneCommand && !isReAddAllCommand && imageAttachments.length === 0) return;
+    const isRawVouchCommand = normalizedContent === '!';
+    if (!isDoneCommand && !isReAddAllCommand && !isRawVouchCommand && imageAttachments.length === 0) return;
+
+    if (isRawVouchCommand) {
+        log.info('[VOUCH] Command received.', {
+            stage: 'command_received',
+            channelId,
+            channelName: String(message.channel?.name || ''),
+            guildId: String(message.guildId || ''),
+            userId: String(message.author?.id || ''),
+            attachmentCount: Number(message.attachments?.size || 0),
+            imageCount: imageAttachments.length,
+            targetVouchChannelId: getVouchChannelId()
+        });
+    }
 
     if (isReAddAllCommand) {
         const canRun = await isStaffUser(message.author.id);
@@ -1564,10 +1646,25 @@ client.on('messageCreate', async (message) => {
         order = await findOrderByTicketChannel(message);
     } catch (error) {
         console.error('Ticket channel order lookup failed:', error?.message || error);
+        if (isRawVouchCommand) {
+            const failure = describeVouchFailure(createVouchError({
+                code: 'ORDER_LOOKUP_FAILED',
+                reason: error?.message || 'Truy van don hang that bai.',
+                stage: 'order_lookup',
+                cause: error
+            }), { vouchChannelId: getVouchChannelId() });
+            log.error('[VOUCH] Command failed.', {
+                ...failure,
+                ticketChannelId: channelId,
+                userId: String(message.author?.id || ''),
+                stack: error?.stack || ''
+            });
+            await message.reply(formatVouchFailureReply(failure)).catch(() => {});
+        }
         return;
     }
 
-    const isVouchCommand = normalizedContent === '!' && imageAttachments.length > 0;
+    const isVouchCommand = normalizedContent === '!';
     if (isVouchCommand) {
         const authorized = ['1146730730060271736', '1005326332001009784']
             .includes(String(message.author.id || ''));
@@ -1578,12 +1675,23 @@ client.on('messageCreate', async (message) => {
             hasOrder: Boolean(order)
         });
         if (validationError) {
-            console.warn('[VOUCH] Command rejected.', {
-                channelId,
+            const validationCode = imageAttachments.length === 0
+                ? 'NO_IMAGE_ATTACHMENT'
+                : !authorized
+                    ? 'UNAUTHORIZED_USER'
+                    : 'ORDER_NOT_FOUND';
+            const failure = describeVouchFailure(createVouchError({
+                code: validationCode,
+                reason: validationError,
+                stage: 'command_validation'
+            }), { vouchChannelId: getVouchChannelId() });
+            log.warn('[VOUCH] Command rejected.', {
+                ...failure,
+                ticketChannelId: channelId,
                 userId: String(message.author.id || ''),
-                reason: validationError
+                imageCount: imageAttachments.length
             });
-            await message.reply(validationError).catch(() => {});
+            await message.reply(formatVouchFailureReply(failure)).catch(() => {});
             return;
         }
     }
@@ -1663,25 +1771,70 @@ client.on('messageCreate', async (message) => {
                 ? ` (${imageUrls.length} anh)`
                 : '';
             await message.reply(`Viet thanh cong${imageCountText}.`);
+            log.info('[VOUCH] Command completed.', {
+                stage: 'complete',
+                ticketChannelId: channelId,
+                vouchChannelId: getVouchChannelId(),
+                orderId: String(order.orderId || ''),
+                userId: String(message.author.id || ''),
+                imageCount: imageUrls.length
+            });
             return;
         }
 
         console.warn(`Auto-vouch skipped for channel ${channelId}: DISCORD_VOUCH_CHANNEL_ID missing/invalid or bot cannot send.`);
     } catch (error) {
-        console.error('Auto vouch send error:', error?.message || error);
+        const failure = describeVouchFailure(error, {
+            stage: 'vouch_send',
+            vouchChannelId: getVouchChannelId()
+        });
+        log.error('[VOUCH] Command failed.', {
+            ...failure,
+            ticketChannelId: channelId,
+            orderId: String(order?.orderId || ''),
+            userId: String(message.author?.id || ''),
+            error: error?.message || error,
+            stack: error?.stack || ''
+        });
         try {
-            await message.reply('Khong the Viet. Kiem tra DISCORD_VOUCH_CHANNEL_ID va quyen bot.');
+            await message.reply(formatVouchFailureReply(failure));
         } catch {
             // Ignore reply failures.
         }
     }
 });
 
-client.on('clientReady', () => {
+client.on('clientReady', async () => {
     log.info('[DISCORD BOT] Bot online', {
         tag: client.user?.tag || 'unknown',
         userId: client.user?.id || 'unknown'
     });
+
+    const vouchChannelId = getVouchChannelId();
+    try {
+        const channel = await client.channels.fetch(vouchChannelId, { force: true });
+        const permissions = channel?.permissionsFor?.(client.user);
+        log.info('[VOUCH] Startup channel check.', {
+            stage: 'startup_channel_check',
+            vouchChannelId,
+            found: Boolean(channel),
+            channelName: String(channel?.name || ''),
+            textBased: Boolean(channel?.isTextBased?.()),
+            canView: permissions ? permissions.has(PermissionFlagsBits.ViewChannel) : null,
+            canSend: permissions ? permissions.has(PermissionFlagsBits.SendMessages) : null,
+            canAttachFiles: permissions ? permissions.has(PermissionFlagsBits.AttachFiles) : null
+        });
+    } catch (error) {
+        const failure = describeVouchFailure(error, {
+            stage: 'startup_channel_check',
+            vouchChannelId
+        });
+        log.error('[VOUCH] Startup channel check failed.', {
+            ...failure,
+            error: error?.message || error,
+            stack: error?.stack || ''
+        });
+    }
 });
 
 client.on('error', (error) => {
