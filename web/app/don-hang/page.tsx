@@ -46,17 +46,19 @@ interface DonHang {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
- cho_xu_ly: { label: "Cho xu ly", color: "#FBBF24", bg: "rgba(251,191,36,0.2)" },
- da_thanh_toan: { label: "Da thanh toan", color: "#2F9BE6", bg: "rgba(47,155,230,0.2)" },
- da_tao_ticket: { label: "Da tao ticket", color: "#3DDC84", bg: "rgba(61,220,132,0.2)" },
- dang_giao: { label: "Dang giao hang", color: "#A855F7", bg: "rgba(168,85,247,0.2)" },
- hoan_thanh: { label: "Hoan thanh", color: "#3DDC84", bg: "rgba(61,220,132,0.2)" },
- huy: { label: "Da huy", color: "#FF4D4F", bg: "rgba(255,77,79,0.2)" },
+ cho_xu_ly: { label: "Chờ xử lý", color: "#FBBF24", bg: "rgba(251,191,36,0.2)" },
+ da_thanh_toan: { label: "Đã thanh toán", color: "#2F9BE6", bg: "rgba(47,155,230,0.2)" },
+ da_tao_ticket: { label: "Đã tạo ticket", color: "#3DDC84", bg: "rgba(61,220,132,0.2)" },
+ dang_giao: { label: "Đang giao hàng", color: "#A855F7", bg: "rgba(168,85,247,0.2)" },
+ hoan_thanh: { label: "Hoàn thành", color: "#10B981", bg: "rgba(16,185,129,0.2)" },
+ huy: { label: "Đã hủy", color: "#FF4D4F", bg: "rgba(255,77,79,0.2)" },
 };
 
 const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
- chua_thanh_toan: { label: "Chua thanh toan", color: "#FF4D4F", bg: "rgba(255,77,79,0.2)" },
- da_thanh_toan: { label: "Da thanh toan", color: "#3DDC84", bg: "rgba(61,220,132,0.2)" },
+ pending: { label: "Chưa thanh toán", color: "#FBBF24", bg: "rgba(251,191,36,0.2)" },
+ paid: { label: "Đã thanh toán", color: "#3DDC84", bg: "rgba(61,220,132,0.2)" },
+ cancelled: { label: "Đã hủy", color: "#FF4D4F", bg: "rgba(255,77,79,0.2)" },
+ refunded: { label: "Đã hoàn", color: "#A855F7", bg: "rgba(168,85,247,0.2)" },
 };
 
 const DISCORD_SERVER_INVITE = process.env.NEXT_PUBLIC_DISCORD_SERVER_INVITE || "https://discord.gg/nosdan";
@@ -293,9 +295,9 @@ function DonHangPage() {
  <div className="min-h-screen bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90">
  {/* Header */}
  <div className="sticky top-0 z-30 border-b border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] border border-white/50 shadow-lg backdrop-blur-sm">
- <div className="mx-auto max-w-3xl px-4 py-4">
+ <div className="mx-auto max-w-3xl px-3 sm:px-4 py-3 sm:py-4">
  <div className="flex items-center justify-between">
- <h1 className="text-lg font-semibold">Don Hang Cua Toi</h1>
+ <h1 className="text-base sm:text-lg font-semibold">Đơn Hàng Của Tôi</h1>
  {!loading && orders.length > 0 && (
  <span className="rounded-full bg-white/40 backdrop-blur-sm px-3 py-1 text-xs font-medium text-blue-300/80">
  {orders.length} don
@@ -305,7 +307,7 @@ function DonHangPage() {
  </div>
  </div>
 
- <div className="mx-auto max-w-3xl px-4 py-6">
+ <div className="mx-auto max-w-3xl px-3 sm:px-4 py-4 sm:py-6">
  <BackButton href="/shop" label="Cửa Hàng" variant="back" />
  <div className="mt-4">
  {/* Success Message */}
@@ -375,7 +377,7 @@ function DonHangPage() {
  {!loading && orders.length === 0 && (
  <div className="flex flex-col items-center justify-center py-16 text-center">
  <ShoppingBag className="h-16 w-16 text-slate-600/50" />
- <p className="mt-4 text-slate-600">Ban chua co don hang nao</p>
+ <p className="mt-4 text-slate-600">Bạn chưa có đơn hàng nào</p>
  <Link
  href="/shop"
  className="mt-4 rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-6 py-2.5 text-sm font-medium text-[#071326]/90/90 transition-all hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(255,255,255,0.4)] primary-hover-glow"

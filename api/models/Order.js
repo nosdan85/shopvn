@@ -129,12 +129,20 @@ orderSchema.pre('validate', function syncPaymentAliases(next) {
             }))
             : [];
     }
-    // Sync trang thai
+    // Sync trang thai - CHI dong bo 1 chieu, khong tao vong lap
+    // Khi status da o trang thai cao (hoan_thanh, da_tao_ticket, dang_giao) thi KHONG reset lai
     if (this.status === 'hoan_thanh') this.paymentStatus = 'paid';
     if (this.status === 'huy') this.paymentStatus = 'cancelled';
-    if (this.paymentStatus === 'paid') this.status = 'da_thanh_toan';
-    if (this.paymentStatus === 'cancelled') this.status = 'huy';
-    if (this.paymentStatus === 'refunded') this.status = 'huy';
+    // Chi auto-promote status khi dang o trang thai ban dau (cho_xu_ly)
+    if (this.paymentStatus === 'paid' && this.status === 'cho_xu_ly') {
+        this.status = 'da_thanh_toan';
+    }
+    if (this.paymentStatus === 'cancelled' && this.status !== 'huy') {
+        this.status = 'huy';
+    }
+    if (this.paymentStatus === 'refunded' && this.status !== 'huy') {
+        this.status = 'huy';
+    }
     next();
 });
 

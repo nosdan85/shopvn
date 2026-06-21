@@ -315,6 +315,7 @@ router.get('/lich-su', xacThucDonHang, async (req, res) => {
             items: dh.items,
             subtotalVnd: dh.subtotalVnd || 0,
             discountVnd: dh.discountVnd || 0,
+            giamGiaVnd: dh.discountVnd || 0, // Alias for frontend
             tongTienVnd: dh.totalVnd || dh.totalAmount || 0,
             totalVnd: dh.totalVnd || dh.totalAmount || 0, // Keep for backward compat
             trangThaiThanhToan: dh.paymentStatus,

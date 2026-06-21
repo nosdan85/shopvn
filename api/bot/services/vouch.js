@@ -1,24 +1,49 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const { getVouchChannelId } = require('../config');
 const { isSnowflake } = require('../utils/validation');
 const { formatOrderItemsWithPrice } = require('../utils/format');
 const Proof = require('../../models/Proof');
 
-const sendAutoVouchFromTicketImages = async ({ order, imageUrls, guild }) => {
-  const vouchChannelId = getVouchChannelId();
-  if (!isSnowflake(vouchChannelId)) return false;
+// Channel vouch cố định
+const VOUCH_CHANNEL_ID = '1403791430396285089';
 
-  const channel = guild.channels.cache.get(vouchChannelId);
+const sendAutoVouchFromTicketImages = async ({ order, imageUrls, guild }) => {
+  if (!isSnowflake(VOUCH_CHANNEL_ID)) return false;
+
+  const channel = guild.channels.cache.get(VOUCH_CHANNEL_ID);
   if (!channel || !channel.isTextBased()) return false;
+
+  // Lấy tên Discord user
+  let discordDisplayName = order.discordTenHienThi || '';
+  if (!discordDisplayName && order.discordId) {
+    try {
+      const member = await guild.members.fetch(order.discordId).catch(() => null);
+      if (member) {
+        discordDisplayName = member.displayName || member.user?.username || '';
+      }
+    } catch {}
+  }
+  if (!discordDisplayName) {
+    discordDisplayName = order.discordUsername || order.tenDangNhap || 'Unknown';
+  }
+
+  // Format items với VND
+  const itemsText = (order.items || []).map(item => {
+    const name = item.name || item.productName || 'Unknown Item';
+    const qty = item.quantity || 1;
+    const priceVnd = item.priceVnd || item.lineTotalVnd || (item.price || 0) * qty;
+    return `• ${name} x${qty} — ${priceVnd.toLocaleString('vi-VN')} VND`;
+  }).join('\n') || 'Không có thông tin';
+
+  const totalVnd = order.totalVnd || order.totalAmount || 0;
 
   const embed = new EmbedBuilder()
     .setColor(0x00FF00)
-    .setTitle('? Delivery Proof')
-    .setDescription(`Order delivered to <@${order.discordId}>`)
+    .setTitle('✅ Giao Hàng Thành Công')
+    .setDescription(`Khách hàng: **${discordDisplayName}** (<@${order.discordId}>)`)
     .addFields([
-      { name: 'Order ID', value: String(order.orderId || '').toUpperCase(), inline: true },
-      { name: 'Total', value: `$${(order.totalAmount || 0).toFixed(2)}`, inline: true },
-      { name: 'Items', value: formatOrderItemsWithPrice(order.items), inline: false }
+      { name: 'Mã Đơn', value: String(order.orderId || '').toUpperCase(), inline: true },
+      { name: 'Tổng Tiền', value: `${totalVnd.toLocaleString('vi-VN')} VND`, inline: true },
+      { name: 'Sản Phẩm', value: itemsText, inline: false }
     ])
     .setTimestamp();
 
@@ -41,14 +66,14 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls, guild }) => {
       await Proof.create({
         orderId: order.orderId,
         discordId: order.discordId,
-        discordUsername: order.discordUsername,
+        discordUsername: discordDisplayName,
         robloxUsername: order.robloxUsername,
-        totalAmount: order.totalAmount,
+        totalAmount: totalVnd,
         items: Array.isArray(order.items) ? order.items.map(item => ({
           name: item.name || item.productName || 'Unknown Item',
           packQuantity: item.quantity || 1,
           deliveredLabel: `x${item.quantity || 1}`,
-          lineTotal: (item.price || 0) * (item.quantity || 1)
+          lineTotal: item.lineTotalVnd || item.priceVnd || (item.price || 0) * (item.quantity || 1)
         })) : [],
         imageUrls: imageUrls.slice(0, 10),
         vouchMessageIds: sentMessageIds,

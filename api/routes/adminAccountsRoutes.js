@@ -26,10 +26,14 @@ router.get('/', xacThucAdmin, async (req, res) => {
     try {
         const accounts = await TaiKhoan.find().sort({ ngayTao: -1 }).lean();
         
-        // Remove password hashes from response
+        // Remove password hashes, return discordTenHienThi instead of discordId
         const sanitizedAccounts = accounts.map(acc => {
             const { matKhauHash, refreshTokenHash, ...safeData } = acc;
-            return safeData;
+            return {
+                ...safeData,
+                discordTenHienThi: acc.discordTenHienThi || '',
+                discordId: acc.discordId || ''
+            };
         });
 
         res.json({ thanhCong: true, data: sanitizedAccounts });
@@ -44,7 +48,28 @@ router.get('/:accountId/don-hang', xacThucAdmin, async (req, res) => {
     try {
         const { accountId } = req.params;
         const orders = await Order.find({ userId: accountId }).sort({ createdAt: -1 }).lean();
-        res.json({ thanhCong: true, data: orders });
+        
+        // Map to include VND prices
+        const mapped = orders.map(o => ({
+            _id: o._id,
+            orderId: o.orderId,
+            items: (o.items || []).map(item => ({
+                name: item.name || '',
+                quantity: item.quantity || 1,
+                priceVnd: item.priceVnd || item.price || 0,
+                lineTotalVnd: item.lineTotalVnd || ((item.priceVnd || item.price || 0) * (item.quantity || 1))
+            })),
+            subtotalVnd: o.subtotalVnd || 0,
+            discountVnd: o.discountVnd || 0,
+            totalVnd: o.totalVnd || o.totalAmount || 0,
+            totalAmount: o.totalVnd || o.totalAmount || 0,
+            status: o.status,
+            paymentStatus: o.paymentStatus,
+            ticketStatus: o.ticketStatus,
+            createdAt: o.createdAt
+        }));
+        
+        res.json({ thanhCong: true, data: mapped });
     } catch (error) {
         console.error('[ADMIN_ACCOUNTS] Lỗi lấy đơn hàng:', error);
         res.status(500).json({ thongBao: 'Lỗi server' });
@@ -123,6 +148,30 @@ router.post('/:accountId/cong-tien', xacThucAdmin, async (req, res) => {
         res.status(500).json({ thongBao: 'Lỗi server' });
     } finally {
         session.endSession();
+    }
+});
+
+// Xóa tài khoản
+router.delete('/:accountId', xacThucAdmin, async (req, res) => {
+    try {
+        const { accountId } = req.params;
+        
+        const taiKhoan = await TaiKhoan.findById(accountId);
+        if (!taiKhoan) {
+            return res.status(404).json({ thongBao: 'Tài khoản không tồn tại' });
+        }
+        
+        // Không cho phép xóa tài khoản admin
+        if (taiKhoan.vaiTro === 'quan_tri') {
+            return res.status(400).json({ thongBao: 'Không thể xóa tài khoản admin' });
+        }
+        
+        await TaiKhoan.findByIdAndDelete(accountId);
+        
+        res.json({ thanhCong: true, thongBao: `Đã xóa tài khoản ${taiKhoan.tenDangNhap}` });
+    } catch (error) {
+        console.error('[ADMIN_ACCOUNTS] Lỗi xóa tài khoản:', error);
+        res.status(500).json({ thongBao: 'Lỗi server' });
     }
 });
 
