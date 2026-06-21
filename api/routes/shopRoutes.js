@@ -3081,12 +3081,44 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
             });
             const match = await findUserByReferralCodeForUser(validatedRefCode, discordId);
             if (match?.discordId) {
-                referredByDiscordId = String(match.discordId);
-                referralDiscountPercent = REFEREE_DISCOUNT_PERCENT;
-                log.info('[CHECKOUT] Referral code valid, applying 5% discount', {
-                    requestId: req.requestId,
-                    referredByDiscordId
-                });
+                // Check if user already used ANY referral code
+                const searchUserId = viewerTaiKhoanId ? new mongoose.Types.ObjectId(viewerTaiKhoanId) : null;
+                const usedRef = await Order.findOne({ 
+                    $or: [
+                        searchUserId ? { userId: searchUserId } : null,
+                        discordId ? { discordId } : null
+                    ].filter(Boolean),
+                    referralCode: { $ne: '' },
+                    status: { $ne: 'huy' } 
+                }).lean();
+
+                let ipAbuse = false;
+                if (!usedRef && req.ip) {
+                    const usedIpRef = await Order.findOne({ 
+                        clientIp: req.ip, 
+                        referralCode: { $ne: '' },
+                        status: { $ne: 'huy' } 
+                    }).lean();
+                    if (usedIpRef && (!searchUserId || usedIpRef.userId?.toString() !== searchUserId.toString())) {
+                        ipAbuse = true;
+                    }
+                }
+
+                if (usedRef || ipAbuse) {
+                    log.warn('[CHECKOUT] Referral code already used by user or IP', { requestId: req.requestId });
+                    validatedRefCode = '';
+                    referralDiscountPercent = 0;
+                    referredByDiscordId = '';
+                    // Return error immediately instead of silently ignoring
+                    return res.status(400).json({ error: 'Bạn đã từng sử dụng mã mời trước đây hoặc IP mạng đã đạt giới hạn!' });
+                } else {
+                    referredByDiscordId = String(match.discordId);
+                    referralDiscountPercent = REFEREE_DISCOUNT_PERCENT;
+                    log.info('[CHECKOUT] Referral code valid, applying 5% discount', {
+                        requestId: req.requestId,
+                        referredByDiscordId
+                    });
+                }
             } else {
                 // Invalid invite code - clear it from database
                 log.warn('[CHECKOUT] Referral code invalid, clearing from database', {
@@ -3142,6 +3174,42 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
             log.warn('[CHECKOUT] Invalid total', { requestId: req.requestId, totalAmount });
             return res.status(400).json({ error: 'Invalid checkout total' });
         }
+
+        // Coupon Validations
+        if (couponCode) {
+            if (couponCode === 'WELCOME20' && subtotalAmount < 100000) {
+                return res.status(400).json({ error: 'Mã WELCOME20 chỉ áp dụng cho đơn hàng từ 100.000 VND trở lên.' });
+            }
+
+            const searchUserId = viewerTaiKhoanId ? new mongoose.Types.ObjectId(viewerTaiKhoanId) : null;
+            
+            // Check single use per user
+            const usedCoupon = await Order.findOne({ 
+                $or: [
+                    searchUserId ? { userId: searchUserId } : null,
+                    discordId ? { discordId } : null
+                ].filter(Boolean),
+                couponCode, 
+                status: { $ne: 'huy' } 
+            }).lean();
+
+            if (usedCoupon) {
+                return res.status(400).json({ error: 'Mã giảm giá này đã được sử dụng trên tài khoản của bạn.' });
+            }
+
+            // Check single use per IP
+            if (req.ip) {
+                const usedIp = await Order.findOne({ 
+                    clientIp: req.ip, 
+                    couponCode, 
+                    status: { $ne: 'huy' } 
+                }).lean();
+                if (usedIp && (!searchUserId || usedIp.userId?.toString() !== searchUserId.toString())) {
+                    return res.status(400).json({ error: 'Mã giảm giá này đã được sử dụng trên mạng/thiết bị của bạn.' });
+                }
+            }
+        }
+
         // Validate and deduct balance
         if (taiKhoan) {
             if ((taiKhoan.soDuVnd || 0) < totalAmount) {
@@ -3208,7 +3276,8 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
                     paidAt: new Date(),
                     status: 'da_thanh_toan',
                     ticketStatus: 'chua_yeu_cau',
-                    ticketError: ''
+                    ticketError: '',
+                    clientIp: String(req.ip || '')
                 });
 
                 checkoutStep = 'order_save';

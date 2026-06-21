@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 /**
  * Don hang - Refactored for Vietnamese shop
@@ -31,6 +31,7 @@ const orderSchema = new mongoose.Schema({
         name: String,
         quantity: Number,
         packQuantity: { type: Number, default: 1 },
+        price: Number,        // Don gia ban dau
         priceVnd: Number,     // Don gia VND
         lineTotalVnd: Number  // Tong dong VND
     }],
@@ -93,7 +94,10 @@ const orderSchema = new mongoose.Schema({
     // === REWARD (co the giu lai neu can) ===
     newUserRewardSent: { type: Boolean, default: false },
     referralRewardSent: { type: Boolean, default: false },
-    referredByDiscordId: { type: String, default: '', trim: true, index: true }
+    referredByDiscordId: { type: String, default: '', trim: true, index: true },
+
+    // === ANTI-ABUSE ===
+    clientIp: { type: String, default: '', index: true }
 }, { timestamps: true });
 
 // === INDEXES ===

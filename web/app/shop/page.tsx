@@ -139,9 +139,9 @@ const ProductCard = memo(function ProductCard({
  </div>
  {variant === "bestSeller" ? (
  <div className="p-4">
- <p className="line-clamp-2 text-sm font-semibold leading-5 text-[#071326]/90/90/90">{product.name}</p>
+ <p className="line-clamp-2 text-sm font-semibold leading-5 text-[#071326]/90">{product.name}</p>
  <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
- {product.desc && <p className="text-xs text-[#071326]/90/90/50 mt-1 line-clamp-2">{product.desc}</p>}
+ {product.desc && <p className="text-xs text-[#071326]/70 mt-1 line-clamp-2">{product.desc}</p>}
  <div className="mt-3 flex items-center justify-between">
  <span className="text-sm font-bold text-blue-300">{formatMoney(product.price)}</span>
  <span className="text-xs text-cyan-300/80 font-medium">Xem</span>
@@ -149,9 +149,9 @@ const ProductCard = memo(function ProductCard({
  </div>
  ) : (
  <div className="space-y-1.5 sm:space-y-2 p-4 sm:p-5">
- <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[#071326]/90/90/90">{product.name}</h3>
+ <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[#071326]/90">{product.name}</h3>
  <p className="text-xs text-blue-300/80 mt-0.5">{formatQtyLabel(product.packQuantity)}</p>
- <p className="text-xs text-[#071326]/90/90/40">{product.category}</p>
+ <p className="text-xs text-[#071326]/40">{product.category}</p>
  <div className="flex items-center justify-between mt-2">
  <span className="text-lg font-bold text-blue-300">{formatMoney(product.price)}</span>
  <span className="text-xs text-cyan-300/80 font-medium">Xem</span>
@@ -250,11 +250,6 @@ export default function ShopPage() {
  setCouponMessage("");
  }
  setCart(newCart);
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem("nosmarket_cart", JSON.stringify(newCart));
-    } catch {}
-  }
   if (!options?.skipRemoteSync) {
     void syncCartToAccount(newCart).catch(() => {});
   }
@@ -355,32 +350,17 @@ export default function ShopPage() {
 
   // Sync Cart
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    // Load local cart first
-    let localCart: CartItem[] = [];
-    try {
-      const stored = window.localStorage.getItem("nosmarket_cart");
-      if (stored) localCart = JSON.parse(stored);
-    } catch {}
-
     if (!token) {
-      if (localCart.length > 0) {
-        saveCart(localCart, { skipRemoteSync: true });
-      }
+      setCart([]);
       return;
     }
 
-    // Fetch remote cart and merge
+    // Fetch remote cart
     void fetchRemoteCart().then((remoteCart) => {
       if (remoteCart.length > 0) {
         saveCart(remoteCart, { skipRemoteSync: true });
-      } else if (localCart.length > 0) {
-        saveCart(localCart); // Will sync local up to server
       }
-    }).catch(() => {
-      if (localCart.length > 0) saveCart(localCart, { skipRemoteSync: true });
-    });
+    }).catch(() => {});
   }, [token, fetchRemoteCart, saveCart]);
 
  useEffect(() => {
@@ -568,8 +548,12 @@ export default function ShopPage() {
  };
 
  const addToCartFromModal = () => {
- if (!canAct()) return;
- if (!selectedProduct || submitting) return;
+  if (!token) {
+    alert("Vui lòng đăng nhập để sử dụng giỏ hàng!");
+    return;
+  }
+  if (!canAct()) return;
+  if (!selectedProduct || submitting) return;
  const finalQty = Math.max(1, typeof modalQty === "number" ? modalQty : parseInt(modalQty) || 1);
  const updatedCart = [...cart];
  const exIndex = updatedCart.findIndex((i) => i._id === selectedProduct._id);
@@ -891,7 +875,7 @@ export default function ShopPage() {
  <Navbar showCart={step === "shop"} cartCount={cartCount} onCartClick={openCart} /><LogoLoader /></div>;
 
  return (
- <div className="min-h-screen bg-transparent text-[#071326]/90/90 relative overflow-hidden">
+ <div className="min-h-screen bg-transparent text-[#071326] relative overflow-hidden">
  {/* Glow orbs for depth */}
  <div className="glow-orb glow-orb-1"></div>
  <div className="glow-orb glow-orb-2"></div>
@@ -907,8 +891,8 @@ export default function ShopPage() {
  <Package className="h-5 w-5 text-emerald-700" />
  </div>
  <div>
- <h3 className="text-sm font-semibold text-[#071326]/90/90">Chào mừng! Giảm 20% cho đơn hàng đầu tiên</h3>
- <p className="text-xs text-slate-600">Đơn tối thiểu: 5.000 VND • Dùng mã này khi thanh toán</p>
+ <h3 className="text-sm font-semibold text-[#071326]">Chào mừng! Giảm 20% cho đơn hàng đầu tiên</h3>
+ <p className="text-xs text-slate-800">Đơn tối thiểu: 5.000 VND • Dùng mã này khi thanh toán</p>
  </div>
  </div>
  <div className="flex items-center gap-2">
@@ -922,14 +906,14 @@ export default function ShopPage() {
  setCopiedWelcomeCode(true);
  setTimeout(() => setCopiedWelcomeCode(false), 2000);
  }}
- className="rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-[#071326]/90/90 hover:bg-white/60 backdrop-blur-md"
+ className="rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-[#071326] hover:bg-white/60 backdrop-blur-md"
  >
  {copiedWelcomeCode ? <CheckCircle2 className="h-4 w-4 text-emerald-700" /> : <Copy className="h-4 w-4" />}
  </button>
  <button
  type="button"
  onClick={() => setWelcomeVoucherVisible(false)}
- className="rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-2 text-[#071326]/90/90 hover:bg-white/60 backdrop-blur-md"
+ className="rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-2 text-[#071326] hover:bg-white/60 backdrop-blur-md"
  >
  <X className="h-4 w-4" />
  </button>
@@ -943,7 +927,7 @@ export default function ShopPage() {
  <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] backdrop-blur-sm/70 backdrop-blur-sm animate-fade-in">
  <div className="flex flex-col items-center gap-3 rounded-[18px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]/95 px-6 py-5 shadow-2xl animate-bounce-in">
  <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
- <p className="text-sm font-medium text-[#071326]/90/90">Đang xử lý thanh toán...</p>
+ <p className="text-sm font-medium text-[#071326]">Đang xử lý thanh toán...</p>
  </div>
  </div>
  )}
@@ -953,18 +937,18 @@ export default function ShopPage() {
  <div className="w-full max-w-md rounded-[20px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-5 shadow-2xl animate-bounce-in">
  <div className="mb-4 flex items-start justify-between gap-4">
  <div>
- <h2 className="text-lg font-semibold text-[#071326]/90/90">Bạn mới đến?</h2>
- <p className="mt-2 text-sm leading-6 text-slate-600">Nếu bạn là người mới, hãy xem vouch trước khi đặt hàng.</p>
+ <h2 className="text-lg font-semibold text-[#071326]">Bạn mới đến?</h2>
+ <p className="mt-2 text-sm leading-6 text-slate-800">Nếu bạn là người mới, hãy xem vouch trước khi đặt hàng.</p>
  </div>
- <button type="button" onClick={dismissVisitorNotice} className="rounded-full bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-2 text-[#071326]/90/90 hover:bg-white/60 backdrop-blur-md">
+ <button type="button" onClick={dismissVisitorNotice} className="rounded-full bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-2 text-[#071326] hover:bg-white/60 backdrop-blur-md">
  <X className="h-5 w-5" />
  </button>
  </div>
  <div className="grid gap-3 sm:grid-cols-2">
- <button type="button" onClick={() => { dismissVisitorNotice(); window.location.href = "/proofs"; }} className="rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326]/90/90 primary-hover-glow">
+ <button type="button" onClick={() => { dismissVisitorNotice(); window.location.href = "/proofs"; }} className="rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326] primary-hover-glow">
  Xem vouch
  </button>
- <button type="button" onClick={dismissVisitorNotice} className="rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326]/90/90">
+ <button type="button" onClick={dismissVisitorNotice} className="rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326]">
  Đóng
  </button>
  </div>
@@ -977,18 +961,18 @@ export default function ShopPage() {
  <div className="w-full max-w-md rounded-[20px] border border-white/50 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-5 shadow-2xl animate-bounce-in">
  <div className="mb-4 flex items-start justify-between gap-4">
  <div>
- <h2 className="text-lg font-semibold text-[#071326]/90/90">{luckyWheel.title}</h2>
- <p className="mt-2 text-sm leading-6 text-slate-600">{luckyWheel.message}</p>
+ <h2 className="text-lg font-semibold text-[#071326]">{luckyWheel.title}</h2>
+ <p className="mt-2 text-sm leading-6 text-slate-800">{luckyWheel.message}</p>
  </div>
- <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-full bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-2 text-[#071326]/90/90 hover:bg-white/60 backdrop-blur-md">
+ <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-full bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-2 text-[#071326] hover:bg-white/60 backdrop-blur-md">
  <X className="h-5 w-5" />
  </button>
  </div>
  <div className="grid gap-3 sm:grid-cols-2">
- <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326]/90/90 primary-hover-glow">
+ <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326] primary-hover-glow">
  Xem sự kiện
  </button>
- <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326]/90/90">
+ <button type="button" onClick={dismissLuckyWheelNotice} className="rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm font-medium text-[#071326]">
  Đóng
  </button>
  </div>
@@ -1036,11 +1020,11 @@ export default function ShopPage() {
  <div className="rounded-[12px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-2">
  <button type="button" onClick={() => setCartToolsOpen((v) => !v)} className="flex w-full items-center justify-between rounded-[10px] border border-white/40 bg-white/30 backdrop-blur-md border border-white/50 shadow-lg px-3 py-2 text-sm font-semibold">
  <span>Mã giảm giá</span>
- <span className="text-xs text-slate-600">{cartToolsOpen ? 'Ẩn' : 'Hiện'}</span>
+ <span className="text-xs text-slate-800">{cartToolsOpen ? 'Ẩn' : 'Hiện'}</span>
  </button>
  <div className={"mt-2 space-y-2 " + (cartToolsOpen ? '' : 'hidden sm:block')}>
  <div className="grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-2">
- <label htmlFor="cart-referral" className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Mã mời</label>
+ <label htmlFor="cart-referral" className="text-[10px] font-bold uppercase tracking-wider text-slate-800">Mã mời</label>
  <input
  id="cart-referral"
  value={referralCode}
@@ -1050,34 +1034,34 @@ export default function ShopPage() {
  }}
  onBlur={() => { try { window.localStorage.setItem('pendingReferralCode', referralCode.trim()); } catch {} }}
  placeholder="REF-123456"
- className="min-w-0 rounded-[10px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-sm text-[#071326]/90/90 outline-none focus:border-[#49B6FF]"
+ className="min-w-0 rounded-[10px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-sm text-[#071326] outline-none focus:border-[#49B6FF]"
  />
  <button
  type="button"
  onClick={() => void previewReferralCode().catch((e) => setError(e instanceof Error ? e.message : 'Áp dụng mã mời thất bại'))}
  disabled={!token || !referralCode.trim() || referralApplying || referralApplied}
- className="rounded-[9px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-xs font-bold text-slate-600 disabled:opacity-50"
+ className="rounded-[9px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-xs font-bold text-slate-800 disabled:opacity-50"
  >
  {referralApplying ? '...' : (referralApplied ? 'Đã áp dụng' : 'Áp dụng')}
  </button>
  </div>
  {token && myReferralCode && (
  <div className="grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-2 text-[11px]">
- <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Mã của bạn</span>
- <span className="min-w-0 truncate font-mono font-semibold text-slate-600">{myReferralCode}</span>
- <button type="button" onClick={() => void navigator.clipboard.writeText(myReferralCode)} className="rounded-[8px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-1.5 text-[#071326]/90/90" title="Copy">
+ <span className="text-[10px] font-bold uppercase tracking-wider text-slate-800">Mã của bạn</span>
+ <span className="min-w-0 truncate font-mono font-semibold text-slate-800">{myReferralCode}</span>
+ <button type="button" onClick={() => void navigator.clipboard.writeText(myReferralCode)} className="rounded-[8px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-1.5 text-[#071326]" title="Copy">
  <Copy className="h-3.5 w-3.5" />
  </button>
  </div>
  )}
  {referralPreviewOwner && (
- <div className="flex items-center justify-between gap-2 pl-[84px] text-[11px] text-slate-600">
+ <div className="flex items-center justify-between gap-2 pl-[84px] text-[11px] text-slate-800">
  <span className="min-w-0 truncate">Chủ mã mời: {referralPreviewOwner}</span>
  </div>
  )}
 
  <div className="grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-2">
- <label htmlFor="cart-coupon" className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Coupon</label>
+ <label htmlFor="cart-coupon" className="text-[10px] font-bold uppercase tracking-wider text-slate-800">Coupon</label>
  <input
  id="cart-coupon"
  value={couponCode}
@@ -1088,25 +1072,25 @@ export default function ShopPage() {
  setCouponMessage('');
  }}
  placeholder="Code"
- className="min-w-0 rounded-[10px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-sm text-[#071326]/90/90 outline-none focus:border-white/60"
+ className="min-w-0 rounded-[10px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-sm text-[#071326] outline-none focus:border-white/60"
  />
  <button
  type="button"
  onClick={() => void previewCoupon()}
  disabled={couponLoading || !couponCode.trim()}
- className="rounded-[9px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-xs font-bold text-[#071326]/90/90 disabled:opacity-50"
+ className="rounded-[9px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-xs font-bold text-[#071326] disabled:opacity-50"
  >
  {couponLoading ? '...' : 'Áp dụng'}
  </button>
  </div>
  {couponMessage && (
- <p className={'pl-[84px] text-xs ' + (activeCouponPreview ? 'text-emerald-700' : 'text-slate-600')}>{couponMessage}</p>
+ <p className={'pl-[84px] text-xs ' + (activeCouponPreview ? 'text-emerald-700' : 'text-slate-800')}>{couponMessage}</p>
  )}
  </div>
  </div>
 
  <div className="space-y-1 text-sm">
- <div className="flex justify-between"><span className="text-slate-600">Tạm tính</span><span>{formatMoney(cartTotal)}</span></div>
+ <div className="flex justify-between"><span className="text-slate-800">Tạm tính</span><span>{formatMoney(cartTotal)}</span></div>
  {activeCartDiscountAmount > 0 && (
  <>
  {activeCartCouponPercent > 0 && (
@@ -1135,13 +1119,13 @@ export default function ShopPage() {
  <div className={"fixed inset-0 z-[100] flex items-center justify-center bg-white/40 backdrop-blur-sm backdrop-blur-md p-0 " + (modalClosing ? "animate-fade-out" : "animate-fade-in")} onClick={closeProductModal}>
  <div className={"motion-panel relative mx-3 w-full max-w-[340px] md:max-w-[408px] max-h-[82dvh] overflow-hidden rounded-[20px] border border-white/40 bg-white/30 backdrop-blur-md border border-white/50 shadow-lg shadow-2xl " + (modalClosing ? "animate-modal-zoom-out" : "animate-modal-zoom-in")} onClick={(e) => e.stopPropagation()}>
  <div className="flex items-center justify-between border-b border-white/40 bg-white/30 backdrop-blur-md border border-white/50 shadow-lg px-4 py-2.5">
- <h3 className="text-sm font-semibold text-[#071326]/90/90">Chi tiết sản phẩm</h3>
+ <h3 className="text-sm font-semibold text-[#071326]">Chi tiết sản phẩm</h3>
  <button onClick={closeProductModal} className="rounded-full bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-2 active:scale-90"><X className="h-4 w-4" /></button>
  </div>
  <div className="max-h-[calc(82dvh-96px)] overflow-y-auto px-4 py-3">
  <div className="space-y-3">
  <div className="mx-auto aspect-square w-full max-w-[120px] md:max-w-[138px] overflow-hidden rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]">
- {selectedProduct.image ? <img src={imgUrl(selectedProduct.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-contain" /> : <Package className="h-full w-full p-8 text-slate-600/50" />}
+ {selectedProduct.image ? <img src={imgUrl(selectedProduct.image)} alt="" loading="lazy" onError={handleShopImageError} className="h-full w-full object-contain" /> : <Package className="h-full w-full p-8 text-slate-800/50" />}
  </div>
  <div className="space-y-1.5">
  <h2 className="text-base font-bold leading-tight">{formatProductNameWithQty(selectedProduct.name, selectedProduct.packQuantity)}</h2>
@@ -1154,7 +1138,7 @@ export default function ShopPage() {
  </div>
  {selectedProduct.desc && (
  <div className="mt-2 rounded-[12px] bg-white/60 backdrop-blur-md p-3">
- <p className="whitespace-pre-wrap text-[11px] leading-4 text-slate-600">{selectedProduct.desc}</p>
+ <p className="whitespace-pre-wrap text-[11px] leading-4 text-slate-800">{selectedProduct.desc}</p>
  </div>
  )}
  <div className="mt-2">
@@ -1166,7 +1150,7 @@ export default function ShopPage() {
  </div>
  </div>
  <div className="border-t border-white/40 bg-white/30 backdrop-blur-md border border-white/50 shadow-lg px-4 py-3">
- <button onClick={addToCartFromModal} className="w-full rounded-full bg-gradient-to-r from-[#2F9BE6] to-[#49B6FF] py-3.5 text-sm font-semibold text-[#071326]/90/90 active:scale-95 primary-hover-glow">Thêm vào giỏ</button>
+ <button onClick={addToCartFromModal} className="w-full rounded-full bg-gradient-to-r from-[#2F9BE6] to-[#49B6FF] py-3.5 text-sm font-semibold text-[#071326] active:scale-95 primary-hover-glow">Thêm vào giỏ</button>
  </div>
  </div>
  </div>
@@ -1180,13 +1164,13 @@ export default function ShopPage() {
  <AlertCircle className="h-6 w-6 text-red-400" />
  </div>
  <div className="flex-1 min-w-0">
- <h3 className="text-lg font-semibold text-[#071326]/90/90 mb-2">Lỗi</h3>
- <p className="text-sm text-slate-600 leading-relaxed break-words">{error}</p>
+ <h3 className="text-lg font-semibold text-[#071326] mb-2">Lỗi</h3>
+ <p className="text-sm text-slate-800 leading-relaxed break-words">{error}</p>
  </div>
  </div>
  <button
  onClick={() => setError(null)}
- className="w-full rounded-[14px] bg-[#FF4D4F] px-4 py-3 text-sm font-medium text-[#071326]/90/90 hover:bg-[#FF6B6B] transition-colors"
+ className="w-full rounded-[14px] bg-[#FF4D4F] px-4 py-3 text-sm font-medium text-[#071326] hover:bg-[#FF6B6B] transition-colors"
  >
  Đóng
  </button>
@@ -1197,7 +1181,7 @@ export default function ShopPage() {
  <main className="mx-auto max-w-7xl px-4 py-4 sm:px-4 sm:py-6 animate-page-enter">
  {step !== "shop" && (
  <div className="mx-auto max-w-2xl space-y-6 animate-page-enter">
- <button onClick={() => (() => { setStep("shop"); setOrderId(null); setCheckoutSummary(null); clearPendingCheckout(); })()} className="flex items-center gap-2 text-sm text-slate-600 hover:text-[#071326]/90/90 transition-colors">
+ <button onClick={() => (() => { setStep("shop"); setOrderId(null); setCheckoutSummary(null); clearPendingCheckout(); })()} className="flex items-center gap-2 text-sm text-slate-800 hover:text-[#071326] transition-colors">
  <ArrowLeft className="h-4 w-4" /> Quay lại cửa hàng
  </button>
  <div className="flex gap-2">{(["roblox", "ticket"] as const).map((s) => (
@@ -1205,9 +1189,9 @@ export default function ShopPage() {
  ))}</div>
  <div className="motion-panel rounded-[24px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-4 sm:p-6 space-y-4 animate-section-enter">
  <div className="border-b border-white/40 pb-3">
- <p className="text-sm text-slate-600">Đơn hàng {orderId}</p>
+ <p className="text-sm text-slate-800">Đơn hàng {orderId}</p>
  <div className="mt-2 space-y-1">{checkoutItems.map((i) => (
- <div key={String(i._id || ("product" in i ? i.product : "") || i.name)} className="flex justify-between text-sm"><span>{formatPurchasedProductName(i)}</span><span className="text-slate-600">{formatMoney(Number(i.price || 0) * Number(i.quantity || 1))}</span></div>
+ <div key={String(i._id || ("product" in i ? i.product : "") || i.name)} className="flex justify-between text-sm"><span>{formatPurchasedProductName(i)}</span><span className="text-slate-800">{formatMoney(Number(i.price || 0) * Number(i.quantity || 1))}</span></div>
  ))}
  {Number(checkoutSummary?.discountAmount || 0) > 0 && (
  <div className="flex justify-between text-sm text-emerald-700"><span>Giảm giá ({checkoutSummary?.discountPercent || 0}%)</span><span>-{formatMoney(checkoutSummary?.discountAmount || 0)}</span></div>
@@ -1218,7 +1202,7 @@ export default function ShopPage() {
  {step === "roblox" && (
  <div className="space-y-4">
  <div className="rounded-[16px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-4">
- <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-[#071326]/90/90"><DiscordIcon className="h-5 w-5 text-slate-600" />Đăng nhập Discord</h3>
+ <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-[#071326]"><DiscordIcon className="h-5 w-5 text-slate-800" />Đăng nhập Discord</h3>
  {daLienKetDiscord ? (
  <div className="rounded-[14px] border border-[#3DDC84]/25 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-4 py-3 text-sm text-emerald-700">
  ✓ Đã liên kết Discord: {discordTenHienThi}
@@ -1231,7 +1215,7 @@ export default function ShopPage() {
  localStorage.setItem('discord_return_to', '/shop');
  }
  }}
- className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 text-center font-medium text-[#071326]/90/90 transition-all hover:bg-[#6875ff]"
+ className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 text-center font-medium text-[#071326] transition-all hover:bg-[#6875ff]"
  >
  <DiscordIcon className="h-5 w-5" />
  Đăng nhập bằng Discord
@@ -1240,7 +1224,7 @@ export default function ShopPage() {
  </div>
  {!robloxSearchResult ? (
  <div className="space-y-4">
- <h3 className="flex items-center gap-2 text-lg font-semibold"><RobloxIcon className="h-5 w-5 text-[#071326]/90/90" />Nhập username Roblox</h3>
+ <h3 className="flex items-center gap-2 text-lg font-semibold"><RobloxIcon className="h-5 w-5 text-[#071326]" />Nhập username Roblox</h3>
  <div className="flex flex-col gap-3">
  <input
  value={robloxUsernameInput}
@@ -1256,12 +1240,12 @@ export default function ShopPage() {
  {submitting ? "Đang tìm..." : "Tìm tài khoản"}
  </button>
  </div>
- <p className="text-xs text-slate-600">Nhập ít nhất 3 ký tự để tìm kiếm</p>
+ <p className="text-xs text-slate-800">Nhập ít nhất 3 ký tự để tìm kiếm</p>
  </div>
  ) : (
  <div className="space-y-4">
- <h3 className="flex items-center gap-2 text-lg font-semibold"><RobloxIcon className="h-5 w-5 text-[#071326]/90/90" />Xác nhận tài khoản Roblox</h3>
- <p className="text-sm text-slate-600">Đây có đúng là tài khoản Roblox của bạn không?</p>
+ <h3 className="flex items-center gap-2 text-lg font-semibold"><RobloxIcon className="h-5 w-5 text-[#071326]" />Xác nhận tài khoản Roblox</h3>
+ <p className="text-sm text-slate-800">Đây có đúng là tài khoản Roblox của bạn không?</p>
  <div className="flex items-center gap-4 rounded-[16px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] p-4">
  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-full bg-white/40 backdrop-blur-sm border border-white/50">
  {robloxSearchResult.avatar ? (
@@ -1271,14 +1255,14 @@ export default function ShopPage() {
  )}
  </div>
  <div className="space-y-3">
- <p className="text-sm text-slate-600">Tên hiển thị</p>
- <p className="text-lg font-semibold text-[#071326]/90/90">{robloxSearchResult.displayName}</p>
+ <p className="text-sm text-slate-800">Tên hiển thị</p>
+ <p className="text-lg font-semibold text-[#071326]">{robloxSearchResult.displayName}</p>
  <p className="text-sm text-blue-300/80">@{robloxSearchResult.username}</p>
  <a
  href={`https://www.roblox.com/users/${robloxSearchResult.userId}/profile`}
  target="_blank"
  rel="noreferrer"
- className="mt-1 inline-block text-xs text-slate-600 hover:text-[#071326]/90/90"
+ className="mt-1 inline-block text-xs text-slate-800 hover:text-[#071326]"
  >
  Xem profile
  </a>
@@ -1315,7 +1299,7 @@ export default function ShopPage() {
  href={ticketResult.url}
  target="_blank"
  rel="noreferrer"
- className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 font-medium text-[#071326]/90/90 transition-all hover:bg-[#6875ff]"
+ className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#5865F2] py-3 font-medium text-[#071326] transition-all hover:bg-[#6875ff]"
  >
  <DiscordIcon className="h-5 w-5" />
  Mở ticket Discord
@@ -1330,7 +1314,7 @@ export default function ShopPage() {
  setRobloxUsernameInput("");
  setTicketResult(null);
  }}
- className="w-full rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] py-3 font-medium text-[#071326]/90/90 transition-colors hover:bg-white/60 backdrop-blur-md"
+ className="w-full rounded-[14px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] py-3 font-medium text-[#071326] transition-colors hover:bg-white/60 backdrop-blur-md"
  >
  Tiếp tục mua sắm
  </button>
@@ -1338,7 +1322,7 @@ export default function ShopPage() {
  ) : (
  <div className="flex items-center justify-center py-8">
  <Loader2 className="h-8 w-8 animate-spin text-blue-300/80" />
- <span className="ml-3 text-sm text-slate-600">Đang tạo ticket...</span>
+ <span className="ml-3 text-sm text-slate-800">Đang tạo ticket...</span>
  </div>
  )}
  </div>
@@ -1351,8 +1335,8 @@ export default function ShopPage() {
  <>
  <div className="px-4 py-8 sm:px-6 lg:px-8">
  <div className="mx-auto max-w-7xl">
- <h1 className="text-3xl font-bold text-[#071326]/90/90 sm:text-4xl">Cửa hàng game</h1>
- <p className="mt-2 text-slate-600">Mua vật phẩm, voucher với giá tốt nhất</p>
+ <h1 className="text-3xl font-bold text-[#071326] sm:text-4xl">Cửa hàng game</h1>
+ <p className="mt-2 text-slate-800">Mua vật phẩm, voucher với giá tốt nhất</p>
  </div>
  </div>
 
@@ -1360,11 +1344,11 @@ export default function ShopPage() {
  <div className="px-4 py-6 sm:px-6 lg:px-8">
  <div className="mx-auto max-w-7xl">
  <div className="mb-4 flex items-center justify-between gap-3">
- <h2 className="text-xl font-semibold text-[#071326]/90/90">Sản phẩm bán chạy</h2>
+ <h2 className="text-xl font-semibold text-[#071326]">Sản phẩm bán chạy</h2>
  {bestSellers.length > BEST_SELLERS_PER_PAGE && (
  <div className="flex items-center gap-2">
- <button type="button" onClick={() => setBestSellerPage((current) => Math.max(0, current - 1))} disabled={bestSellerPage <= 0} className="rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-xs text-slate-600 disabled:opacity-40">Trước</button>
- <button type="button" onClick={() => setBestSellerPage((current) => Math.min(maxBestSellerPage, current + 1))} disabled={bestSellerPage >= maxBestSellerPage} className="rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-xs text-slate-600 disabled:opacity-40">Sau</button>
+ <button type="button" onClick={() => setBestSellerPage((current) => Math.max(0, current - 1))} disabled={bestSellerPage <= 0} className="rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-xs text-slate-800 disabled:opacity-40">Trước</button>
+ <button type="button" onClick={() => setBestSellerPage((current) => Math.min(maxBestSellerPage, current + 1))} disabled={bestSellerPage >= maxBestSellerPage} className="rounded-[12px] bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-2 text-xs text-slate-800 disabled:opacity-40">Sau</button>
  </div>
  )}
  </div>
@@ -1381,29 +1365,29 @@ export default function ShopPage() {
  <div className="mx-auto max-w-7xl">
  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
  <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">
- <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-600" />
+ <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-800" />
  <input
  type="text"
  placeholder="Tìm sản phẩm..."
  value={searchInput}
  onChange={handleSearchChange}
- className="w-full rounded-[12px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] py-2.5 pl-10 pr-4 text-sm text-[#071326]/90/90 placeholder-[#B5B5B5] focus:border-white/60 focus:outline-none"
+ className="w-full rounded-[12px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] py-2.5 pl-10 pr-4 text-sm text-[#071326] placeholder-[#B5B5B5] focus:border-white/60 focus:outline-none"
  />
  </form>
 
  <div className="flex flex-wrap gap-3">
  <div className="flex flex-wrap gap-2">
- <button onClick={() => setSelectedGame(null)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${!selectedGame ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90" : "border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-slate-600 hover:border-white/60"}`}>
+ <button onClick={() => setSelectedGame(null)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${!selectedGame ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]" : "border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-slate-800 hover:border-white/60"}`}>
  Tất cả
  </button>
  {games.slice(0, 5).map((game) => (
- <button key={game._id} onClick={() => setSelectedGame(game._id)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${selectedGame === game._id ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]/90/90" : "border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-slate-600 hover:border-white/60"}`}>
+ <button key={game._id} onClick={() => setSelectedGame(game._id)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${selectedGame === game._id ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-[#071326]" : "border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] text-slate-800 hover:border-white/60"}`}>
  {game.name}
  </button>
  ))}
  </div>
 
- <select value={priceSort} onChange={(e) => setPriceSort(e.target.value as PriceSort)} className="rounded-[12px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-1.5 text-sm text-[#071326]/90/90 focus:border-white/60 focus:outline-none">
+ <select value={priceSort} onChange={(e) => setPriceSort(e.target.value as PriceSort)} className="rounded-[12px] border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-3 py-1.5 text-sm text-[#071326] focus:border-white/60 focus:outline-none">
  <option value="none">Giá mặc định</option>
  <option value="low-high">Giá: Thấp đến Cao</option>
  <option value="high-low">Giá: Cao đến Thấp</option>
@@ -1423,8 +1407,8 @@ export default function ShopPage() {
 
  {filtered.length === 0 && (
  <div className="py-12 text-center">
- <Package className="mx-auto h-12 w-12 text-slate-600/50" />
- <p className="mt-4 text-slate-600">Không tìm thấy sản phẩm</p>
+ <Package className="mx-auto h-12 w-12 text-slate-800/50" />
+ <p className="mt-4 text-slate-800">Không tìm thấy sản phẩm</p>
  </div>
  )}
  </div>

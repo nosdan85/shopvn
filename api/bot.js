@@ -1754,7 +1754,7 @@ const maybeGrantReferralReward = async (order) => {
 
     let rewardCode = String(referral.rewardCouponCode || '').trim().toUpperCase();
     if (!rewardCode) {
-        const coupon = await createRewardCoupon({ discountPercent: 50, discordId: referrerId, source: 'referral' });
+        const coupon = await createRewardCoupon({ discountPercent: 15, discordId: referrerId, source: 'referral' });
         rewardCode = coupon.couponCode;
         await Referral.updateOne(
             { referrerDiscordId: referrerId, refereeDiscordId: refereeId },
