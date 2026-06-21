@@ -30,6 +30,7 @@ const { hashFingerprint, hasSuspiciousDeviceFlag, shouldGrantFirstOrderReward } 
 const { buildGeneratedCouponCode } = require('./utils/luckyWheel');
 const { buildTicketOrderLookupQuery } = require('./utils/ticketOrderLookup');
 const { buildDiscordVouchContent, resolveVouchChannelId } = require('./utils/vouchContent');
+const { getVouchCommandValidationError, sendVouchBatchWithFallback } = require('./utils/vouchDelivery');
 
 const { log } = require('./utils/loggingService');
 
@@ -1069,35 +1070,34 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
             }
         }
 
-        if (files.length === 0) {
-            continue;
-        }
-
-        const sent = await channel.send({
-            ...(didSendHeaderContent ? {} : { content: buildDiscordVouchContent(order) }),
-            files
+        const delivery = await sendVouchBatchWithFallback({
+            channel,
+            headerContent: didSendHeaderContent ? '' : buildDiscordVouchContent(order),
+            files,
+            sourceUrls: imageBatch
         });
         didSendHeaderContent = true;
-        const messageId = String(sent?.id || '').trim();
-        if (isSnowflake(messageId)) {
-            sentMessageIds.push(messageId);
+        sentMessageIds.push(...delivery.messageIds.filter(isSnowflake));
+        if (delivery.usedFallback) {
+            console.warn('[VOUCH] File upload failed; sent source image URLs instead.', {
+                channelId: vouchChannelId,
+                error: delivery.uploadError?.message || delivery.uploadError,
+                code: delivery.uploadError?.code || ''
+            });
         }
-        let attachmentIndex = 0;
-        for (const attachment of sent.attachments.values()) {
-            const uploadedUrl = String(attachment?.url || '').trim();
-            if (uploadedUrl) {
-                uploadedImageUrls.push(uploadedUrl);
-                const prepared = preparedImages[attachmentIndex];
-                if (prepared?.buffer) {
-                    uploadedImageBuffers.push({
-                        buffer: prepared.buffer,
-                        contentType: normalizeProofImageContentType(attachment?.contentType || prepared.contentType),
-                        sourceUrl: uploadedUrl
-                    });
-                }
+
+        delivery.imageUrls.forEach((deliveredUrl, attachmentIndex) => {
+            uploadedImageUrls.push(deliveredUrl);
+            const prepared = preparedImages.find((image) => image.sourceUrl === deliveredUrl)
+                || preparedImages[attachmentIndex];
+            if (prepared?.buffer) {
+                uploadedImageBuffers.push({
+                    buffer: prepared.buffer,
+                    contentType: normalizeProofImageContentType(prepared.contentType),
+                    sourceUrl: deliveredUrl
+                });
             }
-            attachmentIndex += 1;
-        }
+        });
     }
 
     if (uploadedImageUrls.length === 0) {
@@ -1567,6 +1567,27 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
+    const isVouchCommand = normalizedContent === '!' && imageAttachments.length > 0;
+    if (isVouchCommand) {
+        const authorized = ['1146730730060271736', '1005326332001009784']
+            .includes(String(message.author.id || ''));
+        const validationError = getVouchCommandValidationError({
+            content: normalizedContent,
+            imageCount: imageAttachments.length,
+            authorized,
+            hasOrder: Boolean(order)
+        });
+        if (validationError) {
+            console.warn('[VOUCH] Command rejected.', {
+                channelId,
+                userId: String(message.author.id || ''),
+                reason: validationError
+            });
+            await message.reply(validationError).catch(() => {});
+            return;
+        }
+    }
+
     if (isDoneCommand) {
         try {
             if (!order) {
@@ -1626,12 +1647,6 @@ client.on('messageCreate', async (message) => {
     if (normalizedContent !== '!') return;
 
     try {
-        const canSendVouch = ['1146730730060271736', '1005326332001009784'].includes(String(message.author.id || ''));
-        if (!canSendVouch) {
-            console.warn(`Auto-vouch denied for user ${message.author.id} in channel ${channelId}`);
-            return;
-        }
-
         const imageUrls = imageAttachments
             .map((attachment) => String(attachment?.url || attachment?.proxyURL || '').trim())
             .filter(Boolean);
