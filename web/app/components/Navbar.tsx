@@ -133,7 +133,7 @@ export default function Navbar({ cartCount = 0, showCart = false, onCartClick }:
  {/* Logo */}
  <Link href="/shop" onClick={clearCheckoutResume} className="flex items-center gap-3 group">
  <img
- src="/pictures/site-logo.png"
+ src="/logo.png"
  alt="NOS"
  className="h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
  />
