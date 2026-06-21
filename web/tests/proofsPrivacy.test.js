@@ -21,3 +21,8 @@ test('public proofs endpoint omits buyer Roblox usernames', () => {
 
   assert.equal(publicProofsHandler.includes('robloxUsername'), false);
 });
+
+test('public proofs page does not render prices or totals', () => {
+  assert.equal(proofsPageSource.includes('formatPriceVND(item.lineTotal)'), false);
+  assert.equal(proofsPageSource.includes('formatPriceVND(currentTotal)'), false);
+});

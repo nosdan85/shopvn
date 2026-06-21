@@ -28,6 +28,8 @@ const Referral = require('./models/Referral');
 const GeneratedCoupon = require('./models/GeneratedCoupon');
 const { hashFingerprint, hasSuspiciousDeviceFlag, shouldGrantFirstOrderReward } = require('./utils/referralRewards');
 const { buildGeneratedCouponCode } = require('./utils/luckyWheel');
+const { buildTicketOrderLookupQuery } = require('./utils/ticketOrderLookup');
+const { buildDiscordVouchContent, resolveVouchChannelId } = require('./utils/vouchContent');
 
 const { log } = require('./utils/loggingService');
 
@@ -132,7 +134,7 @@ const getGuildId = () => normalizeEnvValue(process.env.DISCORD_GUILD_ID);
 const getOwnerRoleId = () => normalizeEnvValue(process.env.DISCORD_OWNER_ROLE_ID);
 const getTicketCategoryId = () => normalizeEnvValue(process.env.DISCORD_TICKET_CATEGORY_ID) || '1467122339194863759';
 const getOwnerId = () => normalizeEnvValue(process.env.DISCORD_OWNER_ID);
-const getVouchChannelId = () => normalizeEnvValue(process.env.DISCORD_VOUCH_CHANNEL_ID);
+const getVouchChannelId = () => resolveVouchChannelId(normalizeEnvValue(process.env.DISCORD_VOUCH_CHANNEL_ID));
 const getWalletNotifyChannelId = () => (
     normalizeEnvValue(process.env.DISCORD_WALLET_NOTIFY_CHANNEL_ID)
     || normalizeEnvValue(process.env.DISCORD_LINK_CHANNEL_ID)
@@ -490,12 +492,17 @@ const findOrderByTicketChannelName = async (channelNameRaw) => {
 
 const findOrderByTicketChannel = async (message) => {
     const channelId = String(message?.channelId || '').trim();
-    const byId = await findOrderByTicketChannelId(channelId);
+    const byIdQuery = buildTicketOrderLookupQuery({ channelId });
+    const byId = byIdQuery
+        ? await Order.findOne(byIdQuery).sort({ createdAt: -1 })
+        : null;
     if (byId) return byId;
 
     const channelName = String(message?.channel?.name || '').trim();
     if (!channelName) return null;
-    return findOrderByTicketChannelName(channelName);
+    const byNameQuery = buildTicketOrderLookupQuery({ channelName });
+    if (!byNameQuery) return null;
+    return Order.findOne(byNameQuery).sort({ createdAt: -1 });
 };
 
 const isConfiguredTicketCategoryChannel = (message) => {
@@ -866,25 +873,6 @@ const reAddLinkedUsersToGuild = async ({ targetGuildId, totalLinkedHint = 0, onP
     return summary;
 };
 
-const formatVouchItems = (items) => {
-    if (!Array.isArray(items) || items.length === 0) return '**1X SAN PHAM KHONG BIET**';
-    return items
-        .map((item) => {
-            const name = String(item?.name || 'SAN PHAM').trim().toUpperCase();
-            const deliveredLabel = formatPurchasedUnitsLabel(item).toUpperCase();
-            return `**${name} (${deliveredLabel})**`;
-        })
-        .join('\n')
-        .slice(0, 1500);
-};
-
-const buildVouchContent = (order) => {
-    const mention = `<@${order?.discordId || ''}>`;
-    const itemsText = formatVouchItems(order?.items);
-    const enjoyText = formatPurchasedItemsForDm(order?.items);
-    return truncateText(`${mention}\n${itemsText}\nNam muon ${enjoyText}\nVui long danh gia cho chung toi`, 1900);
-};
-
 const buildProofItems = (items) => {
     if (!Array.isArray(items)) return [];
     return items
@@ -1086,7 +1074,7 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
         }
 
         const sent = await channel.send({
-            ...(didSendHeaderContent ? {} : { content: buildVouchContent(order) }),
+            ...(didSendHeaderContent ? {} : { content: buildDiscordVouchContent(order) }),
             files
         });
         didSendHeaderContent = true;

@@ -23,13 +23,12 @@ import {
 interface ProofItem {
  name: string
  packQuantity: number
+ quantity: number
  deliveredLabel: string
- lineTotal: number
 }
 
 interface Proof {
  id: string
- totalAmount: number
  items: ProofItem[]
  imageUrls: string[]
 }
@@ -45,10 +44,6 @@ interface WebUser {
 }
 
 const ITEMS_PER_PAGE = 12
-
-const formatPriceVND = (amount: number): string => {
- return amount.toLocaleString('vi-VN') + ' VND'
-}
 
 export default function ProofsPage() {
  const [proofs, setProofs] = useState<Proof[]>([])
@@ -180,7 +175,6 @@ export default function ProofsPage() {
  ? {
  ...proof,
  items: editingItems,
- totalAmount: editingItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0),
  }
  : proof
  )
@@ -313,10 +307,6 @@ export default function ProofsPage() {
  {proofs.map((proof, idx) => {
  const isEditing = editingProofId === proof.id
  const currentItems = isEditing ? editingItems : proof.items
- const currentTotal = isEditing
- ? editingItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0)
- : proof.totalAmount
-
  return (
  <div
  key={proof.id}
@@ -384,15 +374,6 @@ export default function ProofsPage() {
  onChange={(e) => updateEditingItem(itemIndex, "name", e.target.value)}
  className="w-full rounded border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-2 py-1 text-sm text-[#071326]/90/90 outline-none"
  />
- <input
- type="number"
- step="0.01"
- value={item.lineTotal}
- onChange={(e) =>
- updateEditingItem(itemIndex, "lineTotal", Number(e.target.value || 0))
- }
- className="w-full rounded border border-white/40 bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-2 py-1 text-sm text-[#071326]/90/90 outline-none"
- />
  </div>
  ) : (
  <div key={itemIndex} className="flex justify-between gap-3 text-sm">
@@ -400,17 +381,12 @@ export default function ProofsPage() {
  <span className="text-slate-600">{item.name}</span>
  <p className="mt-1 text-xs text-blue-300/80">Qty: {item.deliveredLabel}</p>
  </div>
- <span className="text-slate-600">{formatPriceVND(item.lineTotal)}</span>
  </div>
  )
  )}
  </div>
 
  <div className="flex items-center justify-between border-t border-white/40 pt-3">
- <span className="text-lg font-bold text-emerald-700">
- {formatPriceVND(currentTotal)}
- </span>
-
  {isAdmin && (
  <div className="flex gap-1.5">
  <label className="inline-flex cursor-pointer items-center gap-1 rounded bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)] px-2 py-1.5 text-xs text-[#071326]/90/90 transition-colors hover:bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_4px_15px_rgba(255,255,255,0.2)]" title="Add proof image">

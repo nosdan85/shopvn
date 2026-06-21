@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const proofItemSchema = new mongoose.Schema({
     name: { type: String, default: '' },
     packQuantity: { type: Number, default: 0 },
+    quantity: { type: Number, default: 1 },
     deliveredLabel: { type: String, default: 'x0' },
     lineTotal: { type: Number, default: 0 }
 }, { _id: false });
@@ -25,4 +26,3 @@ proofSchema.index({ createdAt: -1 });
 proofSchema.index({ orderId: 1 });
 
 module.exports = mongoose.model('Proof', proofSchema);
-

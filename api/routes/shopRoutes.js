@@ -74,6 +74,8 @@ const {
     validateGeneratedCouponDiscount
 } = require('../utils/luckyWheel');
 const { USER_VISIBLE_GENERATED_COUPON_SOURCES } = require('../utils/generatedCoupons');
+const { mergeProofItemsForUpdate, toPublicProof } = require('../utils/publicProof');
+const { resolveCheckoutAccountIdentity } = require('../utils/orderOwnership');
 const {
     buildReferralPreviewPayload,
     buildReferralCode,
@@ -1942,12 +1944,8 @@ router.get('/proofs', async (req, res) => {
             page,
             limit,
             hasMore,
-            items: pageItems.map((proof) => ({
-                id: String(proof?._id || ''),
-                totalAmount: Number(proof?.totalAmount || 0),
-                items: Array.isArray(proof?.items) ? proof.items : [],
-                imageUrls: (Array.isArray(proof?.imageUrls) ? proof.imageUrls : [])
-                    .map((_, index) => `${apiOrigin}/api/shop/proofs/${encodeURIComponent(String(proof?._id || ''))}/images/${index}`),
+            items: pageItems.map((proof) => toPublicProof(proof, {
+                imageUrlForIndex: (index) => `${apiOrigin}/api/shop/proofs/${encodeURIComponent(String(proof?._id || ''))}/images/${index}`
             }))
         });
     } catch (error) {
@@ -2062,16 +2060,13 @@ router.patch('/proofs/:proofId', authRequired, async (req, res) => {
             return res.status(400).json({ error: 'Invalid proof id' });
         }
 
+        const existingProof = await Proof.findById(proofId).select('items').lean();
+        if (!existingProof) {
+            return res.status(404).json({ error: 'Proof not found' });
+        }
+
         const items = Array.isArray(req.body?.items) ? req.body.items : [];
-        const cleanItems = items
-            .slice(0, 50)
-            .map((item) => ({
-                name: String(item?.name || '').trim().slice(0, 120),
-                packQuantity: Math.max(0, Number(item?.packQuantity || 0)),
-                deliveredLabel: String(item?.deliveredLabel || '').trim().slice(0, 40),
-                lineTotal: Math.max(0, Number(item?.lineTotal || 0))
-            }))
-            .filter((item) => item.name);
+        const cleanItems = mergeProofItemsForUpdate(items, existingProof.items);
 
         if (cleanItems.length === 0) {
             return res.status(400).json({ error: 'At least one proof item is required' });
@@ -3055,7 +3050,7 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
     let checkoutStep = 'start';
     try {
         const viewer = getOptionalRequestUser(req);
-        const discordId = String(viewer?.discordId || '').trim();
+        let discordId = String(viewer?.discordId || '').trim();
         const viewerTaiKhoanId = String(viewer?.userId || viewer?._id || '').trim();
         const cartItems = Array.isArray(req.body?.cartItems) ? req.body.cartItems : [];
         const couponCodeRaw = req.body?.couponCode;
@@ -3066,8 +3061,10 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
         }
 
         checkoutStep = 'load_user';
-        const dbUser = discordId ? await User.findOne({ discordId }).lean() : null;
         const taiKhoan = viewerTaiKhoanId ? await TaiKhoan.findById(viewerTaiKhoanId).lean().catch(() => null) : null;
+        const checkoutIdentity = resolveCheckoutAccountIdentity({ tokenDiscordId: discordId, taiKhoan });
+        discordId = checkoutIdentity.discordId;
+        const dbUser = discordId ? await User.findOne({ discordId }).lean() : null;
 
         // Debug logging
         log.info('[CHECKOUT] User referral status', {
@@ -3266,8 +3263,13 @@ router.post('/checkout', checkoutLimiter, async (req, res) => {
 
                 newOrder = new Order({
                     orderId,
+                    userId: checkoutIdentity.userId || viewerTaiKhoanId || null,
+                    tenDangNhap: checkoutIdentity.tenDangNhap,
                     customerEmail: '',
                     discordId,
+                    discordTenHienThi: checkoutIdentity.discordTenHienThi || dbUser?.discordUsername || '',
+                    discordDaLienKet: Boolean(discordId),
+                    discordDaJoinServer: Boolean(discordId),
                     discordUsername: dbUser?.discordUsername || '',
                     items,
                     products,
@@ -5602,9 +5604,6 @@ router.put('/owner/config/featured', authRequired, async (req, res) => {
         return res.status(500).json({ error: 'Could not update featured products.' });
     }
 });
-
-
-
 
 
 

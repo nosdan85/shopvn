@@ -5,6 +5,7 @@ const Order = require('../models/Order');
 const TaiKhoan = require('../models/TaiKhoan');
 const WalletTransaction = require('../models/WalletTransaction');
 const GeneratedCoupon = require('../models/GeneratedCoupon');
+const { buildOwnedOrdersQuery } = require('../utils/orderOwnership');
 
 // Import auth middleware
 const { xacThuc } = require('../middleware/auth');
@@ -301,9 +302,10 @@ router.post('/dat-hang', xacThucDonHang, async (req, res) => {
 router.get('/lich-su', xacThucDonHang, async (req, res) => {
     try {
         const userId = req.donHangUserId;
+        const discordId = String(req.donHangNguoiDung?.discordId || '').trim();
         const limit = Math.min(50, Number(req.query.limit) || 50);
 
-        const donHang = await Order.find({ userId: userId })
+        const donHang = await Order.find(buildOwnedOrdersQuery({ userId, discordId }))
             .sort({ createdAt: -1 })
             .limit(limit)
             .lean();
