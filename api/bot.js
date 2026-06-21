@@ -889,7 +889,8 @@ const buildProofItems = (items) => {
             if (!name) return null;
             const quantity = Math.max(1, Number(item?.quantity) || 1);
             const deliveredLabel = formatPurchasedUnitsLabel(item);
-            const lineTotal = Math.max(0, Number(item?.lineTotalVnd || item?.priceVnd || 0) * quantity);
+            // lineTotalVnd already includes quantity, don't multiply again
+            const lineTotal = Math.max(0, Number(item?.lineTotalVnd || item?.priceVnd || (Number(item?.price || 0) * quantity) || 0));
             return {
                 name,
                 packQuantity: Math.max(1, Number(item?.packQuantity) || 1),
@@ -1126,9 +1127,34 @@ const sendAutoVouchFromTicketImages = async ({ order, imageUrls }) => {
 
         let delivery = null;
         try {
+            // Build embed instead of plain text
+            const discordId = String(order?.discordId || '').trim();
+            const displayName = String(order?.discordTenHienThi || order?.discordUsername || order?.tenDangNhap || 'Khach hang').trim();
+            const customerText = discordId ? `**${displayName}** (<@${discordId}>)` : `**${displayName}**`;
+            const totalVnd = Number(order?.totalVnd || order?.subtotalVnd || order?.totalAmount || 0);
+            const itemLines = (Array.isArray(order?.items) ? order.items : []).map((item) => {
+                const name = String(item?.name || 'San pham').trim();
+                const qty = Math.max(1, Number(item?.quantity) || 1);
+                const price = Number(item?.lineTotalVnd || item?.priceVnd || (Number(item?.price || 0) * qty) || 0);
+                return `• ${name} x${qty}` + (price > 0 ? ` — ${price.toLocaleString('vi-VN')} VND` : '');
+            });
+            const itemsText = itemLines.length > 0 ? itemLines.join('\n') : 'Không có thông tin sản phẩm';
+
+            const vouchEmbed = new EmbedBuilder()
+                .setColor(0x00FF00)
+                .setTitle('✅ Giao Hàng Thành Công')
+                .setDescription(`Khách hàng: ${customerText}`)
+                .addFields([
+                    { name: 'Mã Đơn', value: String(order?.orderId || 'N/A').toUpperCase(), inline: true },
+                    { name: 'Tổng Tiền', value: totalVnd > 0 ? `${totalVnd.toLocaleString('vi-VN')} VND` : 'N/A', inline: true },
+                    { name: 'Sản Phẩm', value: itemsText.slice(0, 1024), inline: false }
+                ])
+                .setTimestamp();
+
             delivery = await sendVouchBatchWithFallback({
                 channel,
-                headerContent: didSendHeaderContent ? '' : buildDiscordVouchContent(order),
+                headerContent: didSendHeaderContent ? '' : ' ',
+                headerEmbed: didSendHeaderContent ? null : vouchEmbed,
                 files,
                 sourceUrls: imageBatch
             });

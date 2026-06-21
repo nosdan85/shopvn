@@ -303,9 +303,18 @@ router.get('/lich-su', xacThucDonHang, async (req, res) => {
     try {
         const userId = req.donHangUserId;
         const discordId = String(req.donHangNguoiDung?.discordId || '').trim();
+        const tenDangNhap = String(req.donHangNguoiDung?.tenDangNhap || '').trim();
         const limit = Math.min(50, Number(req.query.limit) || 50);
 
-        const donHang = await Order.find(buildOwnedOrdersQuery({ userId, discordId }))
+        // Build query: match by userId OR discordId OR tenDangNhap
+        const orConditions = [];
+        if (userId) orConditions.push({ userId });
+        if (discordId) orConditions.push({ discordId });
+        if (tenDangNhap) orConditions.push({ tenDangNhap });
+
+        const query = orConditions.length > 1 ? { $or: orConditions } : (orConditions[0] || { userId });
+
+        const donHang = await Order.find(query)
             .sort({ createdAt: -1 })
             .limit(limit)
             .lean();

@@ -66,6 +66,7 @@ async function xacThuc(req, res, next) {
     }
 
     req.nguoiDung = taiKhoan;
+    req.userId = taiKhoan._id;
     next();
 }
 

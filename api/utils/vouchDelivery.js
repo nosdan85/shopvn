@@ -15,7 +15,7 @@ const getAttachmentUrls = (message) => {
         .filter(Boolean);
 };
 
-const sendVouchBatchWithFallback = async ({ channel, headerContent, files, sourceUrls } = {}) => {
+const sendVouchBatchWithFallback = async ({ channel, headerContent, headerEmbed, files, sourceUrls } = {}) => {
     const cleanHeader = String(headerContent || '').trim();
     const cleanUrls = (Array.isArray(sourceUrls) ? sourceUrls : [])
         .map((url) => String(url || '').trim())
@@ -23,8 +23,11 @@ const sendVouchBatchWithFallback = async ({ channel, headerContent, files, sourc
 
     const sendUrlFallback = async (uploadError = null) => {
         const sentMessages = [];
-        if (cleanHeader) {
-            sentMessages.push(await channel.send({ content: cleanHeader }));
+        if (cleanHeader || headerEmbed) {
+            const payload = {};
+            if (cleanHeader) payload.content = cleanHeader;
+            if (headerEmbed) payload.embeds = [headerEmbed];
+            sentMessages.push(await channel.send(payload));
         }
         for (const url of cleanUrls) {
             sentMessages.push(await channel.send({ content: url }));
@@ -42,10 +45,10 @@ const sendVouchBatchWithFallback = async ({ channel, headerContent, files, sourc
     }
 
     try {
-        const sent = await channel.send({
-            ...(cleanHeader ? { content: cleanHeader } : {}),
-            files
-        });
+        const payload = { files };
+        if (cleanHeader) payload.content = cleanHeader;
+        if (headerEmbed) payload.embeds = [headerEmbed];
+        const sent = await channel.send(payload);
         return {
             usedFallback: false,
             messageIds: [getMessageId(sent)].filter(Boolean),
